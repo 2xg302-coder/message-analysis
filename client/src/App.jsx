@@ -4,6 +4,7 @@ import MainLayout from './layouts/MainLayout';
 import NewsFeed from './pages/NewsFeed';
 import Trends from './pages/Trends';
 import Watchlist from './pages/Watchlist';
+import SeriesView from './pages/SeriesView';
 
 const App = () => {
   return (
@@ -13,6 +14,8 @@ const App = () => {
           <Route index element={<NewsFeed />} />
           <Route path="trends" element={<Trends />} />
           <Route path="watchlist" element={<Watchlist />} />
+          <Route path="series" element={<SeriesView />} />
+          <Route path="series/:tag" element={<SeriesView />} />
         </Route>
       </Routes>
     </BrowserRouter>

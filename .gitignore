@@ -4,6 +4,9 @@ pnpm-lock.yaml
 
 # Environment variables
 .env
+server/.env
+client/.env
+*.env.local
 
 # Database
 *.db

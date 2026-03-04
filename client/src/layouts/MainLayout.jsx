@@ -5,12 +5,14 @@ import {
   DesktopOutlined,
   PieChartOutlined,
   SettingOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
 
 const items = [
   { key: '/', icon: <DesktopOutlined />, label: '新闻流' },
+  { key: '/series', icon: <AppstoreOutlined />, label: '连续剧追踪' },
   { key: '/trends', icon: <PieChartOutlined />, label: '趋势分析' },
   { key: '/watchlist', icon: <SettingOutlined />, label: '关注配置' },
 ];
@@ -21,6 +23,8 @@ const MainLayout = () => {
   } = theme.useToken();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  const selectedKey = location.pathname.startsWith('/series') ? '/series' : location.pathname;
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -31,7 +35,7 @@ const MainLayout = () => {
         <Menu
           theme="dark"
           defaultSelectedKeys={['/']}
-          selectedKeys={[location.pathname]}
+          selectedKeys={[selectedKey]}
           mode="inline"
           items={items}
           onClick={({ key }) => navigate(key)}
