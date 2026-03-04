@@ -1,5 +1,5 @@
 // content.js
-console.log('Sina Finance Collector loaded!');
+console.log('Sina Finance Collector loaded! v2');
 
 // 用于存储已经处理过的 ID，避免重复 (Set 比 Array 更快)
 const processedIds = new Set();
@@ -8,7 +8,26 @@ const processedIds = new Set();
 function extractNews(node) {
     if (!node) return;
 
-    const id = node.dataset.id;
+    // 优先尝试获取 data-id
+    let id = node.dataset.id;
+    
+    // 兼容处理：如果没有 data-id，尝试从内容或链接中生成一个唯一ID (防止动态加载的DOM结构没有data-id)
+    if (!id) {
+        // 有些动态加载的元素可能结构不同，这里尝试寻找关键特征
+        const linkElement = node.querySelector('.bd_i_txt_c a');
+        if (linkElement && linkElement.href) {
+            // 从链接中提取数字作为ID
+            // 例如: https://finance.sina.com.cn/7x24/2025-03-04/doc-ixxxxxx.shtml -> ixxxxxx
+            const match = linkElement.href.match(/\/doc-i(.*?).shtml/);
+            if (match && match[1]) {
+                id = match[1];
+            } else {
+                 // 链接做hash? 简单点直接用链接
+                 id = linkElement.href;
+            }
+        }
+    }
+
     if (!id || processedIds.has(id)) {
         return; // 已经处理过或者没有ID
     }
@@ -42,7 +61,7 @@ function extractNews(node) {
             source: 'sina'
         };
 
-        console.log('📰 New News Detected:', newsItem);
+        console.log('📰 New News Detected:', id, title);
         
         // 标记为已处理
         processedIds.add(id);
@@ -68,30 +87,20 @@ function sendNewsToBackend(newsItem) {
     });
 }
 
-// 1. 初始页面加载时，处理现有的新闻
-function processExistingNews() {
+// 扫描所有新闻节点
+function scanNews() {
     const newsNodes = document.querySelectorAll('.bd_i');
-    console.log(`Found ${newsNodes.length} existing news items.`);
+    // console.log(`Scanning... found ${newsNodes.length} items`);
     newsNodes.forEach(node => extractNews(node));
 }
 
+// 1. 初始页面加载时，处理现有的新闻
+scanNews();
+
 // 2. 监听 DOM 变化，处理新加载的新闻 (MutationObserver)
 const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-            mutation.addedNodes.forEach((node) => {
-                // 检查节点是否是我们关心的新闻条目
-                if (node.nodeType === 1 && node.classList && node.classList.contains('bd_i')) {
-                    extractNews(node);
-                }
-                // 有时候可能会直接添加包含 .bd_i 的父容器，这里也可以深度遍历一下
-                if (node.nodeType === 1 && node.querySelectorAll) {
-                    const nestedNews = node.querySelectorAll('.bd_i');
-                    nestedNews.forEach(extractNews);
-                }
-            });
-        }
-    });
+    // 简单粗暴：只要有变化，就扫描一次。性能影响很小，但能确保不漏。
+    scanNews();
 });
 
 // 启动监听
@@ -106,5 +115,5 @@ if (targetNode) {
     console.error('Target node .bd_list not found!');
 }
 
-// 立即执行一次
-processExistingNews();
+// 3. 轮询兜底 (每3秒检查一次)
+setInterval(scanNews, 3000);

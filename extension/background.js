@@ -2,8 +2,10 @@
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'sendNews') {
-        const API_URL = 'http://localhost:3001/api/news';
+        const API_URL = 'http://127.0.0.1:3001/api/news';
         
+        console.log('Background: Sending news to backend:', request.data.id);
+
         fetch(API_URL, {
             method: 'POST',
             headers: {
@@ -11,7 +13,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             },
             body: JSON.stringify(request.data)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             console.log('✅ Background: Sent to backend', data);
             sendResponse({ success: true, data });
