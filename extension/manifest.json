@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Sina Finance 7x24 Collector",
+  "version": "1.0",
+  "description": "Collects real-time news from Sina Finance 7x24",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "https://finance.sina.com.cn/*",
+    "http://finance.sina.com.cn/*",
+    "https://www.ithome.com/*",
+    "https://ithome.com/*",
+    "http://localhost:3001/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://finance.sina.com.cn/7x24/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["*://www.ithome.com/*", "*://ithome.com/*"],
+      "js": ["ithome.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
