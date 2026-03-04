@@ -1,0 +1,14 @@
+{
+  "name": "message-analysis-root",
+  "version": "1.0.0",
+  "description": "Smart News Analysis & Series Tracking System",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"cd server && npm start\" \"cd client && pnpm dev\"",
+    "dev": "pnpm start",
+    "install:all": "pnpm install && cd client && pnpm install && cd server && pnpm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

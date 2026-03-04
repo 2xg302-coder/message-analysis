@@ -84,7 +84,26 @@ message-analysis/
 *   pnpm (推荐) 或 npm
 *   DeepSeek API Key (配置在 `server/.env`)
 
-### 5.2 启动后端
+### 5.2 一键启动 (推荐)
+本项目提供了一键启动脚本，可同时启动前端和后端服务。
+
+**Mac/Linux:**
+```bash
+# 赋予执行权限（仅首次需要）
+chmod +x start.sh
+
+# 启动
+./start.sh
+```
+
+**或者使用 pnpm:**
+```bash
+# 安装依赖并启动
+pnpm install
+pnpm start
+```
+
+### 5.3 手动启动后端
 ```bash
 cd server
 # 复制环境变量配置
@@ -95,7 +114,7 @@ node index.js
 # 服务将启动在 http://localhost:3001
 ```
 
-### 5.3 启动前端
+### 5.4 手动启动前端
 ```bash
 cd client
 pnpm install
@@ -103,7 +122,7 @@ pnpm dev
 # 访问 http://localhost:5173
 ```
 
-### 5.4 数据采集
+### 5.5 数据采集
 1.  打开 Chrome 浏览器 -> 扩展程序 -> 加载已解压的扩展程序。
 2.  选择 `extension` 目录。
 3.  访问目标新闻网站（如 IT之家），插件将自动采集新闻并发送至后端。
