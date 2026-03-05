@@ -4,7 +4,8 @@
   "description": "Smart News Analysis & Series Tracking System",
   "private": true,
   "scripts": {
-    "start": "concurrently \"cd server && npm start\" \"cd client && pnpm dev\"",
+    "start": "concurrently \"cd server_py && venv/bin/python -m uvicorn main:app --reload --port 3001\" \"cd client && pnpm dev\"",
+    "start:node": "concurrently \"cd server && npm start\" \"cd client && pnpm dev\"",
     "dev": "pnpm start",
     "install:all": "pnpm install && cd client && pnpm install && cd server && pnpm install"
   },

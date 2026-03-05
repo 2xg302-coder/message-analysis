@@ -2,10 +2,20 @@
 node_modules/
 pnpm-lock.yaml
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+server_py/venv/
+*.egg-info/
+.pytest_cache/
+
 # Environment variables
 .env
 server/.env
 client/.env
+server_py/.env
 *.env.local
 
 # Database
@@ -20,6 +30,10 @@ npm-debug.log*
 
 # OS
 .DS_Store
+
+# IDE
+.idea/
+.vscode/
 
 # Temporary files
 *.jsonl

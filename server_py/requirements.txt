@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+openai
+sqlite3-api  # Usually built-in, but just in case
+pydantic
+apscheduler
+akshare
+tenacity
+httpx
