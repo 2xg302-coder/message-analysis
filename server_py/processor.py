@@ -24,7 +24,7 @@ class NewsProcessor:
         self.load_recent_hashes()
 
     def load_recent_hashes(self):
-        print("📥 Loading recent news for deduplication...")
+        print("Loading recent news for deduplication...")
         try:
             # Load last 1000 items (approx 24-48 hours of volume?)
             recent_news = get_latest_news(limit=1000)
@@ -64,28 +64,38 @@ class NewsProcessor:
                     except:
                         pass
             
-            print(f"✅ Loaded {count} items into deduplication cache.")
+            print(f"Loaded {count} items into deduplication cache.")
         except Exception as e:
-            print(f"⚠️ Error loading recent hashes: {e}")
+            print(f"Error loading recent hashes: {e}")
 
     def load_keywords(self):
-        print("📥 Loading keywords for NER...")
+        print("Loading keywords for NER...")
         try:
             # Load A-share stocks
-            stock_zh_a_spot_em_df = ak.stock_zh_a_spot_em()
-            for _, row in stock_zh_a_spot_em_df.iterrows():
-                name = row['名称']
-                code = row['代码']
-                self.keyword_processor.add_keyword(name, {"name": name, "code": code, "type": "A_SHARE"})
-                self.keyword_processor.add_keyword(code, {"name": name, "code": code, "type": "A_SHARE"})
-
-            # Load US stocks (optional, might be slow or large)
-            # stock_us_spot_em_df = ak.stock_us_spot_em()
-            # ...
+            # Use a robust way or fallback if network fails
+            try:
+                stock_zh_a_spot_em_df = ak.stock_zh_a_spot_em()
+                for _, row in stock_zh_a_spot_em_df.iterrows():
+                    name = row['名称']
+                    code = row['代码']
+                    self.keyword_processor.add_keyword(name, {"name": name, "code": code, "type": "A_SHARE"})
+                    self.keyword_processor.add_keyword(code, {"name": name, "code": code, "type": "A_SHARE"})
+                print(f"Loaded {len(self.keyword_processor)} keywords from EastMoney.")
+            except Exception as e:
+                print(f"Failed to load real-time stock list: {e}")
+                print("Using built-in fallback keywords.")
+                # Fallback: Add some common entities manually
+                common_entities = [
+                    "贵州茅台", "宁德时代", "腾讯", "阿里巴巴", "美团", "比亚迪", "京东", "百度", "拼多多",
+                    "中芯国际", "中国平安", "招商银行", "工商银行", "中国移动", "中国石油", "中国海油",
+                    "华为", "小米", "OpenAI", "DeepSeek", "特斯拉", "英伟达", "微软", "谷歌", "苹果",
+                    "证监会", "央行", "美联储"
+                ]
+                for name in common_entities:
+                    self.keyword_processor.add_keyword(name, {"name": name, "code": "", "type": "KEYWORD"})
             
-            print(f"✅ Loaded {len(self.keyword_processor)} keywords.")
         except Exception as e:
-            print(f"⚠️ Error loading keywords: {e}")
+            print(f"Error loading keywords: {e}")
 
     def clean_text(self, text: str) -> str:
         if not text:
@@ -110,8 +120,8 @@ class NewsProcessor:
         # Check against cache
         # Cache format: {'hash': Simhash, 'time': datetime}
         
-        # Clean cache (remove old entries > 1 hour)
-        cutoff = current_time - timedelta(hours=1)
+        # Clean cache (remove old entries > 24 hours)
+        cutoff = current_time - timedelta(hours=24)
         self.simhash_cache = [x for x in self.simhash_cache if x['time'] > cutoff]
         
         for item in self.simhash_cache:

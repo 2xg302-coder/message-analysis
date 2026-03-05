@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { List, Card, Tag, Typography, Spin, message, Badge, Statistic, Row, Col, Space, Button, Tooltip, Radio, Divider } from 'antd';
+import { List, Card, Tag, Typography, Spin, message, Badge, Statistic, Row, Col, Space, Button, Tooltip, Radio, Divider, Pagination } from 'antd';
 import { getNews, getAnalysisStatus, setAnalysisControl, getStats } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import dayjs from 'dayjs';
@@ -20,6 +20,7 @@ const NewsFeed = () => {
     active_series: 0
   });
   const [analysisStatus, setAnalysisStatus] = useState({ running: false, current: null });
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -84,7 +85,7 @@ const NewsFeed = () => {
   };
 
   const renderFlashItem = (item) => (
-    <List.Item style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+    <div style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
       <Row align="middle" style={{ width: '100%' }}>
         <Col span={3}>
           <Text type="secondary" style={{ fontSize: '12px' }}>
@@ -93,7 +94,7 @@ const NewsFeed = () => {
         </Col>
         <Col span={16}>
           <Text strong style={{ marginRight: 8 }}>{item.title}</Text>
-          {item.tags && item.tags.map(tag => (
+          {item.tags && Array.isArray(item.tags) && item.tags.map(tag => (
             <Tag key={tag} color="blue" style={{ fontSize: '10px', lineHeight: '18px' }}>{tag}</Tag>
           ))}
         </Col>
@@ -103,7 +104,7 @@ const NewsFeed = () => {
            {item.impact_score >= 4 && <Tag color="gold">重要</Tag>}
         </Col>
       </Row>
-    </List.Item>
+    </div>
   );
 
   const renderDeepItem = (item) => {
@@ -113,7 +114,7 @@ const NewsFeed = () => {
     const borderColor = getBorderColor(item);
 
     return (
-      <List.Item>
+      <div>
         <Card 
           title={
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -149,10 +150,17 @@ const NewsFeed = () => {
 
           {/* 标签和实体 */}
           <div style={{ marginBottom: 12 }}>
-              {item.tags && item.tags.map(tag => <Tag key={tag} color="blue">#{tag}</Tag>)}
-              {item.entities && item.entities.map((e, idx) => (
+              {item.tags && Array.isArray(item.tags) && item.tags.map(tag => <Tag key={tag} color="blue">#{tag}</Tag>)}
+              
+              {/* Handle entities if it's an object (from DB) or array (legacy) */}
+              {item.entities && !Array.isArray(item.entities) && typeof item.entities === 'object' && Object.keys(item.entities).map((name, idx) => (
+                <Tag key={idx} color="cyan">{name}</Tag>
+              ))}
+              
+              {item.entities && Array.isArray(item.entities) && item.entities.map((e, idx) => (
                 <Tag key={idx} color="cyan">{e.name || e}</Tag>
               ))}
+
               {hasAnalysis && analysis.event_tag && (
                 <Tag color="purple" style={{ cursor: 'pointer' }} onClick={() => navigate(`/series/${encodeURIComponent(analysis.event_tag)}`)}>
                   🎬 {analysis.event_tag}
@@ -168,25 +176,25 @@ const NewsFeed = () => {
             <span>来源: {item.source || '未知'}</span>
           </div>
         </Card>
-      </List.Item>
+      </div>
     );
   };
 
   return (
     <div style={{ padding: '24px' }}>
       {/* 顶部统计和控制栏 - 保持不变 */}
-      <Card style={{ marginBottom: 24 }} bodyStyle={{ padding: '16px 24px' }}>
+      <Card style={{ marginBottom: 24 }} styles={{ body: { padding: '16px 24px' } }}>
         <Row align="middle" justify="space-between">
           <Col>
             <Space size="large">
               <Statistic title="新闻总量" value={stats.total} prefix="📰" />
-              <Statistic title="待分析" value={stats.pending} prefix="⏳" valueStyle={{ color: stats.pending > 0 ? '#fa8c16' : undefined }} />
-              <Statistic title="高价值新闻" value={stats.high_score} prefix="💎" valueStyle={{ color: '#f5222d' }} />
+              <Statistic title="待分析" value={stats.pending} prefix="⏳" styles={{ content: { color: stats.pending > 0 ? '#fa8c16' : undefined } }} />
+              <Statistic title="高价值新闻" value={stats.high_score} prefix="💎" styles={{ content: { color: '#f5222d' } }} />
               <Statistic title="活跃事件" value={stats.active_series} prefix="🔥" />
             </Space>
           </Col>
           <Col>
-            <Space direction="vertical" align="end">
+            <Space orientation="vertical" align="end">
               <Space>
                  <Badge status={analysisStatus.running ? 'processing' : 'default'} text={analysisStatus.running ? '分析任务运行中' : '分析任务已暂停'} />
                  <Button type={analysisStatus.running ? 'default' : 'primary'} onClick={toggleAnalysis} size="small">
@@ -220,12 +228,25 @@ const NewsFeed = () => {
           </div>
 
           <Spin spinning={loading}>
-            <List
-              grid={viewMode === 'card' ? { gutter: 16, column: 1 } : undefined}
-              dataSource={news}
-              pagination={{ pageSize: 10, showSizeChanger: true, showQuickJumper: true }}
-              renderItem={viewMode === 'list' ? renderFlashItem : renderDeepItem}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: viewMode === 'card' ? '16px' : '0' }}>
+              {news.slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize).map((item, index) => (
+                <div key={item.id || index}>
+                  {viewMode === 'list' ? renderFlashItem(item) : renderDeepItem(item)}
+                </div>
+              ))}
+            </div>
+            {news.length > 0 && (
+              <div style={{ marginTop: 16, textAlign: 'right' }}>
+                <Pagination
+                  current={pagination.current}
+                  pageSize={pagination.pageSize}
+                  total={news.length}
+                  onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
+                  showSizeChanger
+                  showQuickJumper
+                />
+              </div>
+            )}
           </Spin>
         </Col>
       </Row>

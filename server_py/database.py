@@ -96,6 +96,11 @@ def add_news(news_item: Dict[str, Any]) -> bool:
         tags = json.dumps(record.get('tags', [])) if isinstance(record.get('tags'), list) else record.get('tags')
         entities = json.dumps(record.get('entities', {})) if isinstance(record.get('entities'), dict) else record.get('entities')
         
+        # Ensure simhash is string
+        simhash_val = record.get('simhash')
+        if simhash_val is not None:
+            simhash_val = str(simhash_val)
+
         cursor.execute('''
             INSERT INTO news (
                 id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data,
@@ -118,7 +123,7 @@ def add_news(news_item: Dict[str, Any]) -> bool:
             entities,
             record.get('impact_score', 0),
             record.get('sentiment_score', 0.0),
-            record.get('simhash')
+            simhash_val
         ))
         conn.commit()
         return True
@@ -151,6 +156,11 @@ def add_news_batch(news_list: List[Dict[str, Any]]) -> int:
             tags = json.dumps(record.get('tags', [])) if isinstance(record.get('tags'), list) else record.get('tags')
             entities = json.dumps(record.get('entities', {})) if isinstance(record.get('entities'), dict) else record.get('entities')
             
+            # Ensure simhash is string
+            simhash_val = record.get('simhash')
+            if simhash_val is not None:
+                simhash_val = str(simhash_val)
+
             cursor.execute('''
                 INSERT INTO news (
                     id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data,
@@ -173,7 +183,7 @@ def add_news_batch(news_list: List[Dict[str, Any]]) -> int:
                 entities,
                 record.get('impact_score', 0),
                 record.get('sentiment_score', 0.0),
-                record.get('simhash')
+                simhash_val
             ))
             added_count += 1
         
