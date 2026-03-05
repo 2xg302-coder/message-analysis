@@ -47,4 +47,13 @@ export const getSeriesNews = (tag) => api.get(`/series/${encodeURIComponent(tag)
 export const getWatchlist = () => api.get('/watchlist');
 export const updateWatchlist = (keywords) => api.post('/watchlist', { keywords });
 
+// Calendar
+export const getCalendarEvents = (date) => {
+    if (date) {
+        return api.get(`/calendar/date/${date}`);
+    }
+    return api.get('/calendar/today');
+};
+export const refreshCalendar = () => api.post('/calendar/refresh');
+
 export default api;

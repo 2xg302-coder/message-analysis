@@ -7,10 +7,16 @@ from flashtext import KeywordProcessor
 import akshare as ak
 from services.news_service import news_service
 
+import os
+import json
+from datetime import datetime, timedelta
+
 class NewsProcessor:
     def __init__(self):
         self.keyword_processor = KeywordProcessor()
         self.simhash_cache: List[Dict[str, Any]] = [] # {simhash, time}
+        self.expected_events: Dict[str, List[Dict[str, Any]]] = {}
+        self.load_expected_events()
         self.rules = {
             "立案调查": {"score": 5, "sentiment": -0.8, "tags": ["监管", "立案"]},
             "业绩预增": {"score": 4, "sentiment": 0.6, "tags": ["业绩"]},
@@ -29,6 +35,21 @@ class NewsProcessor:
         }
         self.load_keywords()
         self.load_recent_hashes()
+
+    def load_expected_events(self):
+        try:
+            # Try loading from server_py/data/expected_events.json
+            path = os.path.join(os.path.dirname(__file__), 'data', 'expected_events.json')
+            if not os.path.exists(path):
+                # Try fallback path if running from root
+                path = 'server_py/data/expected_events.json'
+            
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    self.expected_events = json.load(f)
+                # print(f"Loaded expected events for {len(self.expected_events)} days.")
+        except Exception as e:
+            print(f"Error loading expected events: {e}")
 
     def load_recent_hashes(self):
         print("Loading recent news for deduplication...")
@@ -139,20 +160,47 @@ class NewsProcessor:
 
     def extract_entities(self, text: str) -> List[Dict[str, Any]]:
         keywords_found = self.keyword_processor.extract_keywords(text)
-        # keywords_found is a list of whatever we passed as second arg to add_keyword
-        # Since we passed a dict, it will be a list of dicts.
-        # But wait, flashtext extract_keywords returns the keyword name by default, 
-        # unless we set span_info=True or pass the clean name.
-        # If we passed a value to add_keyword(word, clean_word), it returns clean_word.
-        # Here clean_word is a dict. FlashText might not support dict as clean_word directly if it expects string?
-        # Let's check FlashText docs or assume it works if it returns the object. 
-        # Actually FlashText usually returns the clean name string. 
-        # If I passed a dict, it might return the dict. Let's verify.
-        # If not, I should map back. 
-        # Safe approach: Store name as clean_name, and keep a separate map.
-        # But for now I'll assume it returns what I passed.
-        # Wait, standard flashtext returns the clean name. If clean name is not string, it might work but let's be safe.
         return keywords_found
+
+    def match_expected_events(self, content: str, news_time: datetime = None) -> List[Dict[str, Any]]:
+        if not news_time:
+            news_time = datetime.now()
+        
+        date_str = news_time.strftime('%Y-%m-%d')
+        if date_str not in self.expected_events:
+            return []
+            
+        matches = []
+        events = self.expected_events[date_str]
+        
+        for event in events:
+            # Simple keyword matching: check if event name is in content
+            event_name = event.get('event', '')
+            if not event_name:
+                continue
+                
+            # Clean event name (remove noise if any)
+            # e.g. "美国:CPI" -> "CPI"
+            # But "CPI" is too short. "美国CPI" is better.
+            # Let's check if the full event string is in content.
+            # Or split by space and check intersection?
+            
+            # Robust match: if event name (e.g. "未季调CPI年率") is in content
+            if event_name in content:
+                matches.append(event)
+                continue
+                
+            # If not exact match, try fuzzy or partial
+            # e.g. "CPI" in content AND "美国" in content (if country is US)
+            country = event.get('country', '')
+            if country and country in content:
+                # Check for key terms in event name
+                # Simple heuristic: remove "年率", "月率", "季调" etc.
+                key_term = event_name.replace("年率", "").replace("月率", "").replace("季调", "").replace("未", "")
+                if len(key_term) > 1 and key_term in content:
+                    matches.append(event)
+
+        return matches
 
     def rate_news(self, text: str) -> Dict[str, Any]:
         score = 0
@@ -218,4 +266,27 @@ class NewsProcessor:
         # Combine matched rules and rule-based tags
         news_item['tags'] = rating.get('matched_rules', []) + rating.get('tags', [])
         
+        # 6. Expected Events Matching
+        # Parse time if available
+        item_time = None
+        if 'time' in news_item:
+             try:
+                 # Try parsing 'YYYY-MM-DD HH:MM:SS'
+                 item_time = datetime.strptime(news_item['time'], '%Y-%m-%d %H:%M:%S')
+             except:
+                 pass
+        
+        expected_matches = self.match_expected_events(clean_content, item_time)
+        if expected_matches:
+            # Boost score
+            news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 3, 10) # Significant boost
+            
+            # Add tags
+            for event in expected_matches:
+                tag = f"预期:{event['country']}{event['event']}"
+                if tag not in news_item['tags']:
+                    news_item['tags'].append(tag)
+            
+            news_item['expected_events'] = expected_matches
+
         return news_item

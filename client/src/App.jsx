@@ -6,6 +6,7 @@ import Trends from './pages/Trends';
 import Watchlist from './pages/Watchlist';
 import SeriesView from './pages/SeriesView';
 import DataExplorer from './pages/DataExplorer';
+import CalendarView from './pages/CalendarView';
 
 const App = () => {
   return (
@@ -15,6 +16,7 @@ const App = () => {
           <Route index element={<NewsFeed />} />
           <Route path="explorer" element={<DataExplorer />} />
           <Route path="trends" element={<Trends />} />
+          <Route path="calendar" element={<CalendarView />} />
           <Route path="watchlist" element={<Watchlist />} />
           <Route path="series" element={<SeriesView />} />
           <Route path="series/:tag" element={<SeriesView />} />

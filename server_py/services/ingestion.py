@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 
 from core.logging import get_logger
 from services.news_service import news_service
@@ -52,26 +53,44 @@ async def run_ingestion(collector, source_name, processor):
     except Exception as e:
         logger.error(f"Ingestion error for {source_name}: {e}")
 
+async def run_calendar_collection(collector, processor):
+    logger.info("Running daily economic calendar collection...")
+    try:
+        await asyncio.to_thread(collector.collect)
+        # Reload events in processor after collection
+        if hasattr(processor, 'load_expected_events'):
+            processor.load_expected_events()
+        logger.info("Calendar collection complete.")
+    except Exception as e:
+        logger.error(f"Calendar collection error: {e}")
+
 def start_ingestion_scheduler():
     try:
         # Import here to avoid circular imports or early initialization issues
         from collectors.sina_collector import SinaCollector
         from collectors.eastmoney_collector import EastMoneyCollector
+        from collectors.calendar_collector import CalendarCollector
         from processor import NewsProcessor
         
         sina_collector = SinaCollector()
         em_collector = EastMoneyCollector()
+        calendar_collector = CalendarCollector(data_dir="data")
         processor = NewsProcessor()
         
+        # News Ingestion Jobs
         scheduler.add_job(run_ingestion, IntervalTrigger(seconds=30), args=[sina_collector, 'Sina', processor], id='sina_ingestion', replace_existing=True)
         scheduler.add_job(run_ingestion, IntervalTrigger(minutes=5), args=[em_collector, 'EastMoney', processor], id='em_ingestion', replace_existing=True)
+        
+        # Calendar Collection Job (Daily at 08:00)
+        scheduler.add_job(run_calendar_collection, CronTrigger(hour=8, minute=0), args=[calendar_collector, processor], id='calendar_collection', replace_existing=True)
         
         scheduler.start()
         logger.info("Ingestion Scheduler started.")
         
         # Run immediately
         asyncio.create_task(run_ingestion(sina_collector, 'Sina', processor))
-        # asyncio.create_task(run_ingestion(em_collector, 'EastMoney', processor))
+        # Run calendar immediately if it doesn't exist for today
+        asyncio.create_task(run_calendar_collection(calendar_collector, processor))
         
     except ImportError as e:
         logger.warning(f"Collectors or Processor not available: {e}")

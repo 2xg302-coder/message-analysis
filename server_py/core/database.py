@@ -64,10 +64,26 @@ class DatabaseManager:
                         created_at TEXT
                     )
                 ''')
+                # Calendar Events Table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS calendar_events (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        date TEXT,          -- YYYY-MM-DD
+                        time TEXT,
+                        country TEXT,
+                        event TEXT,
+                        importance INTEGER,
+                        previous TEXT,
+                        consensus TEXT,
+                        actual TEXT,
+                        UNIQUE(date, event, country)
+                    )
+                ''')
                 # Indexes
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_news_created_at ON news(created_at DESC)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_news_impact_score ON news(impact_score)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_news_analysis ON news(analysis)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_calendar_date ON calendar_events(date)")
             logger.info("Database initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")

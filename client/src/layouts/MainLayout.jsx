@@ -7,6 +7,7 @@ import {
   SettingOutlined,
   AppstoreOutlined,
   DatabaseOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 
 const { Header, Content, Footer, Sider } = Layout;
@@ -16,6 +17,7 @@ const items = [
   { key: '/explorer', icon: <DatabaseOutlined />, label: '数据资产' },
   { key: '/series', icon: <AppstoreOutlined />, label: '连续剧追踪' },
   { key: '/trends', icon: <PieChartOutlined />, label: '趋势分析' },
+  { key: '/calendar', icon: <CalendarOutlined />, label: '财经日历' },
   { key: '/watchlist', icon: <SettingOutlined />, label: '关注配置' },
 ];
 
