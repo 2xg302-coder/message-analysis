@@ -62,7 +62,7 @@ graph TD
     *   **Scheduler**: APScheduler (定时任务)
     *   **NLP Tools**: SimHash (去重), FlashText (NER)
     *   **Data Source**: Akshare (财经数据接口)
-    *   **AI Service**: DeepSeek API (兼容 OpenAI SDK)
+    *   **AI Service**: DeepSeek-V3 (默认配置为云端 API，非本地模型)
 *   **前端 (Client)**
     *   **Framework**: React 18 + Vite
     *   **UI Library**: Ant Design 5
@@ -126,6 +126,20 @@ pip install -r requirements.txt
 
 # 启动服务
 python main.py
+```
+
+### 5.4 模型配置说明 (LLM Configuration)
+
+**默认配置**：
+本项目默认配置为使用 **DeepSeek-V3 云端 API**，而非在本地运行大模型。这意味着所有的分析请求都会发送到 `api.deepseek.com`。
+
+**本地运行选项** (如 Ollama)：
+如果您希望在本地运行大模型（如 Llama 3），请修改 `server_py/config.py` 或 `.env` 文件：
+```python
+# server_py/config.py
+DEEPSEEK_BASE_URL = "http://localhost:11434/v1"  # 指向本地 Ollama 服务
+LLM_MODEL = "llama3"                             # 指定本地模型名称
+DEEPSEEK_API_KEY = "ollama"                      # 本地运行通常无需真实 Key
 ```
 
 **启动前端**:

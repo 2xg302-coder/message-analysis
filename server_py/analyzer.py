@@ -169,4 +169,4 @@ def start_scheduler():
     logger.info("Analysis Scheduler started with 5 minute interval.")
     
     # Schedule an immediate run
-    asyncio.create_task(analysis_job())
+    # asyncio.create_task(analysis_job())

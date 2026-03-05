@@ -13,7 +13,7 @@ class SinaCollector:
         return hashlib.md5(raw.encode('utf-8')).hexdigest()
 
     def collect(self) -> List[Dict[str, Any]]:
-        print(f"Starting {self.source} news collection...")
+        # print(f"Starting {self.source} news collection...")
         try:
             # Use ak.stock_info_global_cls() or similar as alternative if stock_telegraph_cls is missing
             # The user reported 'akshare' has no attribute 'stock_telegraph_cls'
@@ -91,7 +91,7 @@ class SinaCollector:
                 }
                 news_list.append(news_item)
                 
-            print(f"{self.source} collection complete. Fetched {len(news_list)} items.")
+            # print(f"{self.source} collection complete. Fetched {len(news_list)} items.")
             return news_list
             
         except Exception as e:

@@ -7,8 +7,10 @@ const { Title, Text } = Typography;
 const Sidebar = ({ onFilterChange, loading }) => {
   const [form] = Form.useForm();
 
-  const handleFinish = (values) => {
-    onFilterChange(values);
+  const handleValuesChange = (changedValues, allValues) => {
+    // Debounce or direct call? For local filtering it's fast enough.
+    // If backend, maybe debounce. But let's try direct first as requested "click and move".
+    onFilterChange(allValues);
   };
 
   return (
@@ -20,11 +22,11 @@ const Sidebar = ({ onFilterChange, loading }) => {
       <Form
         form={form}
         layout="vertical"
-        onFinish={handleFinish}
+        onValuesChange={handleValuesChange}
         initialValues={{
           type: 'all',
           sentiment: 'all',
-          importance: []
+          importance: 0
         }}
       >
         <Form.Item name="type" label="内容类型">
@@ -38,26 +40,29 @@ const Sidebar = ({ onFilterChange, loading }) => {
         <Divider style={{ margin: '12px 0' }} />
 
         <Form.Item name="importance" label="重要程度 (最低)">
-           <Checkbox.Group style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-             <Checkbox value={8}>
+           <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+             <Radio value={8}>
                <Space>
                  <Text type="danger">⭐⭐⭐⭐⭐</Text>
                  <Tag color="red">极高</Tag>
                </Space>
-             </Checkbox>
-             <Checkbox value={6}>
+             </Radio>
+             <Radio value={6}>
                <Space>
                  <Text type="warning">⭐⭐⭐⭐</Text>
                  <Tag color="orange">高</Tag>
                </Space>
-             </Checkbox>
-             <Checkbox value={4}>
+             </Radio>
+             <Radio value={4}>
                <Space>
                  <Text type="secondary">⭐⭐⭐</Text>
                  <Tag color="blue">中</Tag>
                </Space>
-             </Checkbox>
-           </Checkbox.Group>
+             </Radio>
+             <Radio value={0}>
+                <Text>全部</Text>
+             </Radio>
+           </Radio.Group>
         </Form.Item>
 
         <Divider style={{ margin: '12px 0' }} />
@@ -96,9 +101,6 @@ const Sidebar = ({ onFilterChange, loading }) => {
         </Form.Item>
         
         <Form.Item style={{ marginTop: 24 }}>
-          <Button type="primary" htmlType="submit" block loading={loading} icon={<FilterOutlined />}>
-            应用筛选
-          </Button>
           <Button 
             style={{ marginTop: 8 }} 
             block 

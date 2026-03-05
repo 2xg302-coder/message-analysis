@@ -46,7 +46,7 @@ scheduler = AsyncIOScheduler()
 
 # Collector wrapper
 async def run_ingestion(collector, source_name, processor):
-    print(f"Running ingestion for {source_name}...")
+    # print(f"Running ingestion for {source_name}...")
     try:
         # Run in executor to avoid blocking event loop
         news_list = await asyncio.to_thread(collector.collect)
@@ -67,7 +67,7 @@ async def run_ingestion(collector, source_name, processor):
                         # DB expects 'entities' to be a dict {name: type/desc} or just JSON.
                         # Database.py handles JSON dumping.
                         # But NewsItem expects Dict[str, str].
-                        # FlashText returns list of dicts: [{'name': 'Moutai', 'code': '600519', ...}]
+                        # Processor adds 'entities' list of dicts: [{'name': 'Moutai', 'code': '600519', ...}]
                         # We should convert it to {'Moutai': '600519'} or similar.
                         if 'entities' in processed and isinstance(processed['entities'], list):
                             ent_dict = {}
@@ -78,6 +78,12 @@ async def run_ingestion(collector, source_name, processor):
                                     ent_dict[ent] = 'Keyword'
                             processed['entities'] = ent_dict
                         
+                        # Processor adds 'tags' list of strings.
+                        # DB expects 'tags' to be a list or JSON string (handled by database.py).
+                        # NewsItem expects List[str].
+                        if 'tags' not in processed:
+                            processed['tags'] = []
+                        
                         processed_list.append(processed)
                 except Exception as e:
                     print(f"Error processing item from {source_name}: {e}")
@@ -86,7 +92,8 @@ async def run_ingestion(collector, source_name, processor):
                 count = add_news_batch(processed_list)
                 print(f"Saved {count} new items from {source_name}")
             else:
-                print(f"No new items from {source_name} after processing (all duplicates/filtered).")
+                pass
+                # print(f"No new items from {source_name} after processing (all duplicates/filtered).")
     except Exception as e:
         print(f"Ingestion error for {source_name}: {e}")
 
@@ -147,7 +154,6 @@ async def create_news(news_item: NewsItem):
         # Convert Pydantic model to dict
         item_dict = news_item.dict()
         added = add_news(item_dict)
-        print(f"[News] [{news_item.source}] Received: {news_item.title or (news_item.content[:20] if news_item.content else '')}...")
         return {"success": True, "added": added}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

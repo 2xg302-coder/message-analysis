@@ -56,8 +56,14 @@ const NewsFeed = () => {
   }, [filters]); // 依赖 filters 变化重新加载
 
   const handleFilterChange = (newFilters) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-    // 自动切换视图模式
+    // Merge new filters
+    setFilters(prev => {
+        const updated = { ...prev, ...newFilters };
+        // If min_impact is selected, it's a number. If cleared, it's undefined.
+        return updated;
+    });
+    
+    // Auto switch view mode based on type
     if (newFilters.type === 'flash') setViewMode('list');
     else if (newFilters.type === 'article') setViewMode('card');
   };
@@ -221,10 +227,20 @@ const NewsFeed = () => {
         <Col span={18}>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Title level={4} style={{ margin: 0 }}>实时情报流</Title>
-            <Radio.Group value={viewMode} onChange={e => setViewMode(e.target.value)} buttonStyle="solid">
-              <Radio.Button value="list">快讯模式</Radio.Button>
-              <Radio.Button value="card">深度模式</Radio.Button>
-            </Radio.Group>
+            <Space>
+               <Radio.Group 
+                 value={filters.min_impact} 
+                 onChange={e => handleFilterChange({ min_impact: e.target.value })} 
+                 buttonStyle="solid"
+               >
+                 <Radio.Button value={undefined}>全部</Radio.Button>
+                 <Radio.Button value={4}>🔥 高价值</Radio.Button>
+               </Radio.Group>
+               <Radio.Group value={viewMode} onChange={e => setViewMode(e.target.value)} buttonStyle="solid">
+                 <Radio.Button value="list">快讯模式</Radio.Button>
+                 <Radio.Button value="card">深度模式</Radio.Button>
+               </Radio.Group>
+            </Space>
           </div>
 
           <Spin spinning={loading}>

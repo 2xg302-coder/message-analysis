@@ -36,6 +36,14 @@ def migrate_db():
                 except Exception as e:
                     print(f"Error adding column {col}: {e}")
         
+        # Add indexes for performance
+        try:
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_news_created_at ON news(created_at DESC)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_news_impact_score ON news(impact_score)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_news_analysis ON news(analysis)") # For LIKE queries
+        except Exception as e:
+            print(f"Error creating indexes: {e}")
+
         conn.commit()
     except Exception as e:
         print(f"Migration error: {e}")
@@ -215,13 +223,27 @@ def get_latest_news(limit: int = 1000) -> List[Dict[str, Any]]:
                     item['analysis'] = json.loads(item['analysis'])
                 
                 if item.get('tags'):
-                    item['tags'] = json.loads(item['tags'])
+                    try:
+                        item['tags'] = json.loads(item['tags'])
+                    except:
+                        item['tags'] = []
+                else:
+                    item['tags'] = []
                 
                 if item.get('entities'):
-                    item['entities'] = json.loads(item['entities'])
+                    try:
+                        item['entities'] = json.loads(item['entities'])
+                    except:
+                        item['entities'] = {}
+                else:
+                    item['entities'] = {}
                     
                 result.append(item)
             except:
+                if 'tags' not in item or not isinstance(item['tags'], list):
+                    item['tags'] = []
+                if 'entities' not in item or not isinstance(item['entities'], dict):
+                    item['entities'] = {}
                 result.append(item)
         return result
     finally:
@@ -240,11 +262,28 @@ def get_unanalyzed_news(limit: int = 10) -> List[Dict[str, Any]]:
                 if item.get('raw_data'):
                     item.update(json.loads(item['raw_data']))
                 if item.get('tags'):
-                    item['tags'] = json.loads(item['tags'])
+                    try:
+                        item['tags'] = json.loads(item['tags'])
+                    except:
+                        item['tags'] = []
+                else:
+                    item['tags'] = []
+                
                 if item.get('entities'):
-                    item['entities'] = json.loads(item['entities'])
+                    try:
+                        item['entities'] = json.loads(item['entities'])
+                    except:
+                        item['entities'] = {}
+                else:
+                    item['entities'] = {}
+                    
                 result.append(item)
             except:
+                # If something else fails, try to return item with defaults
+                if 'tags' not in item or not isinstance(item['tags'], list):
+                    item['tags'] = []
+                if 'entities' not in item or not isinstance(item['entities'], dict):
+                    item['entities'] = {}
                 result.append(item)
         return result
     finally:
@@ -254,8 +293,34 @@ def save_analysis(news_id: str, analysis_result: Dict[str, Any]) -> bool:
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute('UPDATE news SET analysis = ?, analyzed_at = ? WHERE id = ?', 
-                      (json.dumps(analysis_result), datetime.now().isoformat(), news_id))
+        # Extract fields to update in their own columns
+        updates = {
+            'analysis': json.dumps(analysis_result),
+            'analyzed_at': datetime.now().isoformat()
+        }
+        
+        # Update impact_score if available
+        if 'impact_score' in analysis_result:
+             updates['impact_score'] = analysis_result['impact_score']
+             
+        # Update sentiment_score if available
+        if 'sentiment_score' in analysis_result:
+             updates['sentiment_score'] = analysis_result['sentiment_score']
+             
+        # Update tags if available
+        if 'tags' in analysis_result and isinstance(analysis_result['tags'], list):
+             updates['tags'] = json.dumps(analysis_result['tags'])
+             
+        # Update entities if available
+        if 'entities' in analysis_result and isinstance(analysis_result['entities'], dict):
+             updates['entities'] = json.dumps(analysis_result['entities'])
+
+        # Build query dynamically
+        set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
+        values = list(updates.values())
+        values.append(news_id)
+        
+        cursor.execute(f'UPDATE news SET {set_clause} WHERE id = ?', tuple(values))
         conn.commit()
         return True
     except Exception as e:
@@ -465,11 +530,27 @@ def get_news_filtered(limit: int = 100, offset: int = 0, news_type: Optional[str
                 if item.get('analysis'):
                     item['analysis'] = json.loads(item['analysis'])
                 if item.get('tags'):
-                    item['tags'] = json.loads(item['tags'])
+                    try:
+                        item['tags'] = json.loads(item['tags'])
+                    except:
+                        item['tags'] = []
+                else:
+                    item['tags'] = []
+                
                 if item.get('entities'):
-                    item['entities'] = json.loads(item['entities'])
+                    try:
+                        item['entities'] = json.loads(item['entities'])
+                    except:
+                        item['entities'] = {}
+                else:
+                    item['entities'] = {}
+                    
                 result.append(item)
             except:
+                if 'tags' not in item or not isinstance(item['tags'], list):
+                    item['tags'] = []
+                if 'entities' not in item or not isinstance(item['entities'], dict):
+                    item['entities'] = {}
                 result.append(item)
         return result
     except Exception as e:

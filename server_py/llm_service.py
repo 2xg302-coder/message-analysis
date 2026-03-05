@@ -1,4 +1,4 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 import json
 from config import settings
 from typing import List, Dict, Any, Optional
@@ -8,7 +8,7 @@ from prompts import ANALYSIS_SYSTEM_PROMPT, ANALYSIS_USER_PROMPT_TEMPLATE
 client = None
 
 if settings.DEEPSEEK_API_KEY and settings.DEEPSEEK_API_KEY != 'sk-your-key-here':
-    client = OpenAI(
+    client = AsyncOpenAI(
         api_key=settings.DEEPSEEK_API_KEY,
         base_url=settings.DEEPSEEK_BASE_URL
     )
@@ -21,11 +21,11 @@ else:
     retry=retry_if_exception_type(Exception),
     reraise=True
 )
-def call_llm(messages: List[Dict[str, str]]) -> Dict[str, Any]:
+async def call_llm(messages: List[Dict[str, str]]) -> Dict[str, Any]:
     if not client:
         raise Exception("No API Key configured")
         
-    response = client.chat.completions.create(
+    response = await client.chat.completions.create(
         model=settings.LLM_MODEL,
         messages=messages,
         temperature=0.1,
@@ -59,7 +59,7 @@ async def analyze_news(news_content: str, existing_tags: List[str] = []) -> Dict
     ]
 
     try:
-        return call_llm(messages)
+        return await call_llm(messages)
     except Exception as e:
         print(f'LLM Analysis Error (after retries): {e}')
         return {'error': str(e)}

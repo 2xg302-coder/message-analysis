@@ -69,7 +69,7 @@ class NewsProcessor:
             print(f"Error loading recent hashes: {e}")
 
     def load_keywords(self):
-        print("Loading keywords for NER...")
+        # print("Loading keywords for NER...")
         try:
             # Load A-share stocks
             # Use a robust way or fallback if network fails
@@ -83,7 +83,7 @@ class NewsProcessor:
                 print(f"Loaded {len(self.keyword_processor)} keywords from EastMoney.")
             except Exception as e:
                 print(f"Failed to load real-time stock list: {e}")
-                print("Using built-in fallback keywords.")
+                # print("Using built-in fallback keywords.")
                 # Fallback: Add some common entities manually
                 common_entities = [
                     "贵州茅台", "宁德时代", "腾讯", "阿里巴巴", "美团", "比亚迪", "京东", "百度", "拼多多",
@@ -171,6 +171,9 @@ class NewsProcessor:
     def process(self, news_item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         # 1. Clean Text
         raw_content = news_item.get('content', '') or news_item.get('title', '')
+        if not raw_content:
+            return None
+            
         clean_content = self.clean_text(raw_content)
         news_item['clean_content'] = clean_content
         
@@ -178,9 +181,11 @@ class NewsProcessor:
         current_time = datetime.now() # Approximate, or parse news_item['time']
         simhash = self.calculate_simhash(clean_content)
         
-        if self.is_duplicate(simhash, current_time):
-            print(f"♻️ Duplicate detected: {news_item['title']}")
-            return None
+        # Only check duplicate if we have enough content
+        if len(clean_content) > 20:
+            if self.is_duplicate(simhash, current_time):
+                # print(f"♻️ Duplicate detected: {news_item.get('title', 'No Title')}")
+                return None
             
         # Add to cache
         self.simhash_cache.append({'hash': simhash, 'time': current_time})
@@ -189,11 +194,19 @@ class NewsProcessor:
         news_item['simhash'] = simhash.value
         
         # 3. NER
+        # entities will be a list of dicts: [{'name': 'Moutai', 'code': '600519', ...}, ...]
         entities = self.extract_entities(clean_content)
         news_item['entities'] = entities
         
         # 4. Rating
         rating = self.rate_news(clean_content)
         news_item['rating'] = rating
+        
+        # 5. Tags (from matched rules)
+        # Use matched rules as initial tags
+        if rating.get('matched_rules'):
+            news_item['tags'] = rating['matched_rules']
+        else:
+            news_item['tags'] = []
         
         return news_item
