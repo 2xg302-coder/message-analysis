@@ -5,15 +5,16 @@ import { getStats, getAnalysisStatus, setAnalysisControl } from '../services/api
 import { RobotOutlined, PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ['#cf1322', '#fa8c16', '#d9d9d9'];
 
 const Trends = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     total: 0,
     analyzed: 0,
-    positive: 0,
-    negative: 0,
+    high_score: 0,
+    medium_score: 0,
+    low_score: 0,
     trends: []
   });
   
@@ -71,10 +72,10 @@ const Trends = () => {
     }
   };
 
-  const sentimentData = [
-    { name: '利好', value: stats.positive },
-    { name: '利空', value: stats.negative },
-    { name: '中性/其他', value: stats.analyzed - stats.positive - stats.negative }
+  const scoreData = [
+    { name: '高价值 (>=7)', value: stats.high_score || 0 },
+    { name: '中等价值 (4-6)', value: stats.medium_score || 0 },
+    { name: '低价值 (<=3)', value: stats.low_score || 0 }
   ];
 
   return (
@@ -148,25 +149,25 @@ const Trends = () => {
           </Col>
           <Col span={6}>
             <Card>
-              <Statistic title="利好消息" value={stats.positive} valueStyle={{ color: '#3f8600' }} prefix="📈" />
+              <Statistic title="高分新闻" value={stats.high_score} valueStyle={{ color: '#cf1322' }} prefix="🔥" />
             </Card>
           </Col>
           <Col span={6}>
             <Card>
-              <Statistic title="利空消息" value={stats.negative} valueStyle={{ color: '#cf1322' }} prefix="📉" />
+              <Statistic title="一般新闻" value={(stats.medium_score || 0) + (stats.low_score || 0)} prefix="📰" />
             </Card>
           </Col>
         </Row>
 
         <Row gutter={[16, 16]}>
-          {/* 情感分布饼图 */}
+          {/* 评分分布饼图 */}
           <Col span={12}>
-            <Card title="情感倾向分布">
+            <Card title="评分分布">
               <div style={{ height: 300, display: 'flex', justifyContent: 'center' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={sentimentData}
+                      data={scoreData}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
@@ -176,7 +177,7 @@ const Trends = () => {
                       dataKey="value"
                       label
                     >
-                      {sentimentData.map((entry, index) => (
+                      {scoreData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>

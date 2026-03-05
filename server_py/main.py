@@ -9,7 +9,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 # Import services
 from database import (
     add_news, add_news_batch, get_latest_news, get_stats, 
-    get_series_list, get_news_by_series, init_db
+    get_series_list, get_news_by_series, init_db,
+    get_watchlist, update_watchlist as db_update_watchlist
 )
 from analyzer import analysis_worker, get_analysis_status, set_analysis_status
 from collector import fetch_and_save_news
@@ -123,12 +124,18 @@ async def read_series_by_tag(tag: str):
 
 @app.get("/api/watchlist")
 async def read_watchlist():
-    # Mock
-    return {"success": True, "data": ['半导体', '人工智能', '新能源']}
+    keywords = get_watchlist()
+    if not keywords:
+        # Default fallback if empty
+        keywords = ['半导体', '人工智能', '新能源']
+        db_update_watchlist(keywords)
+    return {"success": True, "data": keywords}
 
 @app.post("/api/watchlist")
-async def update_watchlist(watchlist: WatchlistUpdate):
-    print('Updated watchlist:', watchlist.keywords)
+async def update_watchlist_endpoint(watchlist: WatchlistUpdate):
+    success = db_update_watchlist(watchlist.keywords)
+    if not success:
+         raise HTTPException(status_code=500, detail="Failed to update watchlist")
     return {"success": True}
 
 @app.get("/api/analysis/status")

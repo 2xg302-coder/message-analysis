@@ -29,6 +29,12 @@ def init_db():
             analyzed_at TEXT
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS watchlist (
+            keyword TEXT PRIMARY KEY,
+            created_at TEXT
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -187,6 +193,8 @@ def get_stats() -> Dict[str, Any]:
         rows = cursor.fetchall()
         
         high_score_count = 0
+        medium_score_count = 0
+        low_score_count = 0
         series_set = set()
         
         for row in rows:
@@ -195,6 +203,11 @@ def get_stats() -> Dict[str, Any]:
                 score = analysis.get('score', analysis.get('relevance_score', 0))
                 if score >= 7:
                     high_score_count += 1
+                elif score >= 4:
+                    medium_score_count += 1
+                else:
+                    low_score_count += 1
+                
                 if analysis.get('event_tag'):
                     series_set.add(analysis['event_tag'])
             except:
@@ -216,12 +229,46 @@ def get_stats() -> Dict[str, Any]:
             'analyzed': analyzed,
             'pending': pending,
             'high_score': high_score_count,
+            'medium_score': medium_score_count,
+            'low_score': low_score_count,
             'active_series': len(series_set),
             'trends': trends
         }
     except Exception as e:
         print(f"Error getting stats: {e}")
         return {'total': 0, 'analyzed': 0, 'pending': 0, 'trends': []}
+    finally:
+        conn.close()
+
+def get_watchlist() -> List[str]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT keyword FROM watchlist ORDER BY created_at ASC')
+        rows = cursor.fetchall()
+        return [row['keyword'] for row in rows]
+    except Exception as e:
+        print(f"Error getting watchlist: {e}")
+        return []
+    finally:
+        conn.close()
+
+def update_watchlist(keywords: List[str]) -> bool:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Full replace strategy
+        cursor.execute('DELETE FROM watchlist')
+        current_time = datetime.now().isoformat()
+        for kw in keywords:
+            cursor.execute('INSERT INTO watchlist (keyword, created_at) VALUES (?, ?)', 
+                          (kw, current_time))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating watchlist: {e}")
+        conn.rollback()
+        return False
     finally:
         conn.close()
 

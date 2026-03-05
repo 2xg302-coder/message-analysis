@@ -18,17 +18,17 @@
 *   **时间轴展示**：以时间轴形式展示特定事件（如“OpenAI人事变动”）的发展脉络，从起因到结果一目了然。
 *   **关联推荐**：在单条新闻卡片中直接跳转至对应的事件连续剧视图。
 
-### 2.3 实时监控台
+### 2.3 实时监控台 & 配置
 *   **任务状态监控**：实时显示后台分析任务的运行状态（运行中/暂停）、当前正在分析的新闻标题。
-*   **数据统计**：展示今日采集总量、待分析队列长度、高价值新闻数量及活跃事件数。
-*   **人工干预**：支持手动暂停/启动分析任务。
+*   **数据统计**：展示新闻采集总量、已分析数量、评分分布（高分/中分/低分）及活跃事件数。
+*   **关注配置**：支持自定义关注关键词（Watchlist），系统将优先展示相关内容（前端支持）。
 
 ## 3. 技术架构
 
 ### 3.1 架构图示
 ```mermaid
 graph TD
-    A[Chrome 插件/采集端] -->|POST /api/news| B(Node.js 后端 API)
+    A[自动采集器 (Akshare)] -->|定时抓取| B(FastAPI 后端)
     B -->|存储原始数据| C[(SQLite 数据库)]
     D[后台分析 Worker] -->|轮询未分析数据| C
     D -->|调用| E[DeepSeek LLM API]
@@ -37,97 +37,142 @@ graph TD
     F[React 前端] -->|GET /api/news| B
     F -->|GET /api/series| B
     F -->|GET /api/stats| B
+    F -->|GET/POST /api/watchlist| B
 ```
 
 ### 3.2 技术栈
 *   **后端 (Server)**
-    *   **Runtime**: Node.js
-    *   **Framework**: Koa 2
-    *   **Database**: SQLite 3 (轻量级本地存储)
+    *   **Runtime**: Python 3.9+
+    *   **Framework**: FastAPI
+    *   **Database**: SQLite 3
+    *   **Scheduler**: APScheduler (定时任务)
+    *   **Data Source**: Akshare (财经数据接口)
     *   **AI Service**: DeepSeek API (兼容 OpenAI SDK)
-    *   **Key Modules**: 
-        *   `analyze.js`: 核心分析循环，负责任务调度。
-        *   `llm.js`: 封装 LLM 调用逻辑，包含专门设计的 Prompt。
 *   **前端 (Client)**
     *   **Framework**: React 18 + Vite
     *   **UI Library**: Ant Design 5
-    *   **Routing**: React Router 6
     *   **HTTP Client**: Axios
-*   **数据采集 (Extension)**
-    *   Chrome Extension Manifest V3
 
 ## 4. 项目结构
 
 ```
 message-analysis/
-├── client/                 # 前端项目
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── NewsFeed.jsx    # 实时情报流（主监控台）
-│   │   │   ├── SeriesView.jsx  # 连续剧追踪视图
-│   │   │   └── Trends.jsx      # 趋势分析
-│   │   └── services/           # API 封装
-├── server/                 # 后端服务
-│   ├── index.js            # API 入口
-│   ├── analyze.js          # 分析任务 Worker
-│   ├── llm.js              # LLM 接口封装
-│   ├── database.js         # 数据库操作
-│   └── news.db             # SQLite 数据库文件
-├── extension/              # Chrome 采集插件
+├── client/                 # 前端项目 (React)
+├── server_py/              # 后端服务 (FastAPI)
+│   ├── main.py             # API 入口 & 路由
+│   ├── analyzer.py         # 分析任务 Worker
+│   ├── collector.py        # 数据采集器
+│   ├── database.py         # 数据库操作
+│   ├── llm_service.py      # LLM 接口封装
+│   ├── config.py           # 配置加载
+│   └── requirements.txt    # Python 依赖
+├── extension/              # (可选) Chrome 采集插件
+├── start.sh                # 一键启动脚本
 └── SYSTEM_INTRODUCTION.md  # 本文档
 ```
 
 ## 5. 快速开始
 
 ### 5.1 环境要求
-*   Node.js >= 16
-*   pnpm (推荐) 或 npm
-*   DeepSeek API Key (配置在 `server/.env`)
+*   Node.js >= 16 (前端)
+*   Python >= 3.8 (后端)
+*   DeepSeek API Key (配置在 `server_py/.env`)
 
 ### 5.2 一键启动 (推荐)
-本项目提供了一键启动脚本，可同时启动前端和后端服务。
+本项目提供了一键启动脚本，可自动处理依赖安装并同时启动前后端服务。
 
-**Mac/Linux:**
 ```bash
-# 赋予执行权限（仅首次需要）
+# 赋予执行权限（仅首次）
 chmod +x start.sh
 
-# 启动
+# 启动服务
 ./start.sh
 ```
+启动后，访问：
+*   **前端页面**: http://localhost:5173
+*   **后端 API**: http://localhost:3001/docs (Swagger UI)
 
-**或者使用 pnpm:**
+### 5.3 手动启动
+如果不使用脚本，可以分别启动前后端。
+
+**启动后端**:
 ```bash
-# 安装依赖并启动
-pnpm install
-pnpm start
+cd server_py
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env  # 并配置 API Key
+python main.py
 ```
 
-### 5.3 手动启动后端
-```bash
-cd server
-# 复制环境变量配置
-cp .env.example .env
-# 编辑 .env 填入 DEEPSEEK_API_KEY
-pnpm install
-node index.js
-# 服务将启动在 http://localhost:3001
-```
-
-### 5.4 手动启动前端
+**启动前端**:
 ```bash
 cd client
 pnpm install
 pnpm dev
-# 访问 http://localhost:5173
 ```
 
-### 5.5 数据采集
-1.  打开 Chrome 浏览器 -> 扩展程序 -> 加载已解压的扩展程序。
-2.  选择 `extension` 目录。
-3.  访问目标新闻网站（如 IT之家），插件将自动采集新闻并发送至后端。
+## 6. API 接口文档
 
-## 6. 开发与维护
-*   **修改 Prompt**: 编辑 `server/llm.js` 中的 `prompt` 变量，可调整提取规则。
-*   **重置分析**: 运行 `node server/reset_analysis.js` 可清空所有分析结果并重新触发分析。
-*   **数据库查看**: 使用 SQLite 客户端打开 `server/news.db` 查看原始数据。
+后端基于 FastAPI 开发，启动后访问 `http://localhost:3001/docs` 可查看交互式 API 文档。
+
+### 6.1 新闻管理
+| 方法 | 路径 | 描述 |
+| :--- | :--- | :--- |
+| `POST` | `/api/news` | 接收单条新闻数据（通常由采集器调用） |
+| `POST` | `/api/news/batch` | 批量接收新闻数据 |
+| `GET` | `/api/news` | 获取最新新闻列表（支持 source 过滤） |
+
+### 6.2 统计与分析
+| 方法 | 路径 | 描述 |
+| :--- | :--- | :--- |
+| `GET` | `/api/stats` | 获取系统统计数据（总数、评分分布、趋势） |
+| `GET` | `/api/analysis/status` | 查看后台分析 Worker 状态 |
+| `POST` | `/api/analysis/control` | 启动/暂停分析任务 |
+
+### 6.3 专题与分类
+| 方法 | 路径 | 描述 |
+| :--- | :--- | :--- |
+| `GET` | `/api/series` | 获取所有聚合的新闻专题列表 |
+| `GET` | `/api/series/{tag}` | 获取指定专题下的所有新闻 |
+
+### 6.4 关注配置
+| 方法 | 路径 | 描述 |
+| :--- | :--- | :--- |
+| `GET` | `/api/watchlist` | 获取当前的关注关键词列表 |
+| `POST` | `/api/watchlist` | 更新关注关键词列表 |
+
+## 7. 数据库说明
+
+系统使用 SQLite 数据库 (`server/news.db`)，主要包含两张表：
+
+1.  **`news` 表**：存储所有新闻数据。
+    *   `id`: 唯一标识
+    *   `title`, `content`: 标题和内容
+    *   `analysis`: LLM 分析结果（JSON 格式，包含 score, event_tag 等）
+    *   `created_at`: 入库时间
+
+2.  **`watchlist` 表**：存储用户配置的关注词。
+    *   `keyword`: 关键词（主键）
+    *   `created_at`: 创建时间
+
+## 8. 配置说明
+
+配置文件位于 `server_py/.env`，主要配置项如下：
+
+```ini
+# DeepSeek API 配置
+DEEPSEEK_API_KEY=sk-your-key-here
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+```
+
+## 9. 常见问题 (FAQ)
+
+**Q: 为什么分析任务不执行？**
+A: 请检查 `server_py/.env` 中是否配置了正确的 `DEEPSEEK_API_KEY`。如果没有 API Key，分析 Worker 会自动暂停。
+
+**Q: 为什么前端显示“暂无数据”？**
+A: 请确认后端服务已启动，并且数据采集器（Collector）已运行至少一次。可以查看后端控制台日志确认是否有数据入库。
+
+**Q: 如何清空数据重新开始？**
+A: 删除 `server/news.db` 文件，重启后端服务即可自动重新初始化数据库。
