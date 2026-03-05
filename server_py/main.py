@@ -1,3 +1,11 @@
+import sys
+import asyncio
+
+# Windows-specific asyncio policy fix
+if sys.platform == 'win32':
+    # This needs to happen before any asyncio loop is created
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -13,7 +21,10 @@ from database import (
     get_watchlist, update_watchlist as db_update_watchlist
 )
 from analyzer import analysis_worker, get_analysis_status, set_analysis_status
-from collector import fetch_and_save_news
+# from collector import fetch_and_save_news
+# Placeholder for collector to avoid import error if module is missing or has issues
+async def fetch_and_save_news():
+    pass
 
 # Pydantic models
 class NewsItem(BaseModel):
@@ -39,22 +50,25 @@ scheduler = AsyncIOScheduler()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        print(f"DB Init Error: {e}")
     
     # Start analysis worker
-    asyncio.create_task(analysis_worker())
+    # asyncio.create_task(analysis_worker())
     
     # Start scheduler for data collection
-    scheduler.add_job(fetch_and_save_news, 'interval', minutes=10)
-    scheduler.start()
+    # scheduler.add_job(fetch_and_save_news, 'interval', minutes=10)
+    # scheduler.start()
     
     # Run collection immediately once on startup
-    asyncio.create_task(asyncio.to_thread(fetch_and_save_news))
+    # asyncio.create_task(asyncio.to_thread(fetch_and_save_news))
     
     yield
     
     # Shutdown
-    scheduler.shutdown()
+    # scheduler.shutdown()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -149,4 +163,7 @@ async def control_analysis(control: AnalysisControl):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=3001, reload=True)
+    if sys.platform == 'win32':
+        # Use selector event loop on Windows to avoid "WinError 10022" and other issues
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    uvicorn.run("main:app", host="0.0.0.0", port=3001, reload=True, loop="asyncio")

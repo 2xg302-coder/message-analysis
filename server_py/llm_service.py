@@ -12,7 +12,8 @@ if settings.DEEPSEEK_API_KEY and settings.DEEPSEEK_API_KEY != 'sk-your-key-here'
         base_url=settings.DEEPSEEK_BASE_URL
     )
 else:
-    print('⚠️ DeepSeek API Key not configured. Analysis will be skipped.')
+    # Use standard ASCII characters to avoid encoding issues on Windows consoles
+    print('Warning: DeepSeek API Key not configured. Analysis will be skipped.')
 
 @retry(
     stop=stop_after_attempt(3),
