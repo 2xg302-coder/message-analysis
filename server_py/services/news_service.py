@@ -44,13 +44,13 @@ class NewsService:
             logger.error(f"Error processing news item: {e}")
             return item
 
-    def add_news(self, news_item: Dict[str, Any]) -> bool:
+    async def add_news(self, news_item: Dict[str, Any]) -> bool:
         if not news_item or 'id' not in news_item:
             return False
             
         try:
             # Check existence
-            existing = self.db.execute_query('SELECT id FROM news WHERE id = ?', (news_item['id'],))
+            existing = await self.db.execute_query('SELECT id FROM news WHERE id = ?', (news_item['id'],))
             if existing:
                 return False
                 
@@ -88,19 +88,19 @@ class NewsService:
                 simhash_val
             )
             
-            return self.db.execute_update(query, params)
+            return await self.db.execute_update(query, params)
         except Exception as e:
             logger.error(f"Error adding news: {e}")
             return False
 
-    def add_news_batch(self, news_list: List[Dict[str, Any]]) -> int:
+    async def add_news_batch(self, news_list: List[Dict[str, Any]]) -> int:
         count = 0
         for item in news_list:
-            if self.add_news(item):
+            if await self.add_news(item):
                 count += 1
         return count
 
-    def get_news(self, limit: int = 100, offset: int = 0, 
+    async def get_news(self, limit: int = 100, offset: int = 0, 
                  news_type: Optional[str] = None, 
                  min_impact: Optional[int] = None,
                  tag: Optional[str] = None,
@@ -119,19 +119,7 @@ class NewsService:
             params.append(min_impact)
 
         if tag:
-            # Simple substring match for JSON array. 
-            # Note: This might match partial words, but it's okay for simple tag search.
-            # Ideally, we should use json_each or FTS5 if supported/needed.
-            # For strict match in JSON array ["tag1", "tag2"]: LIKE '%"tag"%'
-            # But tags might be stored with or without spaces in JSON.
-            # Let's try broad match first.
-            
-            # Convert tag to unicode escaped string for legacy data compatibility
-            # json.dumps("南向资金") -> "\u5357\u5411\u8d44\u91d1" (with quotes)
-            # We need to strip quotes
             escaped_tag = json.dumps(tag).strip('"')
-            
-            # Query for both raw tag (future data) and escaped tag (legacy data)
             query += " AND (tags LIKE ? OR tags LIKE ?)"
             params.append(f'%{tag}%')
             params.append(f'%{escaped_tag}%')
@@ -144,15 +132,15 @@ class NewsService:
         params.append(limit)
         params.append(offset)
         
-        rows = self.db.execute_query(query, tuple(params))
+        rows = await self.db.execute_query(query, tuple(params))
         return [self._process_news_item(row) for row in rows]
 
-    def get_unanalyzed_news(self, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_unanalyzed_news(self, limit: int = 10) -> List[Dict[str, Any]]:
         query = 'SELECT * FROM news WHERE analysis IS NULL ORDER BY created_at ASC LIMIT ?'
-        rows = self.db.execute_query(query, (limit,))
+        rows = await self.db.execute_query(query, (limit,))
         return [self._process_news_item(row) for row in rows]
 
-    def save_analysis(self, news_id: str, analysis_result: Dict[str, Any]) -> bool:
+    async def save_analysis(self, news_id: str, analysis_result: Dict[str, Any]) -> bool:
         try:
             updates = {
                 'analysis': json.dumps(analysis_result, ensure_ascii=False),
@@ -173,21 +161,20 @@ class NewsService:
             values.append(news_id)
             
             query = f'UPDATE news SET {set_clause} WHERE id = ?'
-            return self.db.execute_update(query, tuple(values))
+            return await self.db.execute_update(query, tuple(values))
         except Exception as e:
             logger.error(f"Error saving analysis for {news_id}: {e}")
             return False
 
-    def get_tag_stats(self, limit: int = 100, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_tag_stats(self, limit: int = 100, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         query = "SELECT tags FROM news WHERE tags IS NOT NULL"
         params = []
         if start_date and end_date:
-            # Use date() to compare only the date part, ignoring time
             query += " AND date(created_at) BETWEEN ? AND ?"
             params.extend([start_date, end_date])
         query += " ORDER BY created_at DESC LIMIT 2000"
         
-        rows = self.db.execute_query(query, tuple(params))
+        rows = await self.db.execute_query(query, tuple(params))
         tag_counts = {}
         for row in rows:
             tags = self._parse_json_field(row['tags'], [])
@@ -198,7 +185,7 @@ class NewsService:
         sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
         return [{"name": name, "value": count} for name, count in sorted_tags]
 
-    def get_type_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_type_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         query = "SELECT analysis FROM news WHERE analysis IS NOT NULL"
         params = []
         if start_date and end_date:
@@ -206,7 +193,7 @@ class NewsService:
             params.extend([start_date, end_date])
         query += " ORDER BY created_at DESC LIMIT 2000"
         
-        rows = self.db.execute_query(query, tuple(params))
+        rows = await self.db.execute_query(query, tuple(params))
         type_counts = {}
         for row in rows:
             analysis = self._parse_json_field(row['analysis'], {})
@@ -215,7 +202,7 @@ class NewsService:
             
         return [{"name": name, "value": count} for name, count in type_counts.items()]
 
-    def get_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, Any]:
+    async def get_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, Any]:
         try:
             where_clause = ""
             params = []
@@ -224,13 +211,14 @@ class NewsService:
                 params.extend([start_date, end_date])
 
             total_query = f'SELECT COUNT(*) as count FROM news{where_clause}'
-            total = self.db.execute_query(total_query, tuple(params))[0]['count']
+            total_res = await self.db.execute_query(total_query, tuple(params))
+            total = total_res[0]['count'] if total_res else 0
             
             analyzed_where = where_clause + (" AND" if where_clause else " WHERE") + " analysis IS NOT NULL"
             analyzed_query = f'SELECT COUNT(*) as count FROM news{analyzed_where}'
-            analyzed = self.db.execute_query(analyzed_query, tuple(params))[0]['count']
+            analyzed_res = await self.db.execute_query(analyzed_query, tuple(params))
+            analyzed = analyzed_res[0]['count'] if analyzed_res else 0
             
-            # Trends
             trends_query = f'''
                 SELECT substr(created_at, 12, 2) as hour, count(*) as count 
                 FROM news 
@@ -239,7 +227,7 @@ class NewsService:
                 ORDER BY hour DESC 
                 LIMIT 12
             '''
-            trends = self.db.execute_query(trends_query, tuple(params))
+            trends = await self.db.execute_query(trends_query, tuple(params))
             trends.reverse()
             
             return {
@@ -252,7 +240,7 @@ class NewsService:
             logger.error(f"Error getting stats: {e}")
             return {'total': 0, 'analyzed': 0, 'pending': 0, 'trends': []}
 
-    def get_top_entities(self, limit: int = 50, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_top_entities(self, limit: int = 50, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         query = "SELECT entities FROM news WHERE entities IS NOT NULL"
         params = []
         if start_date and end_date:
@@ -260,7 +248,7 @@ class NewsService:
             params.extend([start_date, end_date])
         query += " ORDER BY created_at DESC LIMIT 1000"
 
-        rows = self.db.execute_query(query, tuple(params))
+        rows = await self.db.execute_query(query, tuple(params))
         entity_counts = {}
         
         for row in rows:
@@ -271,8 +259,8 @@ class NewsService:
         sorted_entities = sorted(entity_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
         return [{"name": name, "count": count} for name, count in sorted_entities]
 
-    def get_series_list(self) -> List[Dict[str, Any]]:
-        rows = self.db.execute_query("SELECT analysis, created_at FROM news WHERE analysis IS NOT NULL AND analysis LIKE '%\"event_tag\"%' ORDER BY created_at DESC LIMIT 2000")
+    async def get_series_list(self) -> List[Dict[str, Any]]:
+        rows = await self.db.execute_query("SELECT analysis, created_at FROM news WHERE analysis IS NOT NULL AND analysis LIKE '%\"event_tag\"%' ORDER BY created_at DESC LIMIT 2000")
         series_map = {}
         
         for row in rows:
@@ -290,8 +278,8 @@ class NewsService:
                 
         return sorted(series_map.values(), key=lambda x: x['latest_date'], reverse=True)
 
-    def get_news_by_series(self, tag: str) -> List[Dict[str, Any]]:
-        rows = self.db.execute_query("SELECT * FROM news WHERE analysis LIKE ? ORDER BY created_at DESC", (f'%{tag}%',))
+    async def get_news_by_series(self, tag: str) -> List[Dict[str, Any]]:
+        rows = await self.db.execute_query("SELECT * FROM news WHERE analysis LIKE ? ORDER BY created_at DESC", (f'%{tag}%',))
         result = []
         for row in rows:
             item = self._process_news_item(row)
@@ -299,26 +287,25 @@ class NewsService:
                 result.append(item)
         return result
 
-    def get_watchlist(self) -> List[str]:
-        rows = self.db.execute_query('SELECT keyword FROM watchlist ORDER BY created_at ASC')
+    async def get_watchlist(self) -> List[str]:
+        rows = await self.db.execute_query('SELECT keyword FROM watchlist ORDER BY created_at ASC')
         return [row['keyword'] for row in rows]
 
-    def update_watchlist(self, keywords: List[str]) -> bool:
+    async def update_watchlist(self, keywords: List[str]) -> bool:
         # Transactional update
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
+        # For aiosqlite, we can use the helper method or manual connection
+        # But our execute_update helper only does single query.
+        # We need to do multiple queries in a transaction.
         try:
-            cursor.execute('DELETE FROM watchlist')
-            current_time = datetime.now().isoformat()
-            for kw in keywords:
-                cursor.execute('INSERT INTO watchlist (keyword, created_at) VALUES (?, ?)', (kw, current_time))
-            conn.commit()
+            async with self.db.get_connection() as conn:
+                await conn.execute('DELETE FROM watchlist')
+                current_time = datetime.now().isoformat()
+                for kw in keywords:
+                    await conn.execute('INSERT INTO watchlist (keyword, created_at) VALUES (?, ?)', (kw, current_time))
+                await conn.commit()
             return True
         except Exception as e:
-            conn.rollback()
             logger.error(f"Error updating watchlist: {e}")
             return False
-        finally:
-            conn.close()
 
 news_service = NewsService()

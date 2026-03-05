@@ -46,7 +46,7 @@ async def run_ingestion(collector, source_name, processor):
                     logger.error(f"Error processing item from {source_name}: {e}")
             
             if processed_list:
-                count = news_service.add_news_batch(processed_list)
+                count = await news_service.add_news_batch(processed_list)
                 logger.info(f"Saved {count} new items from {source_name}")
             else:
                 pass
@@ -70,12 +70,15 @@ def start_ingestion_scheduler():
         from collectors.sina_collector import SinaCollector
         from collectors.eastmoney_collector import EastMoneyCollector
         from collectors.calendar_collector import CalendarCollector
-        from processor import NewsProcessor
+        from services.processor import NewsProcessor
         
         sina_collector = SinaCollector()
         em_collector = EastMoneyCollector()
         calendar_collector = CalendarCollector(data_dir="data")
         processor = NewsProcessor()
+        # Initialize processor async state (cache)
+        # Since we are in a synchronous function (start_ingestion_scheduler), we can use create_task to run init
+        asyncio.create_task(processor.init_async())
         
         # News Ingestion Jobs
         scheduler.add_job(run_ingestion, IntervalTrigger(seconds=30), args=[sina_collector, 'Sina', processor], id='sina_ingestion', replace_existing=True)

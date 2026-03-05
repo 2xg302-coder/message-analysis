@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from analyzer import get_analysis_status, set_analysis_status
+from services.analyzer import get_analysis_status, set_analysis_status
 
 router = APIRouter(prefix="/api/analysis")
 

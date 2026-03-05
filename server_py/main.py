@@ -2,8 +2,10 @@ import sys
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from config import settings
 
 # Windows-specific asyncio policy fix
 if sys.platform == 'win32':
@@ -11,7 +13,7 @@ if sys.platform == 'win32':
 
 from core.logging import get_logger
 from services.ingestion import start_ingestion_scheduler, stop_ingestion_scheduler
-from analyzer import start_scheduler as start_analysis_scheduler
+from services.analyzer import start_scheduler as start_analysis_scheduler
 
 # Routers
 from routers import news, analysis, calendar
@@ -46,6 +48,37 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# API 认证中间件
+@app.middleware("http")
+async def verify_api_key(request: Request, call_next):
+    # 允许 OPTIONS 请求（CORS 预检）直接通过
+    if request.method == "OPTIONS":
+        return await call_next(request)
+        
+    # 如果没有配置 API_SECRET，则跳过验证（开发模式或未启用认证）
+    if not settings.API_SECRET:
+        return await call_next(request)
+    
+    # 如果请求的是静态资源或文档（如果以后添加），可以放行
+    # 目前只保护 /api 路径，但为了简单起见，保护所有非 OPTIONS 请求
+    # 如果有健康检查端点如 /health，可以排除
+    if request.url.path == "/health" or request.url.path == "/":
+        return await call_next(request)
+        
+    # 获取请求头中的 API Key
+    api_key = request.headers.get("X-API-Key")
+    
+    # 验证 API Key
+    # 简单的字符串比较。在生产环境中，应使用 secrets.compare_digest 防止时序攻击
+    if api_key != settings.API_SECRET:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "未授权: API Key 无效或缺失"}
+        )
+        
+    response = await call_next(request)
+    return response
 
 # Include Routers
 app.include_router(news.router)

@@ -21,5 +21,9 @@ class Settings:
     # Sentiment Dictionary Paths
     POSITIVE_WORDS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "positive_words.txt"))
     NEGATIVE_WORDS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "negative_words.txt"))
+    
+    # API 认证配置
+    # 如果设置了此值，则必须在请求头中携带 X-API-Key: YOUR_SECRET
+    API_SECRET = os.getenv("API_SECRET")
 
 settings = Settings()

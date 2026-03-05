@@ -118,7 +118,8 @@ async def process_single_news(news: Dict[str, Any]):
             content = news.get('content') or news.get('title')
             if not content:
                 logger.warning(f"News {news['id']} has no content/title. Marking as skipped.")
-                news_service.save_analysis(news['id'], {'error': 'No content'})
+                # Note: news_service.save_analysis will be async later
+                await news_service.save_analysis(news['id'], {'error': 'No content'})
                 return
 
             logger.info(f"Analyzing news {news['id']} (Fast Mode)...")
@@ -133,12 +134,14 @@ async def process_single_news(news: Dict[str, Any]):
                 analysis['note'] = 'Fallback used due to LLM error'
                 
             # Save result
-            news_service.save_analysis(news['id'], analysis)
+            # Note: news_service.save_analysis will be async later
+            await news_service.save_analysis(news['id'], analysis)
             logger.info(f"✅ Analyzed {news['id']}: Score={analysis.get('sentiment_score', 0)}")
             
         except Exception as e:
             logger.error(f"Error processing news {news.get('id')}: {e}")
-            news_service.save_analysis(news.get('id'), {'error': str(e)})
+            # Note: news_service.save_analysis will be async later
+            await news_service.save_analysis(news.get('id'), {'error': str(e)})
         finally:
             current_task = None
 
@@ -146,15 +149,12 @@ async def analysis_job():
     if not is_running:
         return
 
-    # logger.info("⏰ Scheduled analysis job started...")
-    
     try:
         # Get batch of unanalyzed news
-        # Increased batch size for higher throughput
-        news_list = news_service.get_unanalyzed_news(limit=10)
+        # Note: news_service.get_unanalyzed_news will be async later
+        news_list = await news_service.get_unanalyzed_news(limit=10)
         
         if not news_list:
-            # logger.info("No unanalyzed news found.")
             return
 
         logger.info(f"Found {len(news_list)} unanalyzed news items. Processing batch...")

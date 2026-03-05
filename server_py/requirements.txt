@@ -10,3 +10,4 @@ httpx
 simhash
 flashtext
 sqlite-utils
+aiosqlite

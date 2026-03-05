@@ -4,6 +4,18 @@ const api = axios.create({
   baseURL: '/api',
 });
 
+// 添加请求拦截器以注入 API Key
+api.interceptors.request.use((config) => {
+  // 从环境变量获取 API Key (Vite 环境变量前缀必须为 VITE_)
+  const apiKey = import.meta.env.VITE_API_SECRET;
+  if (apiKey) {
+    config.headers['X-API-Key'] = apiKey;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
 // 获取新闻列表
 // params: { limit, offset, type, min_impact, source }
 export const getNews = (params = {}) => {
