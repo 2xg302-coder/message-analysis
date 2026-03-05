@@ -6,38 +6,34 @@ const api = axios.create({
 
 // 获取新闻列表
 // params: { limit, offset, type, min_impact, source }
-export const getNews = (params) => {
-    // Map frontend filter names to backend params
-    const backendParams = {};
-    if (params.type && params.type !== 'all') backendParams.type = params.type;
-    
-    // Handle importance (min_impact)
-    // Frontend sends 'importance' which is a number (4, 6, 8) or 0 (all)
-    // Or from high value toggle, it sends min_impact directly.
-    if (params.min_impact) {
-        backendParams.min_impact = params.min_impact;
-    } else if (params.importance && params.importance > 0) {
-        // Assume importance scale 1-5 mapping or direct.
-        // User UI has 4, 6, 8 stars? Wait, UI shows 4, 6, 8.
-        // Backend impact_score is 1-5 or 1-10? 
-        // processor.py says: "impact_score": min(score, 10)
-        // So backend is 1-10.
-        backendParams.min_impact = params.importance;
-    } else {
-        // Default logic or no filter
-    }
-    
-    return api.get('/news', { params: backendParams });
+export const getNews = (params = {}) => {
+  const backendParams = {};
+  if (params.type && params.type !== 'all') backendParams.type = params.type;
+  
+  if (params.min_impact) {
+      backendParams.min_impact = params.min_impact;
+  }
+  
+  if (params.tag) backendParams.tag = params.tag;
+  if (params.startDate) backendParams.start_date = params.startDate;
+  if (params.endDate) backendParams.end_date = params.endDate;
+  if (params.limit) backendParams.limit = params.limit;
+  if (params.offset) backendParams.offset = params.offset;
+  
+  return api.get('/news', { params: backendParams });
 };
 
-// 获取统计数据 (待后端实现)
-export const getStats = () => api.get('/stats');
+// 获取统计数据
+export const getStats = (startDate, endDate) => api.get('/stats', { params: { start_date: startDate, end_date: endDate } });
 
-// 获取关注列表 (待后端实现)
-export const getWatchlist = () => api.get('/watchlist');
+// 获取标签统计
+export const getTagStats = (limit = 100, startDate, endDate) => api.get(`/stats/tags?limit=${limit}`, { params: { start_date: startDate, end_date: endDate } });
 
-// 更新关注列表 (待后端实现)
-export const updateWatchlist = (data) => api.post('/watchlist', data);
+// 获取类型统计
+export const getTypeStats = (startDate, endDate) => api.get('/stats/types', { params: { start_date: startDate, end_date: endDate } });
+
+// 获取实体排行
+export const getTopEntities = (limit = 50, startDate, endDate) => api.get(`/entities?limit=${limit}`, { params: { start_date: startDate, end_date: endDate } });
 
 // 获取分析任务状态
 export const getAnalysisStatus = () => api.get('/analysis/status');
@@ -45,10 +41,10 @@ export const getAnalysisStatus = () => api.get('/analysis/status');
 // 控制分析任务开关
 export const setAnalysisControl = (running) => api.post('/analysis/control', { running });
 
-// 获取事件/连续剧列表
 export const getSeriesList = () => api.get('/series');
-
-// 获取特定事件的新闻
 export const getSeriesNews = (tag) => api.get(`/series/${encodeURIComponent(tag)}`);
+
+export const getWatchlist = () => api.get('/watchlist');
+export const updateWatchlist = (keywords) => api.post('/watchlist', { keywords });
 
 export default api;

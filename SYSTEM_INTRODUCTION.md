@@ -37,17 +37,21 @@ graph TD
     subgraph Data Ingestion [数据采集层]
         A1[Sina Collector (快讯)] -->|SimHash去重| P[Processor]
         A2[EastMoney Collector (深度)] -->|SimHash去重| P
+        SCH[Ingestion Service] -->|调度| A1
+        SCH -->|调度| A2
     end
 
     subgraph Backend [FastAPI 后端 :8000]
-        P -->|FlashText NER & 规则评分| DB[(SQLite 数据库)]
-        SCH[Scheduler] -->|定时触发| AN[Analysis Worker]
+        P -->|News Service| DB[(SQLite 数据库)]
+        API[API Routers] -->|调用| NS[News Service]
+        NS -->|CRUD| DB
+        AN[Analysis Worker] -->|获取未分析数据| NS
         AN -->|调用| LLM[DeepSeek API]
-        LLM -->|结构化结果| DB
+        LLM -->|保存结果| NS
     end
 
     subgraph Frontend [React 前端 :5173]
-        F[Web UI] -->|REST API| B(FastAPI Server)
+        F[Web UI] -->|REST API| API
         F -->|展示| NEWS[新闻列表]
         F -->|展示| STATS[统计看板]
         F -->|展示| SERIES[事件追踪]
@@ -57,7 +61,7 @@ graph TD
 ### 3.2 技术栈
 *   **后端 (Server)**
     *   **Runtime**: Python 3.11+
-    *   **Framework**: FastAPI
+    *   **Framework**: FastAPI (分层架构: Core/Services/Routers)
     *   **Database**: SQLite 3 (`server_py/news.db`)
     *   **Scheduler**: APScheduler (定时任务)
     *   **NLP Tools**: SimHash (去重), FlashText (NER)
@@ -75,16 +79,17 @@ graph TD
 message-analysis/
 ├── client/                 # 前端项目 (React + Vite)
 ├── server_py/              # 后端服务 (FastAPI)
+│   ├── core/               # 核心基础设施 (日志, 数据库连接)
+│   ├── routers/            # API 路由定义
+│   ├── services/           # 业务逻辑层 (新闻管理, 采集调度)
 │   ├── collectors/         # 数据采集器 (Sina, EastMoney)
-│   ├── venv/               # Python 虚拟环境
-│   ├── main.py             # API 入口 & 路由
+│   ├── models.py           # Pydantic 数据模型
+│   ├── main.py             # 应用入口
+│   ├── config.py           # 配置加载
 │   ├── analyzer.py         # LLM 分析任务 Worker
 │   ├── processor.py        # 预处理引擎 (清洗, 去重, NER)
-│   ├── database.py         # 数据库操作
-│   ├── models.py           # Pydantic 数据模型
-│   ├── config.py           # 配置加载
 │   └── requirements.txt    # Python 依赖
-├── .trae/documents/        # 详细设计文档 (Module A-D)
+├── .trae/documents/        # 详细设计文档
 ├── start.ps1               # Windows 一键启动脚本
 ├── start.sh                # Linux/Mac 一键启动脚本
 └── SYSTEM_INTRODUCTION.md  # 本文档
@@ -95,7 +100,7 @@ message-analysis/
 ### 5.1 环境要求
 *   Node.js >= 18 (前端)
 *   Python >= 3.11 (后端)
-*   DeepSeek API Key (配置在 `server_py/.env`)
+*   LLM API Key (配置在 `server_py/.env`)
 
 ### 5.2 一键启动 (Windows)
 本项目提供了 PowerShell 启动脚本，自动处理依赖安装并启动服务。
@@ -130,16 +135,34 @@ python main.py
 
 ### 5.4 模型配置说明 (LLM Configuration)
 
-**默认配置**：
-本项目默认配置为使用 **DeepSeek-V3 云端 API**，而非在本地运行大模型。这意味着所有的分析请求都会发送到 `api.deepseek.com`。
+**双模型策略 (Dual Model Strategy)**：
+本系统支持配置两个不同的模型：
+1.  **Main LLM (主模型)**：用于深度分析 (Standard Analysis)，处理长文本、复杂逻辑。推荐使用 DeepSeek-V3, GPT-4o, Gemini 1.5 Pro 等高性能模型。
+2.  **Fast LLM (快速模型)**：用于快讯分析、实体提取 (Fast Analysis)。推荐使用本地 Ollama (Llama 3, Mistral) 或云端小模型 (Gemini Flash, Haiku) 以降低成本和延迟。
 
-**本地运行选项** (如 Ollama)：
-如果您希望在本地运行大模型（如 Llama 3），请修改 `server_py/config.py` 或 `.env` 文件：
-```python
-# server_py/config.py
-DEEPSEEK_BASE_URL = "http://localhost:11434/v1"  # 指向本地 Ollama 服务
-LLM_MODEL = "llama3"                             # 指定本地模型名称
-DEEPSEEK_API_KEY = "ollama"                      # 本地运行通常无需真实 Key
+请在 `server_py/.env` 文件中配置：
+
+```bash
+# === 主模型配置 (Main LLM) ===
+# 示例：使用 OpenRouter 接入 Gemini 1.5 Pro
+LLM_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxx
+LLM_BASE_URL=https://openrouter.ai/api/v1
+LLM_MODEL=google/gemini-2.0-pro-exp-02-05
+
+# === 快速模型配置 (Fast LLM) ===
+# 示例：使用本地 Ollama 运行 Llama 3
+FAST_LLM_API_KEY=ollama
+FAST_LLM_BASE_URL=http://localhost:11434/v1
+FAST_LLM_MODEL=llama3
+
+# 注意：如果未配置 FAST_LLM，系统将自动降级使用 Main LLM 处理所有任务。
+```
+
+**DeepSeek (旧版兼容)**：
+系统仍然兼容旧版配置方式（作为主模型）：
+```bash
+DEEPSEEK_API_KEY=sk-xxxxxxxx
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
 
 **启动前端**:

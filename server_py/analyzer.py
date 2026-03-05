@@ -19,6 +19,9 @@ scheduler = AsyncIOScheduler()
 is_running = True
 current_task: Optional[Dict[str, Any]] = None
 
+# Concurrency control
+sem: Optional[asyncio.Semaphore] = None
+
 # Sentiment dictionaries
 positive_words = set()
 negative_words = set()
@@ -93,68 +96,72 @@ def get_analysis_status():
         "schedulerRunning": scheduler.running
     }
 
+async def get_semaphore():
+    global sem
+    if sem is None:
+        sem = asyncio.Semaphore(3) # Limit to 3 concurrent LLM calls
+    return sem
+
 async def process_single_news(news: Dict[str, Any]):
     global current_task
+    s = await get_semaphore()
     
-    try:
-        current_task = {
-            "id": news['id'],
-            "title": news.get('title') or (news.get('content')[:30] if news.get('content') else 'No Content'),
-            "status": "analyzing",
-            "startTime": datetime.now().isoformat()
-        }
-        
-        content = news.get('content') or news.get('title')
-        if not content:
-            logger.warning(f"News {news['id']} has no content/title. Marking as skipped.")
-            news_service.save_analysis(news['id'], {'error': 'No content'})
-            return
-
-        logger.info(f"Analyzing news {news['id']}...")
-        
-        # LLM Analysis
-        analysis = await analyze_news(content)
-        
-        # Fallback if LLM fails or returns error
-        if 'error' in analysis:
-            logger.warning(f"LLM failed for {news['id']}: {analysis['error']}. Using fallback.")
-            analysis = fallback_sentiment_analysis(content)
-            analysis['note'] = 'Fallback used due to LLM error'
+    async with s:
+        try:
+            current_task = {
+                "id": news['id'],
+                "title": news.get('title') or (news.get('content')[:30] if news.get('content') else 'No Content'),
+                "status": "analyzing",
+                "startTime": datetime.now().isoformat()
+            }
             
-        # Save result
-        news_service.save_analysis(news['id'], analysis)
-        logger.info(f"✅ Analyzed {news['id']}: Score={analysis.get('sentiment_score', 0)}")
-        
-    except Exception as e:
-        logger.error(f"Error processing news {news.get('id')}: {e}")
-        news_service.save_analysis(news.get('id'), {'error': str(e)})
-    finally:
-        current_task = None
+            content = news.get('content') or news.get('title')
+            if not content:
+                logger.warning(f"News {news['id']} has no content/title. Marking as skipped.")
+                news_service.save_analysis(news['id'], {'error': 'No content'})
+                return
+
+            logger.info(f"Analyzing news {news['id']} (Fast Mode)...")
+            
+            # LLM Analysis (Fast Mode)
+            analysis = await analyze_news(content, mode="fast")
+            
+            # Fallback if LLM fails or returns error
+            if 'error' in analysis:
+                logger.warning(f"LLM failed for {news['id']}: {analysis['error']}. Using fallback.")
+                analysis = fallback_sentiment_analysis(content)
+                analysis['note'] = 'Fallback used due to LLM error'
+                
+            # Save result
+            news_service.save_analysis(news['id'], analysis)
+            logger.info(f"✅ Analyzed {news['id']}: Score={analysis.get('sentiment_score', 0)}")
+            
+        except Exception as e:
+            logger.error(f"Error processing news {news.get('id')}: {e}")
+            news_service.save_analysis(news.get('id'), {'error': str(e)})
+        finally:
+            current_task = None
 
 async def analysis_job():
     if not is_running:
         return
 
-    logger.info("⏰ Scheduled analysis job started...")
+    # logger.info("⏰ Scheduled analysis job started...")
     
     try:
         # Get batch of unanalyzed news
-        # Requirement says "Batch send to LLM".
-        # We process a batch of 5 items per job run
-        news_list = news_service.get_unanalyzed_news(limit=5)
+        # Increased batch size for higher throughput
+        news_list = news_service.get_unanalyzed_news(limit=10)
         
         if not news_list:
-            logger.info("No unanalyzed news found.")
+            # logger.info("No unanalyzed news found.")
             return
 
-        logger.info(f"Found {len(news_list)} unanalyzed news items.")
+        logger.info(f"Found {len(news_list)} unanalyzed news items. Processing batch...")
         
-        for news in news_list:
-            if not is_running:
-                break
-            await process_single_news(news)
-            # Rate limiting sleep between items
-            await asyncio.sleep(1) 
+        # Concurrent processing with semaphore
+        tasks = [process_single_news(news) for news in news_list]
+        await asyncio.gather(*tasks)
             
     except Exception as e:
         logger.error(f"Analysis job error: {e}")
@@ -162,11 +169,11 @@ async def analysis_job():
 def start_scheduler():
     load_sentiment_dicts()
     
-    # Add job: run every 5 minutes
-    scheduler.add_job(analysis_job, IntervalTrigger(minutes=5), id='analysis_job', replace_existing=True)
+    # Add job: run every 10 seconds (High Frequency)
+    scheduler.add_job(analysis_job, IntervalTrigger(seconds=10), id='analysis_job', replace_existing=True)
     
     scheduler.start()
-    logger.info("Analysis Scheduler started with 5 minute interval.")
+    logger.info("Analysis Scheduler started with 10 second interval (Fast Mode).")
     
     # Schedule an immediate run
     # asyncio.create_task(analysis_job())

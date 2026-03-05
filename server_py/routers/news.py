@@ -50,35 +50,65 @@ async def read_news(
     offset: int = 0, 
     type: Optional[str] = None, 
     min_impact: Optional[int] = None,
-    source: Optional[str] = None
+    source: Optional[str] = None,
+    tag: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
 ):
     try:
         if type == 'all':
             type = None
             
-        news = news_service.get_news(limit=limit, offset=offset, news_type=type, min_impact=min_impact)
+        news = news_service.get_news(
+            limit=limit, 
+            offset=offset, 
+            news_type=type, 
+            min_impact=min_impact,
+            tag=tag,
+            start_date=start_date,
+            end_date=end_date
+        )
         
+        # Filter by source if needed (DB doesn't index source efficiently yet, do in memory or update service)
         if source:
              news = [n for n in news if n.get('source') == source]
-             
+
         return {"count": len(news), "data": news}
     except Exception as e:
         logger.error(f"Error reading news: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/stats")
-async def read_stats():
+async def read_stats(start_date: Optional[str] = None, end_date: Optional[str] = None):
     try:
-        stats = news_service.get_stats()
+        stats = news_service.get_stats(start_date=start_date, end_date=end_date)
         return {"success": True, "data": stats}
     except Exception as e:
         logger.error(f"Error reading stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to get stats")
 
-@router.get("/entities")
-async def read_entities(limit: int = 50):
+@router.get("/stats/tags")
+async def read_tag_stats(limit: int = 100, start_date: Optional[str] = None, end_date: Optional[str] = None):
     try:
-        entities = news_service.get_top_entities(limit=limit)
+        tags = news_service.get_tag_stats(limit=limit, start_date=start_date, end_date=end_date)
+        return {"success": True, "count": len(tags), "data": tags}
+    except Exception as e:
+        logger.error(f"Error reading tag stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get tag stats")
+
+@router.get("/stats/types")
+async def read_type_stats(start_date: Optional[str] = None, end_date: Optional[str] = None):
+    try:
+        types = news_service.get_type_stats(start_date=start_date, end_date=end_date)
+        return {"success": True, "count": len(types), "data": types}
+    except Exception as e:
+        logger.error(f"Error reading type stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get type stats")
+
+@router.get("/entities")
+async def read_entities(limit: int = 50, start_date: Optional[str] = None, end_date: Optional[str] = None):
+    try:
+        entities = news_service.get_top_entities(limit=limit, start_date=start_date, end_date=end_date)
         return {"success": True, "count": len(entities), "data": entities}
     except Exception as e:
         logger.error(f"Error reading entities: {e}")

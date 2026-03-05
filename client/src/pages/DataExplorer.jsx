@@ -1,0 +1,314 @@
+import React, { useEffect, useState } from 'react';
+import { Card, Row, Col, Typography, Spin, Table, Tag, Statistic, Progress, Space, DatePicker, Radio, Button, Modal, List, Empty } from 'antd';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { DatabaseOutlined, RocketOutlined, TagOutlined, DeploymentUnitOutlined, ReloadOutlined } from '@ant-design/icons';
+import { getStats, getTagStats, getTypeStats, getTopEntities, getAnalysisStatus, getNews } from '../services/api';
+import dayjs from 'dayjs';
+import NewsCard from '../components/NewsCard';
+
+const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
+const DataExplorer = () => {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ total: 0, analyzed: 0, pending: 0 });
+  const [tags, setTags] = useState([]);
+  const [types, setTypes] = useState([]);
+  const [entities, setEntities] = useState([]);
+  const [analysisStatus, setAnalysisStatus] = useState({ isRunning: false, currentTask: null });
+  
+  // Date filter state
+  const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()]);
+  const [quickDate, setQuickDate] = useState('week'); // 'day', 'week', 'month'
+
+  // Tag display state
+  const [showAllTags, setShowAllTags] = useState(false);
+  const displayedTags = showAllTags ? tags : tags.slice(0, 20);
+
+  // News Modal state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTag, setSelectedTag] = useState(null);
+  const [tagNews, setTagNews] = useState([]);
+  const [tagNewsLoading, setTagNewsLoading] = useState(false);
+
+  const fetchData = async () => {
+    if (!dateRange || !dateRange[0] || !dateRange[1]) return;
+    
+    setLoading(true);
+    const startDate = dateRange[0].format('YYYY-MM-DD');
+    const endDate = dateRange[1].format('YYYY-MM-DD');
+
+    try {
+      const [statsRes, tagsRes, typesRes, entitiesRes, statusRes] = await Promise.all([
+        getStats(startDate, endDate),
+        getTagStats(100, startDate, endDate),
+        getTypeStats(startDate, endDate),
+        getTopEntities(50, startDate, endDate),
+        getAnalysisStatus()
+      ]);
+
+      if (statsRes.data.success) setStats(statsRes.data.data);
+      if (tagsRes.data.success) setTags(tagsRes.data.data);
+      if (typesRes.data.success) setTypes(typesRes.data.data);
+      if (entitiesRes.data.success) setEntities(entitiesRes.data.data);
+      if (statusRes.data.success) setAnalysisStatus(statusRes.data.data);
+
+    } catch (error) {
+      console.error("Failed to fetch explorer data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    // Only auto-refresh status, not stats (stats depend on date range which doesn't change automatically)
+    const interval = setInterval(async () => {
+       const statusRes = await getAnalysisStatus();
+       if (statusRes.data.success) setAnalysisStatus(statusRes.data.data);
+    }, 10000); 
+    return () => clearInterval(interval);
+  }, [dateRange]); // Trigger when dateRange changes
+
+  const handleQuickDateChange = (e) => {
+    const value = e.target.value;
+    setQuickDate(value);
+    
+    const end = dayjs();
+    let start = dayjs();
+    
+    if (value === 'day') start = dayjs().subtract(0, 'day'); // Today (or last 24h?) Usually means today. 
+    // If 'day' means last 24h, use subtract(1, 'day'). 
+    // If it means 'Today', use startOf('day')? 
+    // Backend uses YYYY-MM-DD string comparison. 
+    // If I select 'day', I usually want 'Today'.
+    // Let's assume 'day' = Today. 
+    
+    if (value === 'day') start = dayjs(); 
+    else if (value === 'week') start = dayjs().subtract(6, 'day');
+    else if (value === 'month') start = dayjs().subtract(29, 'day');
+    
+    setDateRange([start, end]);
+  };
+
+  const handleTagClick = async (tag) => {
+    setSelectedTag(tag);
+    setModalVisible(true);
+    setTagNewsLoading(true);
+    
+    const startDate = dateRange[0].format('YYYY-MM-DD');
+    const endDate = dateRange[1].format('YYYY-MM-DD');
+    
+    try {
+      const res = await getNews({ 
+        tag: tag.name, 
+        startDate, 
+        endDate,
+        limit: 50 
+      });
+      if (res.data && res.data.data) {
+        setTagNews(res.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch tag news", error);
+    } finally {
+      setTagNewsLoading(false);
+    }
+  };
+
+  // Entity Table Columns
+  const entityColumns = [
+    { title: '实体名称', dataIndex: 'name', key: 'name', render: text => <Text strong>{text}</Text> },
+    { title: '提及次数', dataIndex: 'count', key: 'count', sorter: (a, b) => a.count - b.count, defaultSortOrder: 'descend' },
+    { 
+      title: '热度', 
+      key: 'hotness', 
+      render: (_, record) => (
+        <Progress percent={Math.min(100, (record.count / (entities[0]?.count || 1)) * 100)} showInfo={false} size="small" />
+      ) 
+    }
+  ];
+
+  return (
+    <div style={{ padding: '24px' }}>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <Title level={2} style={{ margin: 0 }}>数据资产概览</Title>
+          <Text type="secondary">实时监控系统数据积累状态与模型分析进度</Text>
+        </div>
+        <Space>
+          <Radio.Group value={quickDate} onChange={handleQuickDateChange}>
+            <Radio.Button value="day">今天</Radio.Button>
+            <Radio.Button value="week">近一周</Radio.Button>
+            <Radio.Button value="month">近一月</Radio.Button>
+          </Radio.Group>
+          <RangePicker 
+            value={dateRange} 
+            onChange={(dates) => {
+              setDateRange(dates);
+              setQuickDate('custom');
+            }}
+            allowClear={false}
+          />
+          <Button icon={<ReloadOutlined />} onClick={fetchData} />
+        </Space>
+      </div>
+
+      <Spin spinning={loading}>
+        {/* 系统状态看板 */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col span={6}>
+            <Card>
+              <Statistic 
+                title="数据总量 (选定范围内)" 
+                value={stats.total} 
+                prefix={<DatabaseOutlined />} 
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic 
+                title="已智能分析" 
+                value={stats.analyzed} 
+                suffix={`/ ${stats.total}`} 
+                styles={{ content: { color: '#3f8600' } }}
+              />
+              <Progress percent={Math.round((stats.analyzed / (stats.total || 1)) * 100)} size="small" status="active" />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic 
+                title="待处理队列" 
+                value={stats.pending} 
+                prefix={<RocketOutlined />} 
+                styles={{ content: { color: stats.pending > 100 ? '#cf1322' : '#fa8c16' } }} 
+              />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {analysisStatus.isRunning ? '🟢 分析服务运行中 (Fast Mode)' : '🔴 分析服务已暂停'}
+              </Text>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic 
+                title="热门标签数" 
+                value={tags.length} 
+                prefix={<TagOutlined />} 
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]}>
+          {/* 事件类型分布 */}
+          <Col span={12}>
+            <Card title="事件类型分布 (Event Types)">
+              {types.length > 0 ? (
+                <div style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={types}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {types.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" style={{ height: 300, display: 'flex', flexDirection: 'column', justifyContent: 'center' }} />
+              )}
+            </Card>
+          </Col>
+
+          {/* 标签云 (Tags Cloud) */}
+          <Col span={12}>
+            <Card title="热门标签云 (Tags Cloud)" extra={
+              tags.length > 20 && (
+                <Button type="link" onClick={() => setShowAllTags(!showAllTags)}>
+                  {showAllTags ? '收起' : '查看更多'}
+                </Button>
+              )
+            } style={{ height: '100%' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: showAllTags ? 400 : 300, overflowY: 'auto' }}>
+                {displayedTags.map((tag, index) => {
+                  const isHot = index < 10;
+                  const color = isHot ? 'magenta' : index < 30 ? 'geekblue' : 'default';
+                  const fontSize = isHot ? 16 : 14;
+                  return (
+                    <Tag 
+                      key={tag.name} 
+                      color={color} 
+                      style={{ fontSize: fontSize, padding: '4px 8px', cursor: 'pointer' }}
+                      onClick={() => handleTagClick(tag)}
+                    >
+                      {tag.name} ({tag.value})
+                    </Tag>
+                  );
+                })}
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          {/* 实体排行 */}
+          <Col span={24}>
+            <Card title={<Space><DeploymentUnitOutlined /> 核心实体排行 (Top Entities)</Space>}>
+              <Table 
+                dataSource={entities} 
+                columns={entityColumns} 
+                rowKey="name" 
+                pagination={{ pageSize: 10 }} 
+                size="small"
+              />
+            </Card>
+          </Col>
+        </Row>
+      </Spin>
+
+      {/* 新闻详情弹框 */}
+      <Modal
+        title={selectedTag ? `标签：#${selectedTag.name} 相关新闻` : '相关新闻'}
+        open={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        footer={null}
+        width={800}
+        styles={{ body: { maxHeight: '60vh', overflowY: 'auto' } }}
+      >
+        <Spin spinning={tagNewsLoading}>
+          {tagNews.length > 0 ? (
+            <List
+              itemLayout="vertical"
+              dataSource={tagNews}
+              renderItem={item => (
+                <List.Item key={item.id}>
+                  <NewsCard item={item} />
+                </List.Item>
+              )}
+            />
+          ) : (
+            <Empty description="暂无相关新闻" />
+          )}
+        </Spin>
+      </Modal>
+    </div>
+  );
+};
+
+export default DataExplorer;

@@ -3,17 +3,29 @@ import json
 from config import settings
 from typing import List, Dict, Any, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from prompts import ANALYSIS_SYSTEM_PROMPT, ANALYSIS_USER_PROMPT_TEMPLATE
+from prompts import ANALYSIS_SYSTEM_PROMPT, ANALYSIS_USER_PROMPT_TEMPLATE, FAST_ANALYSIS_SYSTEM_PROMPT, FAST_ANALYSIS_USER_PROMPT_TEMPLATE
 
 client = None
+fast_client = None
 
-if settings.DEEPSEEK_API_KEY and settings.DEEPSEEK_API_KEY != 'sk-your-key-here':
+# Initialize Main Client (Large Model)
+if settings.LLM_API_KEY and settings.LLM_API_KEY != 'sk-your-key-here':
     client = AsyncOpenAI(
-        api_key=settings.DEEPSEEK_API_KEY,
-        base_url=settings.DEEPSEEK_BASE_URL
+        api_key=settings.LLM_API_KEY,
+        base_url=settings.LLM_BASE_URL
     )
 else:
-    print('Warning: DeepSeek API Key not configured. Analysis will be skipped.')
+    print('Warning: LLM API Key not configured. Main Analysis will be skipped.')
+
+# Initialize Fast Client (Small Model)
+# If FAST_LLM_* is not configured, fallback to Main Client configuration logic (handled in call_llm wrapper or here)
+if settings.FAST_LLM_API_KEY:
+    fast_client = AsyncOpenAI(
+        api_key=settings.FAST_LLM_API_KEY,
+        base_url=settings.FAST_LLM_BASE_URL
+    )
+else:
+    fast_client = client # Fallback to main client
 
 @retry(
     stop=stop_after_attempt(3),
@@ -21,15 +33,24 @@ else:
     retry=retry_if_exception_type(Exception),
     reraise=True
 )
-async def call_llm(messages: List[Dict[str, str]]) -> Dict[str, Any]:
-    if not client:
-        raise Exception("No API Key configured")
+async def call_llm(messages: List[Dict[str, str]], timeout: float = 30.0, use_fast_model: bool = False) -> Dict[str, Any]:
+    current_client = fast_client if use_fast_model and fast_client else client
+    
+    # Determine model name
+    if use_fast_model and settings.FAST_LLM_MODEL:
+        model_name = settings.FAST_LLM_MODEL
+    else:
+        model_name = settings.LLM_MODEL
+
+    if not current_client:
+        raise Exception("No API Key configured for the requested model type")
         
-    response = await client.chat.completions.create(
-        model=settings.LLM_MODEL,
+    response = await current_client.chat.completions.create(
+        model=model_name,
         messages=messages,
         temperature=0.1,
-        response_format={"type": "json_object"}
+        response_format={"type": "json_object"},
+        timeout=timeout
     )
     
     content = response.choices[0].message.content
@@ -46,20 +67,31 @@ async def call_llm(messages: List[Dict[str, str]]) -> Dict[str, Any]:
         content = content.strip().strip('`')
         return json.loads(content)
 
-async def analyze_news(news_content: str, existing_tags: List[str] = []) -> Dict[str, Any]:
-    if not client:
+async def analyze_news(news_content: str, existing_tags: List[str] = [], mode: str = "standard") -> Dict[str, Any]:
+    if not client and not fast_client:
         return {'error': 'No API Key'}
 
     # Note: existing_tags logic is temporarily removed to focus on strict structure compliance
     # If context is needed, we can inject it into the prompt template.
     
+    if mode == "fast":
+        system_prompt = FAST_ANALYSIS_SYSTEM_PROMPT
+        user_prompt = FAST_ANALYSIS_USER_PROMPT_TEMPLATE.format(content=news_content)
+        timeout = 10.0 # Fast timeout
+        use_fast_model = True
+    else:
+        system_prompt = ANALYSIS_SYSTEM_PROMPT
+        user_prompt = ANALYSIS_USER_PROMPT_TEMPLATE.format(content=news_content)
+        timeout = 45.0
+        use_fast_model = False
+    
     messages = [
-        {"role": "system", "content": ANALYSIS_SYSTEM_PROMPT},
-        {"role": "user", "content": ANALYSIS_USER_PROMPT_TEMPLATE.format(content=news_content)}
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
     ]
 
     try:
-        return await call_llm(messages)
+        return await call_llm(messages, timeout=timeout, use_fast_model=use_fast_model)
     except Exception as e:
         print(f'LLM Analysis Error (after retries): {e}')
         return {'error': str(e)}

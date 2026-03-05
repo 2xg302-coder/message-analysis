@@ -61,7 +61,7 @@ fi
 
 echo "✅ 环境准备就绪，启动服务..."
 echo "🌐 前端地址: http://localhost:5173"
-echo "🔌 后端地址: http://localhost:3001"
+echo "🔌 后端地址: http://localhost:8000"
 echo "提示: 按 Ctrl+C 可停止所有服务"
 
 # 使用 concurrently 并行启动
@@ -71,5 +71,5 @@ echo "提示: 按 Ctrl+C 可停止所有服务"
     --prefix "[{name}]" \
     --names "BACKEND,FRONTEND" \
     --prefix-colors "blue,magenta" \
-    "cd server_py && venv/bin/python -m uvicorn main:app --reload --port 3001" \
+    "cd server_py && source venv/bin/activate && python main.py" \
     "cd client && pnpm dev"

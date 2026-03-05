@@ -57,9 +57,9 @@ class NewsService:
             record = news_item.copy()
             record['created_at'] = datetime.now().isoformat()
             
-            # Serialize JSON fields
-            tags = json.dumps(record.get('tags', [])) if isinstance(record.get('tags'), list) else record.get('tags')
-            entities = json.dumps(record.get('entities', {})) if isinstance(record.get('entities'), dict) else record.get('entities')
+            # Serialize JSON fields with ensure_ascii=False to save Chinese characters directly
+            tags = json.dumps(record.get('tags', []), ensure_ascii=False) if isinstance(record.get('tags'), list) else record.get('tags')
+            entities = json.dumps(record.get('entities', {}), ensure_ascii=False) if isinstance(record.get('entities'), dict) else record.get('entities')
             simhash_val = str(record.get('simhash')) if record.get('simhash') is not None else None
 
             query = '''
@@ -79,7 +79,7 @@ class NewsService:
                 record.get('scrapedAt', ''),
                 record['created_at'],
                 record.get('source', 'unknown'),
-                json.dumps(record),
+                json.dumps(record, ensure_ascii=False),
                 record.get('type', 'article'),
                 tags,
                 entities,
@@ -102,7 +102,10 @@ class NewsService:
 
     def get_news(self, limit: int = 100, offset: int = 0, 
                  news_type: Optional[str] = None, 
-                 min_impact: Optional[int] = None) -> List[Dict[str, Any]]:
+                 min_impact: Optional[int] = None,
+                 tag: Optional[str] = None,
+                 start_date: Optional[str] = None,
+                 end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         
         query = "SELECT * FROM news WHERE 1=1"
         params = []
@@ -114,6 +117,28 @@ class NewsService:
         if min_impact is not None:
             query += " AND impact_score >= ?"
             params.append(min_impact)
+
+        if tag:
+            # Simple substring match for JSON array. 
+            # Note: This might match partial words, but it's okay for simple tag search.
+            # Ideally, we should use json_each or FTS5 if supported/needed.
+            # For strict match in JSON array ["tag1", "tag2"]: LIKE '%"tag"%'
+            # But tags might be stored with or without spaces in JSON.
+            # Let's try broad match first.
+            
+            # Convert tag to unicode escaped string for legacy data compatibility
+            # json.dumps("南向资金") -> "\u5357\u5411\u8d44\u91d1" (with quotes)
+            # We need to strip quotes
+            escaped_tag = json.dumps(tag).strip('"')
+            
+            # Query for both raw tag (future data) and escaped tag (legacy data)
+            query += " AND (tags LIKE ? OR tags LIKE ?)"
+            params.append(f'%{tag}%')
+            params.append(f'%{escaped_tag}%')
+
+        if start_date and end_date:
+            query += " AND date(created_at) BETWEEN ? AND ?"
+            params.extend([start_date, end_date])
             
         query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
         params.append(limit)
@@ -130,7 +155,7 @@ class NewsService:
     def save_analysis(self, news_id: str, analysis_result: Dict[str, Any]) -> bool:
         try:
             updates = {
-                'analysis': json.dumps(analysis_result),
+                'analysis': json.dumps(analysis_result, ensure_ascii=False),
                 'analyzed_at': datetime.now().isoformat()
             }
             
@@ -139,9 +164,9 @@ class NewsService:
             if 'sentiment_score' in analysis_result:
                 updates['sentiment_score'] = analysis_result['sentiment_score']
             if 'tags' in analysis_result:
-                updates['tags'] = json.dumps(analysis_result['tags'])
+                updates['tags'] = json.dumps(analysis_result['tags'], ensure_ascii=False)
             if 'entities' in analysis_result:
-                updates['entities'] = json.dumps(analysis_result['entities'])
+                updates['entities'] = json.dumps(analysis_result['entities'], ensure_ascii=False)
 
             set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
             values = list(updates.values())
@@ -153,20 +178,68 @@ class NewsService:
             logger.error(f"Error saving analysis for {news_id}: {e}")
             return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_tag_stats(self, limit: int = 100, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+        query = "SELECT tags FROM news WHERE tags IS NOT NULL"
+        params = []
+        if start_date and end_date:
+            # Use date() to compare only the date part, ignoring time
+            query += " AND date(created_at) BETWEEN ? AND ?"
+            params.extend([start_date, end_date])
+        query += " ORDER BY created_at DESC LIMIT 2000"
+        
+        rows = self.db.execute_query(query, tuple(params))
+        tag_counts = {}
+        for row in rows:
+            tags = self._parse_json_field(row['tags'], [])
+            if isinstance(tags, list):
+                for tag in tags:
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        
+        sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+        return [{"name": name, "value": count} for name, count in sorted_tags]
+
+    def get_type_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+        query = "SELECT analysis FROM news WHERE analysis IS NOT NULL"
+        params = []
+        if start_date and end_date:
+            query += " AND date(created_at) BETWEEN ? AND ?"
+            params.extend([start_date, end_date])
+        query += " ORDER BY created_at DESC LIMIT 2000"
+        
+        rows = self.db.execute_query(query, tuple(params))
+        type_counts = {}
+        for row in rows:
+            analysis = self._parse_json_field(row['analysis'], {})
+            etype = analysis.get('event_type', '其他')
+            type_counts[etype] = type_counts.get(etype, 0) + 1
+            
+        return [{"name": name, "value": count} for name, count in type_counts.items()]
+
+    def get_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, Any]:
         try:
-            total = self.db.execute_query('SELECT COUNT(*) as count FROM news')[0]['count']
-            analyzed = self.db.execute_query('SELECT COUNT(*) as count FROM news WHERE analysis IS NOT NULL')[0]['count']
+            where_clause = ""
+            params = []
+            if start_date and end_date:
+                where_clause = " WHERE date(created_at) BETWEEN ? AND ?"
+                params.extend([start_date, end_date])
+
+            total_query = f'SELECT COUNT(*) as count FROM news{where_clause}'
+            total = self.db.execute_query(total_query, tuple(params))[0]['count']
+            
+            analyzed_where = where_clause + (" AND" if where_clause else " WHERE") + " analysis IS NOT NULL"
+            analyzed_query = f'SELECT COUNT(*) as count FROM news{analyzed_where}'
+            analyzed = self.db.execute_query(analyzed_query, tuple(params))[0]['count']
             
             # Trends
-            trends_query = '''
+            trends_query = f'''
                 SELECT substr(created_at, 12, 2) as hour, count(*) as count 
                 FROM news 
+                {where_clause}
                 GROUP BY hour 
                 ORDER BY hour DESC 
                 LIMIT 12
             '''
-            trends = self.db.execute_query(trends_query)
+            trends = self.db.execute_query(trends_query, tuple(params))
             trends.reverse()
             
             return {
@@ -179,8 +252,15 @@ class NewsService:
             logger.error(f"Error getting stats: {e}")
             return {'total': 0, 'analyzed': 0, 'pending': 0, 'trends': []}
 
-    def get_top_entities(self, limit: int = 50) -> List[Dict[str, Any]]:
-        rows = self.db.execute_query("SELECT entities FROM news WHERE entities IS NOT NULL ORDER BY created_at DESC LIMIT 1000")
+    def get_top_entities(self, limit: int = 50, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+        query = "SELECT entities FROM news WHERE entities IS NOT NULL"
+        params = []
+        if start_date and end_date:
+            query += " AND date(created_at) BETWEEN ? AND ?"
+            params.extend([start_date, end_date])
+        query += " ORDER BY created_at DESC LIMIT 1000"
+
+        rows = self.db.execute_query(query, tuple(params))
         entity_counts = {}
         
         for row in rows:

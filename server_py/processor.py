@@ -12,13 +12,20 @@ class NewsProcessor:
         self.keyword_processor = KeywordProcessor()
         self.simhash_cache: List[Dict[str, Any]] = [] # {simhash, time}
         self.rules = {
-            "立案调查": {"score": 5, "sentiment": -0.8},
-            "业绩预增": {"score": 4, "sentiment": 0.6},
-            "涨停": {"score": 3, "sentiment": 0.5},
-            "跌停": {"score": 3, "sentiment": -0.5},
-            "收购": {"score": 4, "sentiment": 0.2},
-            "减持": {"score": 3, "sentiment": -0.3},
-            "增持": {"score": 3, "sentiment": 0.3},
+            "立案调查": {"score": 5, "sentiment": -0.8, "tags": ["监管", "立案"]},
+            "业绩预增": {"score": 4, "sentiment": 0.6, "tags": ["业绩"]},
+            "涨停": {"score": 3, "sentiment": 0.5, "tags": ["行情"]},
+            "跌停": {"score": 3, "sentiment": -0.5, "tags": ["行情"]},
+            "收购": {"score": 4, "sentiment": 0.2, "tags": ["并购"]},
+            "减持": {"score": 3, "sentiment": -0.3, "tags": ["人事"]},
+            "增持": {"score": 3, "sentiment": 0.3, "tags": ["人事"]},
+            "加息": {"score": 5, "sentiment": -0.3, "tags": ["宏观", "货币政策"]},
+            "降息": {"score": 5, "sentiment": 0.4, "tags": ["宏观", "货币政策"]},
+            "黄金": {"score": 3, "sentiment": 0.1, "tags": ["大宗商品"]},
+            "战争": {"score": 5, "sentiment": -0.5, "tags": ["地缘政治"]},
+            "冲突": {"score": 4, "sentiment": -0.4, "tags": ["地缘政治"]},
+            "传闻": {"score": 2, "sentiment": 0.0, "tags": ["市场传闻"]},
+            "小作文": {"score": 2, "sentiment": 0.0, "tags": ["市场传闻"]},
         }
         self.load_keywords()
         self.load_recent_hashes()
@@ -151,12 +158,16 @@ class NewsProcessor:
         score = 0
         sentiment = 0.0
         matched_rules = []
+        tags = set()
         
         for keyword, rule in self.rules.items():
             if keyword in text:
                 score += rule['score']
                 sentiment += rule['sentiment']
                 matched_rules.append(keyword)
+                if 'tags' in rule:
+                    for t in rule['tags']:
+                        tags.add(t)
         
         # Normalize sentiment
         if matched_rules:
@@ -165,7 +176,8 @@ class NewsProcessor:
         return {
             "impact_score": min(score, 10), # Cap at 10
             "sentiment": max(min(sentiment, 1.0), -1.0), # Clamp -1 to 1
-            "matched_rules": matched_rules
+            "matched_rules": matched_rules,
+            "tags": list(tags)
         }
 
     def process(self, news_item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -198,15 +210,12 @@ class NewsProcessor:
         entities = self.extract_entities(clean_content)
         news_item['entities'] = entities
         
-        # 4. Rating
+        # 4. Rating & Tagging
         rating = self.rate_news(clean_content)
         news_item['rating'] = rating
         
         # 5. Tags (from matched rules)
-        # Use matched rules as initial tags
-        if rating.get('matched_rules'):
-            news_item['tags'] = rating['matched_rules']
-        else:
-            news_item['tags'] = []
+        # Combine matched rules and rule-based tags
+        news_item['tags'] = rating.get('matched_rules', []) + rating.get('tags', [])
         
         return news_item
