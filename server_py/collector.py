@@ -1,57 +1,63 @@
-import akshare as ak
-import pandas as pd
-import hashlib
-import json
+import time
 from datetime import datetime
+from apscheduler.schedulers.blocking import BlockingScheduler
+from collectors.sina_collector import SinaCollector
+from collectors.eastmoney_collector import EastMoneyCollector
+from processor import NewsProcessor
 from database import add_news_batch
 
-def generate_id(link: str, title: str) -> str:
-    """Generate a unique ID based on link or title"""
-    raw = f"{link}-{title}"
-    return hashlib.md5(raw.encode('utf-8')).hexdigest()
-
-def fetch_and_save_news():
-    print("🚀 Starting AkShare news collection...")
-    try:
-        # Fetch general stock news from East Money
-        news_df = ak.stock_news_em_general()
+class CollectorService:
+    def __init__(self):
+        print("🔧 Initializing Collector Service...")
+        self.sina = SinaCollector()
+        self.eastmoney = EastMoneyCollector()
+        self.processor = NewsProcessor()
         
-        if news_df.empty:
-            print("⚠️ No news fetched from AkShare.")
-            return 0
-            
-        # Rename columns to match our schema
-        # Expected columns: "新闻标题", "新闻内容", "发布时间", "文章链接"
-        news_list = []
+    def run_sina(self):
+        raw_news = self.sina.collect()
+        self.process_and_save(raw_news)
         
-        for _, row in news_df.iterrows():
-            title = row.get('新闻标题', '')
-            content = row.get('新闻内容', '')
-            time_str = row.get('发布时间', '')
-            link = row.get('文章链接', '')
+    def run_eastmoney(self):
+        raw_news = self.eastmoney.collect()
+        self.process_and_save(raw_news)
+        
+    def process_and_save(self, news_list):
+        if not news_list:
+            return
             
-            if not title:
-                continue
+        processed_list = []
+        for item in news_list:
+            processed = self.processor.process(item)
+            if processed:
+                processed_list.append(processed)
                 
-            news_item = {
-                'id': generate_id(link, title),
-                'title': title,
-                'content': content or title, # Fallback to title if content is empty
-                'link': link,
-                'time': time_str,
-                'source': 'EastMoney',
-                'scrapedAt': datetime.now().isoformat()
-            }
-            news_list.append(news_item)
-            
-        # Batch insert into database
-        count = add_news_batch(news_list)
-        print(f"✅ AkShare collection complete. Added {count} new items.")
-        return count
+        if processed_list:
+            count = add_news_batch(processed_list)
+            print(f"💾 Saved {count} new items to database.")
+        else:
+            print("DATA: No new valid items to save (all duplicates or filtered).")
+
+    def start(self):
+        print("🚀 Starting Collector Service with Scheduler...")
+        scheduler = BlockingScheduler()
         
-    except Exception as e:
-        print(f"❌ Error fetching news from AkShare: {e}")
-        return 0
+        # Add jobs
+        # Sina: 30s
+        scheduler.add_job(self.run_sina, 'interval', seconds=30)
+        
+        # EastMoney: 5m
+        scheduler.add_job(self.run_eastmoney, 'interval', minutes=5)
+        
+        # Run immediately once before scheduler starts
+        print("⚡ Running initial collection...")
+        self.run_sina()
+        self.run_eastmoney()
+        
+        try:
+            scheduler.start()
+        except (KeyboardInterrupt, SystemExit):
+            print("🛑 Collector Service stopped.")
 
 if __name__ == "__main__":
-    fetch_and_save_news()
+    service = CollectorService()
+    service.start()

@@ -5,8 +5,8 @@ const api = axios.create({
 });
 
 // 获取新闻列表
-// source: 可选，新闻来源
-export const getNews = (source) => api.get('/news', { params: { source } });
+// params: { source, type, importance_min, sentiment_min, sentiment_max, entities }
+export const getNews = (params) => api.get('/news', { params });
 
 // 获取统计数据 (待后端实现)
 export const getStats = () => api.get('/stats');

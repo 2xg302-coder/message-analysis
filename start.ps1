@@ -66,7 +66,7 @@ if (-not $SkipInstall) {
 
 Write-Host "Environment ready, starting services..."
 Write-Host "Frontend: http://localhost:5173"
-Write-Host "Backend: http://localhost:3001"
+Write-Host "Backend: http://localhost:8000"
 Write-Host "Tip: Press Ctrl+C to stop all services"
 
 $backendCmd = 'cd server_py && venv\Scripts\python main.py'

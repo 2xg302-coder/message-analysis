@@ -10,6 +10,38 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def migrate_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if columns exist
+        cursor.execute("PRAGMA table_info(news)")
+        columns = [row['name'] for row in cursor.fetchall()]
+        
+        new_columns = {
+            'type': "TEXT DEFAULT 'article'",
+            'tags': "TEXT",
+            'entities': "TEXT",
+            'impact_score': "INTEGER",
+            'sentiment_score': "REAL",
+            'simhash': "TEXT"
+        }
+        
+        for col, defn in new_columns.items():
+            if col not in columns:
+                print(f"Adding column {col} to news table...")
+                try:
+                    cursor.execute(f"ALTER TABLE news ADD COLUMN {col} {defn}")
+                except Exception as e:
+                    print(f"Error adding column {col}: {e}")
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Migration error: {e}")
+    finally:
+        conn.close()
+
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -26,7 +58,13 @@ def init_db():
             source TEXT,
             raw_data TEXT,
             analysis TEXT,
-            analyzed_at TEXT
+            analyzed_at TEXT,
+            type TEXT DEFAULT 'article',
+            tags TEXT,
+            entities TEXT,
+            impact_score INTEGER,
+            sentiment_score REAL,
+            simhash TEXT
         )
     ''')
     cursor.execute('''
@@ -37,6 +75,7 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
+    migrate_db()
 
 def add_news(news_item: Dict[str, Any]) -> bool:
     if not news_item or 'id' not in news_item:
@@ -53,9 +92,16 @@ def add_news(news_item: Dict[str, Any]) -> bool:
         record = news_item.copy()
         record['created_at'] = datetime.now().isoformat()
         
+        # Handle complex types for new columns
+        tags = json.dumps(record.get('tags', [])) if isinstance(record.get('tags'), list) else record.get('tags')
+        entities = json.dumps(record.get('entities', {})) if isinstance(record.get('entities'), dict) else record.get('entities')
+        
         cursor.execute('''
-            INSERT INTO news (id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO news (
+                id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data,
+                type, tags, entities, impact_score, sentiment_score, simhash
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             record.get('id'),
             record.get('title', ''),
@@ -66,7 +112,13 @@ def add_news(news_item: Dict[str, Any]) -> bool:
             record.get('scrapedAt', ''),
             record['created_at'],
             record.get('source', 'unknown'),
-            json.dumps(record)
+            json.dumps(record),
+            record.get('type', 'article'),
+            tags,
+            entities,
+            record.get('impact_score', 0),
+            record.get('sentiment_score', 0.0),
+            record.get('simhash')
         ))
         conn.commit()
         return True
@@ -96,9 +148,15 @@ def add_news_batch(news_list: List[Dict[str, Any]]) -> int:
             record = news_item.copy()
             record['created_at'] = datetime.now().isoformat()
             
+            tags = json.dumps(record.get('tags', [])) if isinstance(record.get('tags'), list) else record.get('tags')
+            entities = json.dumps(record.get('entities', {})) if isinstance(record.get('entities'), dict) else record.get('entities')
+            
             cursor.execute('''
-                INSERT INTO news (id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO news (
+                    id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data,
+                    type, tags, entities, impact_score, sentiment_score, simhash
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 record.get('id'),
                 record.get('title', ''),
@@ -109,7 +167,13 @@ def add_news_batch(news_list: List[Dict[str, Any]]) -> int:
                 record.get('scrapedAt', ''),
                 record['created_at'],
                 record.get('source', 'unknown'),
-                json.dumps(record)
+                json.dumps(record),
+                record.get('type', 'article'),
+                tags,
+                entities,
+                record.get('impact_score', 0),
+                record.get('sentiment_score', 0.0),
+                record.get('simhash')
             ))
             added_count += 1
         
@@ -132,10 +196,20 @@ def get_latest_news(limit: int = 1000) -> List[Dict[str, Any]]:
         for row in rows:
             item = dict(row)
             try:
-                raw_data = json.loads(item['raw_data']) if item['raw_data'] else {}
-                analysis = json.loads(item['analysis']) if item['analysis'] else None
-                item.update(raw_data)
-                item['analysis'] = analysis
+                # Parse JSON fields
+                if item.get('raw_data'):
+                    raw_data = json.loads(item['raw_data'])
+                    item.update(raw_data) # Be careful not to overwrite new columns if raw_data has old values
+                
+                if item.get('analysis'):
+                    item['analysis'] = json.loads(item['analysis'])
+                
+                if item.get('tags'):
+                    item['tags'] = json.loads(item['tags'])
+                
+                if item.get('entities'):
+                    item['entities'] = json.loads(item['entities'])
+                    
                 result.append(item)
             except:
                 result.append(item)
@@ -153,8 +227,12 @@ def get_unanalyzed_news(limit: int = 10) -> List[Dict[str, Any]]:
         for row in rows:
             item = dict(row)
             try:
-                raw_data = json.loads(item['raw_data']) if item['raw_data'] else {}
-                item.update(raw_data)
+                if item.get('raw_data'):
+                    item.update(json.loads(item['raw_data']))
+                if item.get('tags'):
+                    item['tags'] = json.loads(item['tags'])
+                if item.get('entities'):
+                    item['entities'] = json.loads(item['entities'])
                 result.append(item)
             except:
                 result.append(item)
@@ -189,7 +267,7 @@ def get_stats() -> Dict[str, Any]:
         pending = total - analyzed
         
         # Analyze last 1000 for details
-        cursor.execute('SELECT analysis FROM news WHERE analysis IS NOT NULL ORDER BY created_at DESC LIMIT 1000')
+        cursor.execute('SELECT analysis, impact_score FROM news WHERE analysis IS NOT NULL ORDER BY created_at DESC LIMIT 1000')
         rows = cursor.fetchall()
         
         high_score_count = 0
@@ -199,17 +277,30 @@ def get_stats() -> Dict[str, Any]:
         
         for row in rows:
             try:
-                analysis = json.loads(row['analysis'])
-                score = analysis.get('score', analysis.get('relevance_score', 0))
-                if score >= 7:
-                    high_score_count += 1
-                elif score >= 4:
-                    medium_score_count += 1
-                else:
-                    low_score_count += 1
+                # Use impact_score column if available and non-zero, otherwise fallback to analysis
+                impact = row['impact_score']
+                if not impact and row['analysis']:
+                    analysis = json.loads(row['analysis'])
+                    impact = analysis.get('score', analysis.get('relevance_score', 0))
                 
-                if analysis.get('event_tag'):
-                    series_set.add(analysis['event_tag'])
+                if impact:
+                    if impact >= 4: # Assuming 1-5 scale, 4-5 is high? Or user said 1-5.
+                        # Old logic: score >= 7 (high), >= 4 (medium). 
+                        # New impact_score is 1-5. Let's say 4-5 is high, 3 medium, 1-2 low.
+                        # Wait, user didn't define thresholds. I'll stick to old logic if using old score, 
+                        # but for new impact_score (1-5), maybe 5 is high, 3-4 medium?
+                        # Let's just use the value directly if it's new data.
+                        if impact >= 4:
+                            high_score_count += 1
+                        elif impact >= 2:
+                            medium_score_count += 1
+                        else:
+                            low_score_count += 1
+                
+                if row['analysis']:
+                    analysis = json.loads(row['analysis'])
+                    if analysis.get('event_tag'):
+                        series_set.add(analysis['event_tag'])
             except:
                 pass
         
@@ -317,11 +408,12 @@ def get_news_by_series(tag: str) -> List[Dict[str, Any]]:
         for row in rows:
             try:
                 item = dict(row)
-                raw_data = json.loads(item['raw_data']) if item['raw_data'] else {}
+                if item.get('raw_data'):
+                    item.update(json.loads(item['raw_data']))
+                
                 analysis = json.loads(item['analysis']) if item['analysis'] else None
                 
                 if analysis and analysis.get('event_tag') == tag:
-                    item.update(raw_data)
                     item['analysis'] = analysis
                     result.append(item)
             except:
@@ -329,6 +421,76 @@ def get_news_by_series(tag: str) -> List[Dict[str, Any]]:
         return result
     except Exception as e:
         print(f"Error getting news by series: {e}")
+        return []
+    finally:
+        conn.close()
+
+def get_news_filtered(limit: int = 100, offset: int = 0, news_type: Optional[str] = None, min_impact: Optional[int] = None) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM news WHERE 1=1"
+    params = []
+    
+    if news_type:
+        query += " AND type = ?"
+        params.append(news_type)
+        
+    if min_impact:
+        query += " AND impact_score >= ?"
+        params.append(min_impact)
+        
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    params.append(limit)
+    params.append(offset)
+    
+    try:
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            try:
+                if item.get('raw_data'):
+                    item.update(json.loads(item['raw_data']))
+                if item.get('analysis'):
+                    item['analysis'] = json.loads(item['analysis'])
+                if item.get('tags'):
+                    item['tags'] = json.loads(item['tags'])
+                if item.get('entities'):
+                    item['entities'] = json.loads(item['entities'])
+                result.append(item)
+            except:
+                result.append(item)
+        return result
+    except Exception as e:
+        print(f"Error getting filtered news: {e}")
+        return []
+    finally:
+        conn.close()
+
+def get_top_entities(limit: int = 50) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Aggregate entities from recent news (last 1000 items to keep it fast)
+        cursor.execute("SELECT entities FROM news WHERE entities IS NOT NULL AND entities != '{}' ORDER BY created_at DESC LIMIT 1000")
+        rows = cursor.fetchall()
+        
+        entity_counts = {}
+        for row in rows:
+            try:
+                ents = json.loads(row['entities'])
+                if isinstance(ents, dict):
+                    for name, desc in ents.items():
+                        entity_counts[name] = entity_counts.get(name, 0) + 1
+            except:
+                pass
+        
+        # Sort by count
+        sorted_entities = sorted(entity_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+        return [{"name": name, "count": count} for name, count in sorted_entities]
+    except Exception as e:
+        print(f"Error getting top entities: {e}")
         return []
     finally:
         conn.close()

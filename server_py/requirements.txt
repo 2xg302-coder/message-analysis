@@ -7,3 +7,6 @@ apscheduler
 akshare
 tenacity
 httpx
+simhash
+flashtext
+sqlite-utils

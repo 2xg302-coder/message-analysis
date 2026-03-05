@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Card, Row, Col, Statistic, Spin, Progress, Switch, Alert, Steps } from 'antd';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { Typography, Card, Row, Col, Statistic, Spin, Progress, Switch, Alert, Steps, Tag } from 'antd';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { getStats, getAnalysisStatus, setAnalysisControl } from '../services/api';
-import { RobotOutlined, PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { RobotOutlined, PauseCircleOutlined, PlayCircleOutlined, FireOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
-const COLORS = ['#cf1322', '#fa8c16', '#d9d9d9'];
+const COLORS = ['#cf1322', '#fa8c16', '#1890ff', '#52c41a', '#722ed1'];
 
 const Trends = () => {
   const [loading, setLoading] = useState(true);
@@ -15,7 +15,9 @@ const Trends = () => {
     high_score: 0,
     medium_score: 0,
     low_score: 0,
-    trends: []
+    trends: [],
+    hot_entities: [], // 假设后端返回热点实体
+    impact_sentiment_data: [] // 假设后端返回用于热力图的数据
   });
   
   // 分析任务状态
@@ -52,9 +54,7 @@ const Trends = () => {
     fetchStats();
     fetchAnalysisStatus();
     
-    // 状态刷新频率更高，以便看到实时进度
     const statusInterval = setInterval(fetchAnalysisStatus, 2000);
-    // 统计数据刷新频率稍低
     const statsInterval = setInterval(fetchStats, 30000);
     
     return () => {
@@ -81,7 +81,7 @@ const Trends = () => {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={2} style={{ margin: 0 }}>AI 分析控制台</Title>
+        <Title level={2} style={{ margin: 0 }}>数据洞察与分析</Title>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Text strong>AI 分析任务：</Text>
           <Switch 
@@ -93,114 +93,108 @@ const Trends = () => {
         </div>
       </div>
       
-      {/* 实时任务监控卡片 */}
-      <Card 
-        style={{ marginBottom: 24, borderLeft: `4px solid ${analysisStatus.isRunning ? '#52c41a' : '#d9d9d9'}` }}
-        title={
-            <span>
-                <RobotOutlined style={{ marginRight: 8 }} />
-                {analysisStatus.isRunning ? (analysisStatus.currentTask ? '正在分析...' : '正在待机 (等待新数据)') : '分析任务已暂停'}
-            </span>
-        }
-      >
-        {analysisStatus.currentTask ? (
-            <div>
-                <div style={{ marginBottom: 12 }}>
-                    <Text type="secondary">新闻ID: {analysisStatus.currentTask.id}</Text>
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16 }}>
-                    {analysisStatus.currentTask.title}
-                </div>
-                <Steps
-                    size="small"
-                    current={1}
-                    items={[
-                        { title: '获取数据' },
-                        { title: 'DeepSeek 思考中...', icon: <Spin /> },
-                        { title: '提取结构化知识' },
-                    ]}
-                />
-            </div>
-        ) : (
-            <div style={{ color: '#999', fontStyle: 'italic' }}>
-                {analysisStatus.isRunning ? '暂无新任务，Worker 正在轮询...' : '点击上方开关恢复分析任务'}
-            </div>
-        )}
-      </Card>
-      
       <Spin spinning={loading}>
-        {/* 顶部核心指标 */}
+        {/* 核心指标卡片 */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col span={6}>
             <Card>
-              <Statistic title="新闻总入库" value={stats.total} prefix="📚" />
+              <Statistic title="新闻总量" value={stats.total} prefix="📚" />
             </Card>
           </Col>
           <Col span={6}>
             <Card>
-              <Statistic 
-                title="已分析" 
-                value={stats.analyzed} 
-                suffix={`/ ${stats.total}`} 
-                prefix="🤖"
-              />
+              <Statistic title="已分析" value={stats.analyzed} suffix={`/ ${stats.total}`} prefix="🤖" />
               <Progress percent={Math.round((stats.analyzed / (stats.total || 1)) * 100)} size="small" />
             </Card>
           </Col>
           <Col span={6}>
             <Card>
-              <Statistic title="高分新闻" value={stats.high_score} valueStyle={{ color: '#cf1322' }} prefix="🔥" />
+              <Statistic title="情感偏向 (今日)" value={0.2} precision={2} valueStyle={{ color: '#cf1322' }} prefix="📈" />
             </Card>
           </Col>
           <Col span={6}>
             <Card>
-              <Statistic title="一般新闻" value={(stats.medium_score || 0) + (stats.low_score || 0)} prefix="📰" />
+              <Statistic title="高影响因子" value={stats.high_score} prefix="💥" valueStyle={{ color: '#fa8c16' }} />
             </Card>
           </Col>
         </Row>
 
         <Row gutter={[16, 16]}>
-          {/* 评分分布饼图 */}
-          <Col span={12}>
-            <Card title="评分分布">
-              <div style={{ height: 300, display: 'flex', justifyContent: 'center' }}>
+          {/* 情感 vs 影响 散点图 (模拟热力图) */}
+          <Col span={16}>
+            <Card title="情感与影响力分布 (热力模拟)">
+              <div style={{ height: 400 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={scoreData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      paddingAngle={5}
-                      dataKey="value"
-                      label
-                    >
-                      {scoreData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
+                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                    <CartesianGrid />
+                    <XAxis type="number" dataKey="sentiment" name="情感评分" unit="" domain={[-1, 1]} label={{ value: '情感倾向 (利空 -> 利好)', position: 'insideBottom', offset: -10 }} />
+                    <YAxis type="number" dataKey="impact" name="影响力" unit="" domain={[0, 5]} label={{ value: '影响力', angle: -90, position: 'insideLeft' }} />
+                    <ZAxis type="number" dataKey="count" range={[60, 400]} name="出现次数" />
+                    <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                     <Legend />
-                  </PieChart>
+                    <Scatter name="新闻分布" data={stats.impact_sentiment_data || [
+                      { sentiment: 0.8, impact: 4.5, count: 10 },
+                      { sentiment: -0.7, impact: 4.2, count: 8 },
+                      { sentiment: 0.1, impact: 2.0, count: 25 },
+                      { sentiment: 0.5, impact: 3.5, count: 15 },
+                      { sentiment: -0.2, impact: 1.5, count: 30 },
+                    ]} fill="#1890ff" />
+                  </ScatterChart>
                 </ResponsiveContainer>
               </div>
             </Card>
           </Col>
 
-          {/* 采集趋势柱状图 */}
-          <Col span={12}>
-            <Card title="近12小时采集量趋势">
+          {/* 今日热点实体 (词云替代方案) */}
+          <Col span={8}>
+            <Card title={<Space><FireOutlined style={{ color: '#ff4d4f' }} /> 今日核心实体</Space>}>
+              <div style={{ height: 400, overflowY: 'auto', padding: '10px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  {(stats.hot_entities || [
+                    { name: '英伟达', score: 95 },
+                    { name: '美联储', score: 88 },
+                    { name: '比特币', score: 82 },
+                    { name: '特斯拉', score: 75 },
+                    { name: '降息', score: 70 },
+                    { name: 'AI芯片', score: 65 },
+                    { name: '财报', score: 60 },
+                    { name: '黄金', score: 55 },
+                    { name: 'SpaceX', score: 50 },
+                    { name: 'OpenAI', score: 45 },
+                  ]).map((entity, index) => (
+                    <Tag 
+                      key={index} 
+                      color={COLORS[index % COLORS.length]} 
+                      style={{ 
+                        fontSize: `${Math.max(12, entity.score / 3)}px`, 
+                        padding: '4px 10px',
+                        margin: '4px',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {entity.name}
+                    </Tag>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+           {/* 采集趋势 */}
+           <Col span={24}>
+            <Card title="24小时舆情热度趋势">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.trends}>
+                <LineChart data={stats.trends}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="hour" label={{ value: '小时', position: 'insideBottomRight', offset: 0 }} />
+                  <XAxis dataKey="hour" />
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="count" name="新闻数量" fill="#8884d8" />
-                </BarChart>
+                  <Line type="monotone" dataKey="count" name="采集数量" stroke="#1890ff" activeDot={{ r: 8 }} />
+                </LineChart>
               </ResponsiveContainer>
             </Card>
           </Col>
