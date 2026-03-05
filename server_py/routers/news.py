@@ -1,0 +1,118 @@
+from fastapi import APIRouter, HTTPException, Query
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
+
+# Import models
+# Assuming models.py is in the parent directory (server_py)
+# When running from server_py context, we can import directly if sys.path is set correctly
+# Or we can use relative imports if this is a package
+try:
+    from models import NewsItem
+except ImportError:
+    # Fallback if models not found directly
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+    from models import NewsItem
+
+from services.news_service import news_service
+from core.logging import get_logger
+
+logger = get_logger("news_router")
+router = APIRouter(prefix="/api")
+
+class WatchlistUpdate(BaseModel):
+    keywords: List[str]
+
+@router.post("/news")
+async def create_news(news_item: NewsItem):
+    try:
+        item_dict = news_item.dict()
+        added = news_service.add_news(item_dict)
+        return {"success": True, "added": added}
+    except Exception as e:
+        logger.error(f"Error creating news: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/news/batch")
+async def create_news_batch(news_list: List[NewsItem]):
+    try:
+        items = [item.dict() for item in news_list]
+        added_count = news_service.add_news_batch(items)
+        return {"success": True, "received": len(news_list), "added": added_count}
+    except Exception as e:
+        logger.error(f"Error creating news batch: {e}")
+        raise HTTPException(status_code=500, detail="Batch processing failed")
+
+@router.get("/news")
+async def read_news(
+    limit: int = 100, 
+    offset: int = 0, 
+    type: Optional[str] = None, 
+    min_impact: Optional[int] = None,
+    source: Optional[str] = None
+):
+    try:
+        if type == 'all':
+            type = None
+            
+        news = news_service.get_news(limit=limit, offset=offset, news_type=type, min_impact=min_impact)
+        
+        if source:
+             news = [n for n in news if n.get('source') == source]
+             
+        return {"count": len(news), "data": news}
+    except Exception as e:
+        logger.error(f"Error reading news: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/stats")
+async def read_stats():
+    try:
+        stats = news_service.get_stats()
+        return {"success": True, "data": stats}
+    except Exception as e:
+        logger.error(f"Error reading stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get stats")
+
+@router.get("/entities")
+async def read_entities(limit: int = 50):
+    try:
+        entities = news_service.get_top_entities(limit=limit)
+        return {"success": True, "count": len(entities), "data": entities}
+    except Exception as e:
+        logger.error(f"Error reading entities: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get entities")
+
+@router.get("/series")
+async def read_series():
+    try:
+        series_list = news_service.get_series_list()
+        return {"success": True, "count": len(series_list), "data": series_list}
+    except Exception as e:
+        logger.error(f"Error reading series: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get series list")
+
+@router.get("/series/{tag}")
+async def read_series_by_tag(tag: str):
+    try:
+        news = news_service.get_news_by_series(tag)
+        return {"success": True, "count": len(news), "data": news}
+    except Exception as e:
+        logger.error(f"Error reading series tag {tag}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get series news")
+
+@router.get("/watchlist")
+async def read_watchlist():
+    keywords = news_service.get_watchlist()
+    if not keywords:
+        keywords = ['半导体', '人工智能', '新能源']
+        news_service.update_watchlist(keywords)
+    return {"success": True, "data": keywords}
+
+@router.post("/watchlist")
+async def update_watchlist_endpoint(watchlist: WatchlistUpdate):
+    success = news_service.update_watchlist(watchlist.keywords)
+    if not success:
+         raise HTTPException(status_code=500, detail="Failed to update watchlist")
+    return {"success": True}

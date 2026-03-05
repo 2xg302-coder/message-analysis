@@ -1,0 +1,84 @@
+import asyncio
+from typing import Optional
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
+from core.logging import get_logger
+from services.news_service import news_service
+
+logger = get_logger("ingestion_service")
+
+# Global scheduler for ingestion
+scheduler = AsyncIOScheduler()
+
+async def run_ingestion(collector, source_name, processor):
+    # logger.info(f"Running ingestion for {source_name}...")
+    try:
+        # Run in executor to avoid blocking event loop
+        news_list = await asyncio.to_thread(collector.collect)
+        if news_list:
+            processed_list = []
+            for news in news_list:
+                try:
+                    # Process news (clean, dedupe, NER, rate)
+                    processed = processor.process(news)
+                    if processed:
+                        # Map processed fields to NewsItem/DB schema
+                        if 'rating' in processed:
+                            processed['impact_score'] = processed['rating'].get('impact_score', 0)
+                            processed['sentiment_score'] = processed['rating'].get('sentiment', 0.0)
+                        
+                        if 'entities' in processed and isinstance(processed['entities'], list):
+                            ent_dict = {}
+                            for ent in processed['entities']:
+                                if isinstance(ent, dict):
+                                    ent_dict[ent.get('name', 'Unknown')] = ent.get('code', 'Stock')
+                                elif isinstance(ent, str):
+                                    ent_dict[ent] = 'Keyword'
+                            processed['entities'] = ent_dict
+                        
+                        if 'tags' not in processed:
+                            processed['tags'] = []
+                        
+                        processed_list.append(processed)
+                except Exception as e:
+                    logger.error(f"Error processing item from {source_name}: {e}")
+            
+            if processed_list:
+                count = news_service.add_news_batch(processed_list)
+                logger.info(f"Saved {count} new items from {source_name}")
+            else:
+                pass
+    except Exception as e:
+        logger.error(f"Ingestion error for {source_name}: {e}")
+
+def start_ingestion_scheduler():
+    try:
+        # Import here to avoid circular imports or early initialization issues
+        from collectors.sina_collector import SinaCollector
+        from collectors.eastmoney_collector import EastMoneyCollector
+        from processor import NewsProcessor
+        
+        sina_collector = SinaCollector()
+        em_collector = EastMoneyCollector()
+        processor = NewsProcessor()
+        
+        scheduler.add_job(run_ingestion, IntervalTrigger(seconds=30), args=[sina_collector, 'Sina', processor], id='sina_ingestion', replace_existing=True)
+        scheduler.add_job(run_ingestion, IntervalTrigger(minutes=5), args=[em_collector, 'EastMoney', processor], id='em_ingestion', replace_existing=True)
+        
+        scheduler.start()
+        logger.info("Ingestion Scheduler started.")
+        
+        # Run immediately
+        asyncio.create_task(run_ingestion(sina_collector, 'Sina', processor))
+        # asyncio.create_task(run_ingestion(em_collector, 'EastMoney', processor))
+        
+    except ImportError as e:
+        logger.warning(f"Collectors or Processor not available: {e}")
+    except Exception as e:
+        logger.error(f"Ingestion Scheduler startup error: {e}")
+
+def stop_ingestion_scheduler():
+    if scheduler.running:
+        scheduler.shutdown()
+        logger.info("Ingestion Scheduler stopped.")

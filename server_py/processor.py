@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 from simhash import Simhash
 from flashtext import KeywordProcessor
 import akshare as ak
-from database import get_latest_news
+from services.news_service import news_service
 
 class NewsProcessor:
     def __init__(self):
@@ -27,7 +27,7 @@ class NewsProcessor:
         print("Loading recent news for deduplication...")
         try:
             # Load last 1000 items (approx 24-48 hours of volume?)
-            recent_news = get_latest_news(limit=1000)
+            recent_news = news_service.get_news(limit=1000)
             count = 0
             for item in recent_news:
                 # Check if simhash exists in item (it should be in raw_data/item)

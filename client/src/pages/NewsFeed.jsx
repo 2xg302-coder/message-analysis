@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { List, Card, Tag, Typography, Spin, message, Badge, Statistic, Row, Col, Space, Button, Tooltip, Radio, Divider, Pagination } from 'antd';
+import { Card, Typography, Spin, message, Badge, Statistic, Row, Col, Space, Button, Radio, Pagination, Skeleton } from 'antd';
 import { getNews, getAnalysisStatus, setAnalysisControl, getStats } from '../services/api';
 import Sidebar from '../components/Sidebar';
-import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
+import NewsFlash from '../components/NewsFlash';
+import NewsCard from '../components/NewsCard';
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Text } = Typography;
 
 const NewsFeed = () => {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [filters, setFilters] = useState({});
   const [viewMode, setViewMode] = useState('card'); // 'list' | 'card'
   const [stats, setStats] = useState({
@@ -21,11 +22,11 @@ const NewsFeed = () => {
   });
   const [analysisStatus, setAnalysisStatus] = useState({ running: false, current: null });
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
-  const navigate = useNavigate();
 
-  const fetchData = async () => {
+  const fetchData = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isRefresh) setLoading(true);
+      
       const [newsRes, statsRes, statusRes] = await Promise.all([
         getNews(filters),
         getStats(),
@@ -46,12 +47,13 @@ const NewsFeed = () => {
       message.error('获取数据失败');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // 降低刷新频率避免闪烁
+    const interval = setInterval(() => fetchData(true), 30000); // 降低刷新频率避免闪烁
     return () => clearInterval(interval);
   }, [filters]); // 依赖 filters 变化重新加载
 
@@ -59,7 +61,6 @@ const NewsFeed = () => {
     // Merge new filters
     setFilters(prev => {
         const updated = { ...prev, ...newFilters };
-        // If min_impact is selected, it's a number. If cleared, it's undefined.
         return updated;
     });
     
@@ -73,122 +74,15 @@ const NewsFeed = () => {
       const newStatus = !analysisStatus.running;
       await setAnalysisControl(newStatus);
       message.success(newStatus ? '分析任务已启动' : '分析任务已暂停');
-      fetchData();
+      fetchData(true);
     } catch (error) {
       message.error('操作失败');
     }
   };
 
-  // 获取边框颜色
-  const getBorderColor = (item) => {
-    const sentiment = item.sentiment_score || 0;
-    const impact = item.impact_score || 0;
-
-    if (sentiment > 0.5) return '#f5222d'; // 利好 (红)
-    if (sentiment < -0.5) return '#52c41a'; // 利空 (绿)
-    if (impact >= 4) return '#faad14'; // 重要 (黄)
-    return undefined;
-  };
-
-  const renderFlashItem = (item) => (
-    <div style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
-      <Row align="middle" style={{ width: '100%' }}>
-        <Col span={3}>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            {dayjs(item.created_at).format('HH:mm:ss')}
-          </Text>
-        </Col>
-        <Col span={16}>
-          <Text strong style={{ marginRight: 8 }}>{item.title}</Text>
-          {item.tags && Array.isArray(item.tags) && item.tags.map(tag => (
-            <Tag key={tag} color="blue" style={{ fontSize: '10px', lineHeight: '18px' }}>{tag}</Tag>
-          ))}
-        </Col>
-        <Col span={5} style={{ textAlign: 'right' }}>
-           {item.sentiment_score > 0.5 && <Tag color="red">利好</Tag>}
-           {item.sentiment_score < -0.5 && <Tag color="green">利空</Tag>}
-           {item.impact_score >= 4 && <Tag color="gold">重要</Tag>}
-        </Col>
-      </Row>
-    </div>
-  );
-
-  const renderDeepItem = (item) => {
-    const analysis = item.analysis || {};
-    const hasAnalysis = !!item.analysis;
-    const score = analysis.score || analysis.relevance_score;
-    const borderColor = getBorderColor(item);
-
-    return (
-      <div>
-        <Card 
-          title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                {item.title || (item.content ? item.content.substring(0, 30) + '...' : '无标题')}
-              </span>
-              <Space>
-                {item.sentiment_score && (
-                   <Tag color={item.sentiment_score > 0 ? 'red' : (item.sentiment_score < 0 ? 'green' : 'default')}>
-                     情感: {item.sentiment_score.toFixed(1)}
-                   </Tag>
-                )}
-                {item.impact_score && (
-                   <Tag color="gold">影响: {item.impact_score}</Tag>
-                )}
-              </Space>
-            </div>
-          }
-          extra={<Text type="secondary">{dayjs(item.created_at).format('MM-DD HH:mm')}</Text>}
-          hoverable
-          style={{ 
-            borderColor: borderColor,
-            borderLeft: borderColor ? `4px solid ${borderColor}` : undefined 
-          }}
-        >
-          {/* 摘要区域 */}
-          {hasAnalysis && analysis.summary ? (
-            <div style={{ marginBottom: 16, padding: '12px', background: '#f9f9f9', borderRadius: '4px' }}>
-              <Text strong>📝 AI 摘要：</Text>
-              <Text>{analysis.summary}</Text>
-            </div>
-          ) : null}
-
-          {/* 标签和实体 */}
-          <div style={{ marginBottom: 12 }}>
-              {item.tags && Array.isArray(item.tags) && item.tags.map(tag => <Tag key={tag} color="blue">#{tag}</Tag>)}
-              
-              {/* Handle entities if it's an object (from DB) or array (legacy) */}
-              {item.entities && !Array.isArray(item.entities) && typeof item.entities === 'object' && Object.keys(item.entities).map((name, idx) => (
-                <Tag key={idx} color="cyan">{name}</Tag>
-              ))}
-              
-              {item.entities && Array.isArray(item.entities) && item.entities.map((e, idx) => (
-                <Tag key={idx} color="cyan">{e.name || e}</Tag>
-              ))}
-
-              {hasAnalysis && analysis.event_tag && (
-                <Tag color="purple" style={{ cursor: 'pointer' }} onClick={() => navigate(`/series/${encodeURIComponent(analysis.event_tag)}`)}>
-                  🎬 {analysis.event_tag}
-                </Tag>
-              )}
-          </div>
-
-          <Paragraph ellipsis={{ rows: 3, expandable: true, symbol: '展开全文' }} style={{ color: '#666' }}>
-            {item.content}
-          </Paragraph>
-          
-          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#999' }}>
-            <span>来源: {item.source || '未知'}</span>
-          </div>
-        </Card>
-      </div>
-    );
-  };
-
   return (
     <div style={{ padding: '24px' }}>
-      {/* 顶部统计和控制栏 - 保持不变 */}
+      {/* 顶部统计和控制栏 */}
       <Card style={{ marginBottom: 24 }} styles={{ body: { padding: '16px 24px' } }}>
         <Row align="middle" justify="space-between">
           <Col>
@@ -243,27 +137,42 @@ const NewsFeed = () => {
             </Space>
           </div>
 
-          <Spin spinning={loading}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: viewMode === 'card' ? '16px' : '0' }}>
-              {news.slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize).map((item, index) => (
-                <div key={item.id || index}>
-                  {viewMode === 'list' ? renderFlashItem(item) : renderDeepItem(item)}
-                </div>
+          {initialLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {[1, 2, 3].map(i => (
+                <Card key={i} style={{ width: '100%' }}>
+                  <Skeleton active avatar paragraph={{ rows: 2 }} />
+                </Card>
               ))}
             </div>
-            {news.length > 0 && (
-              <div style={{ marginTop: 16, textAlign: 'right' }}>
-                <Pagination
-                  current={pagination.current}
-                  pageSize={pagination.pageSize}
-                  total={news.length}
-                  onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
-                  showSizeChanger
-                  showQuickJumper
-                />
+          ) : (
+            <Spin spinning={loading && news.length === 0}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: viewMode === 'card' ? '16px' : '0' }}>
+                {news.slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize).map((item, index) => (
+                  <div key={item.id || index}>
+                    {viewMode === 'list' ? <NewsFlash item={item} /> : <NewsCard item={item} />}
+                  </div>
+                ))}
               </div>
-            )}
-          </Spin>
+              {news.length > 0 && (
+                <div style={{ marginTop: 16, textAlign: 'right' }}>
+                  <Pagination
+                    current={pagination.current}
+                    pageSize={pagination.pageSize}
+                    total={news.length}
+                    onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
+                    showSizeChanger
+                    showQuickJumper
+                  />
+                </div>
+              )}
+              {!loading && news.length === 0 && (
+                 <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                   暂无相关新闻
+                 </div>
+              )}
+            </Spin>
+          )}
         </Col>
       </Row>
     </div>

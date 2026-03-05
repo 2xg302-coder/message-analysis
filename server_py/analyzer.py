@@ -6,7 +6,7 @@ from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from database import get_unanalyzed_news, save_analysis, get_series_list
+from services.news_service import news_service
 from llm_service import analyze_news
 from config import settings
 
@@ -107,7 +107,7 @@ async def process_single_news(news: Dict[str, Any]):
         content = news.get('content') or news.get('title')
         if not content:
             logger.warning(f"News {news['id']} has no content/title. Marking as skipped.")
-            save_analysis(news['id'], {'error': 'No content'})
+            news_service.save_analysis(news['id'], {'error': 'No content'})
             return
 
         logger.info(f"Analyzing news {news['id']}...")
@@ -122,12 +122,12 @@ async def process_single_news(news: Dict[str, Any]):
             analysis['note'] = 'Fallback used due to LLM error'
             
         # Save result
-        save_analysis(news['id'], analysis)
+        news_service.save_analysis(news['id'], analysis)
         logger.info(f"✅ Analyzed {news['id']}: Score={analysis.get('sentiment_score', 0)}")
         
     except Exception as e:
         logger.error(f"Error processing news {news.get('id')}: {e}")
-        save_analysis(news.get('id'), {'error': str(e)})
+        news_service.save_analysis(news.get('id'), {'error': str(e)})
     finally:
         current_task = None
 
@@ -141,7 +141,7 @@ async def analysis_job():
         # Get batch of unanalyzed news
         # Requirement says "Batch send to LLM".
         # We process a batch of 5 items per job run
-        news_list = get_unanalyzed_news(limit=5)
+        news_list = news_service.get_unanalyzed_news(limit=5)
         
         if not news_list:
             logger.info("No unanalyzed news found.")
