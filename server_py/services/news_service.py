@@ -328,8 +328,19 @@ class NewsService:
         
         for row in rows:
             ents = self._parse_json_field(row['entities'], {})
-            for name, _ in ents.items():
-                entity_counts[name] = entity_counts.get(name, 0) + 1
+            if isinstance(ents, dict):
+                for name in ents.keys():
+                    entity_counts[name] = entity_counts.get(name, 0) + 1
+            elif isinstance(ents, list):
+                for item in ents:
+                    name = None
+                    if isinstance(item, dict):
+                        name = item.get('name')
+                    elif isinstance(item, str):
+                        name = item
+                    
+                    if name:
+                        entity_counts[name] = entity_counts.get(name, 0) + 1
                 
         sorted_entities = sorted(entity_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
         return [{"name": name, "count": count} for name, count in sorted_entities]

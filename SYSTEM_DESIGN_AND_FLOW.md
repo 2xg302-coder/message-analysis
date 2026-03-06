@@ -56,16 +56,16 @@ graph TD
 ### 3.2 财经日历 (CalendarView)
 - **功能**: 展示每日的全球重大经济事件（如 GDP 公布、利率决议）。
 - **核心逻辑**:
-    - **数据展示**: 显示时间、国家、指标名称、重要性、前值、预测值和公布值。
+    - **多源聚合**: 后端支持从百度、金十、新浪等多源采集，并在前端统一展示。
     - **过滤**: 前端实现了基于重要性的过滤（全部 / 2星+ / 3星+），帮助用户聚焦核心事件。
+    - **状态标识**: 自动高亮显示已公布的数据，对比前值和预期值。
 
-### 3.3 数据探索 (DataExplorer)
+### 3.3 数据探索 (DataExplorer & Trends)
 - **功能**: 系统的“仪表盘”，提供宏观数据的统计与可视化。
 - **可视化**:
-    - **系统状态**: 实时显示数据总量、待处理队列长度。
-    - **类型分布**: 使用饼图展示不同新闻类别的占比。
-    - **热门标签云**: 展示高频标签，点击可查看相关新闻。
-    - **核心实体排行**: 列出被提及次数最多的人物、机构或地点。
+    - **DataExplorer**: 展示系统整体状态（总数、活跃度）、标签分布和实体排行。
+    - **Trends**: 提供更长时间维度的标签热度趋势图，帮助识别市场长期主题。
+    - **交互式洞察**: 在 Trends 页面点击任意核心实体标签，会弹出模态框展示该实体的相关新闻列表，支持情感倾向（利好/利空）的可视化标记。
 
 ### 3.4 连续剧追踪 (SeriesView)
 - **功能**: 针对特定热点事件进行全生命周期的追踪。
@@ -83,7 +83,7 @@ graph TD
 采集模块位于 `server_py/collectors/`，主要包含：
 - **SinaCollector**: 抓取新浪财经 7x24 快讯和财联社电报。频率：30秒/次。
 - **EastmoneyCollector**: 抓取东方财富网的深度新闻。频率：5分钟/次。
-- **CalendarCollector**: 每日 08:00 抓取当天的财经日历数据。
+- **CalendarCollector**: 每日 08:00 抓取当天的财经日历数据。具备**多源自动降级**机制（首选百度财经，失败则尝试金十数据，最后兜底新浪财经），确保数据获取的高可用性。取消了后端的重要性过滤，全量保留所有事件，交由前端进行灵活筛选。
 
 ### 4.2 数据处理流水线 (Processing Pipeline)
 数据在 `server_py/services/processor.py` 中经过以下步骤：
@@ -92,7 +92,10 @@ graph TD
     - **Simhash**: 计算文本指纹，进行海明距离比较，去除高度相似的内容。
     - **时间窗口**: 仅在最近 24 小时的数据中进行比对，提高效率。
 3.  **实体识别 (NER)**: 使用 `FlashText` 算法，基于预定义的词库高效提取股票、公司、人物等实体。
-4.  **评分 (Scoring)**:
+4.  **关注匹配 (Watchlist Matching)**:
+    - **来源**: `server_py/services/processor.py`
+    - **机制**: 实时加载用户配置的关键词，若新闻内容匹配，自动打上 `关注` 标签，并提升 `impact_score` (+2)，确保重要信息不被遗漏。
+5.  **评分 (Scoring)**:
     - **规则打分**: 根据关键词（如“重磅”、“突发”）和来源权重计算 `impact_score`。
     - **情感分析**: 基于词典匹配计算 `sentiment_score`。
 
@@ -105,10 +108,12 @@ graph TD
 ### 4.4 API 接口 (API Layer)
 后端通过 FastAPI 提供服务，主要路由在 `server_py/routers/`：
 - `GET /api/news`: 获取新闻列表，支持分页和多维度筛选。
-    - **参数**: `limit`, `offset`, `type` (flash/article), `min_impact` (0-10), `sentiment` (positive/negative/neutral), `entity` (关键词搜索), `start_date`, `end_date`。
+    - **参数**: `limit`, `offset`, `type` (flash/article), `min_impact` (0-10), `sentiment` (positive/negative/neutral), `entity` (核心实体搜索), `tag` (标签搜索), `start_date`, `end_date`。
     - **返回**: `{"total": int, "count": int, "data": [...]}`。
 - `GET /api/calendar/today`: 获取今日财经日历。
 - `GET /api/stats`: 获取统计数据（用于 DataExplorer）。
+- `GET /api/entities`: 获取核心实体排行（用于 Trends 页面的词云）。
+    - **参数**: `limit`, `start_date`, `end_date`。
 - `GET /api/series`: 获取连续剧事件列表。
 
 ### 4.5 标签系统 (Tagging System)

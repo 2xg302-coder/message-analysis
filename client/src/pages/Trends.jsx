@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Card, Row, Col, Statistic, Spin, Progress, Switch, Alert, Steps, Tag, Space } from 'antd';
+import { Typography, Card, Row, Col, Statistic, Spin, Progress, Switch, Alert, Steps, Tag, Space, Modal, List, Empty } from 'antd';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
-import { getStats, getAnalysisStatus, setAnalysisControl } from '../services/api';
+import { getStats, getAnalysisStatus, setAnalysisControl, getNews, getTopEntities } from '../services/api';
 import { RobotOutlined, PauseCircleOutlined, PlayCircleOutlined, FireOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -26,12 +26,52 @@ const Trends = () => {
     currentTask: null
   });
 
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState(null);
+  const [entityNews, setEntityNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+
+  const handleEntityClick = async (entityName) => {
+    setSelectedEntity(entityName);
+    setIsModalVisible(true);
+    setNewsLoading(true);
+    setEntityNews([]);
+    try {
+      const res = await getNews({ entity: entityName, limit: 20 });
+      if (res.data && res.data.data) {
+        setEntityNews(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch entity news', err);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
   const fetchStats = async () => {
     try {
-      const res = await getStats();
-      if (res.data && res.data.success) {
-        setStats(res.data.data);
+      const [statsRes, entitiesRes] = await Promise.all([
+        getStats(),
+        getTopEntities(30)
+      ]);
+      
+      let newStats = {};
+      if (statsRes.data && statsRes.data.success) {
+        newStats = { ...statsRes.data.data };
       }
+      
+      if (entitiesRes.data && entitiesRes.data.success) {
+        // Map count to score for visualization
+        // Find max count for normalization
+        const maxCount = Math.max(...entitiesRes.data.data.map(e => e.count), 1);
+        
+        newStats.hot_entities = entitiesRes.data.data.map(e => ({
+          name: e.name,
+          score: (e.count / maxCount) * 100 // Normalize to 0-100
+        }));
+      }
+      
+      setStats(prev => ({ ...prev, ...newStats }));
     } catch (err) {
       console.error('Failed to fetch stats', err);
     } finally {
@@ -165,6 +205,7 @@ const Trends = () => {
                     <Tag 
                       key={index} 
                       color={COLORS[index % COLORS.length]} 
+                      onClick={() => handleEntityClick(entity.name)}
                       style={{ 
                         fontSize: `${Math.max(12, entity.score / 3)}px`, 
                         padding: '4px 10px',
@@ -200,6 +241,48 @@ const Trends = () => {
           </Col>
         </Row>
       </Spin>
+      
+      <Modal
+        title={<Space><FireOutlined style={{ color: '#ff4d4f' }} /> 关于 "{selectedEntity}" 的相关新闻</Space>}
+        open={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        footer={null}
+        width={800}
+        bodyStyle={{ maxHeight: '600px', overflowY: 'auto' }}
+      >
+        <List
+          loading={newsLoading}
+          itemLayout="vertical"
+          dataSource={entityNews}
+          locale={{ emptyText: <Empty description="暂无相关新闻" /> }}
+          renderItem={item => (
+            <List.Item
+              key={item.id}
+              extra={
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                  <Tag color={(item.sentiment_score || 0) > 0.1 ? 'green' : (item.sentiment_score || 0) < -0.1 ? 'red' : 'default'}>
+                    {(item.sentiment_score || 0) > 0.1 ? '利好' : (item.sentiment_score || 0) < -0.1 ? '利空' : '中性'}
+                  </Tag>
+                  {(item.impact_score || 0) >= 4 && <Tag color="orange">高影响</Tag>}
+                </div>
+              }
+            >
+              <List.Item.Meta
+                title={<a href={item.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '16px', fontWeight: 'bold' }}>{item.title}</a>}
+                description={
+                  <Space split="|">
+                    <Text type="secondary">{item.time || new Date(item.created_at).toLocaleString()}</Text>
+                    <Text type="secondary">{item.source}</Text>
+                  </Space>
+                }
+              />
+              <div style={{ marginTop: '8px' }}>
+                {item.analysis?.summary || item.content?.substring(0, 150) + (item.content?.length > 150 ? '...' : '')}
+              </div>
+            </List.Item>
+          )}
+        />
+      </Modal>
     </div>
   );
 };

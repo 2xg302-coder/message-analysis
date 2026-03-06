@@ -16,6 +16,8 @@ class NewsProcessor:
     def __init__(self):
         self.keyword_processor = KeywordProcessor()
         self.simhash_cache: List[Dict[str, Any]] = [] # {simhash, time, id, text}
+        self.watchlist_keywords = []
+        self.last_watchlist_update = datetime.min
         self.expected_events: Dict[str, List[Dict[str, Any]]] = {}
         self.load_expected_events()
         self.rules = {
@@ -59,6 +61,13 @@ class NewsProcessor:
     async def init_async(self):
         logger.info("Loading recent news for deduplication (Async)...")
         try:
+            # Load Watchlist
+            try:
+                self.watchlist_keywords = await news_service.get_watchlist()
+                logger.info(f"Loaded {len(self.watchlist_keywords)} watchlist keywords.")
+            except Exception as e:
+                logger.error(f"Error loading watchlist: {e}")
+
             recent_news = await news_service.get_news(limit=1000)
             count = 0
             for item in recent_news:
@@ -248,6 +257,15 @@ class NewsProcessor:
         }
 
     async def process(self, news_item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        # Refresh Watchlist periodically (e.g., every 60s)
+        if (datetime.now() - self.last_watchlist_update).total_seconds() > 60:
+            try:
+                self.watchlist_keywords = await news_service.get_watchlist()
+                self.last_watchlist_update = datetime.now()
+                # logger.debug(f"Refreshed watchlist: {len(self.watchlist_keywords)} keywords")
+            except Exception as e:
+                logger.warning(f"Failed to refresh watchlist: {e}")
+
         raw_content = news_item.get('content', '') or news_item.get('title', '')
         if not raw_content:
             return None
@@ -286,6 +304,16 @@ class NewsProcessor:
         rating = self.rate_news(clean_content)
         news_item['rating'] = rating
         news_item['tags'] = rating.get('matched_rules', []) + rating.get('tags', [])
+
+        # Match Watchlist
+        content_to_check = (news_item.get('title', '') + ' ' + clean_content).lower()
+        for kw in self.watchlist_keywords:
+            if kw.lower() in content_to_check:
+                if '关注' not in news_item['tags']:
+                    news_item['tags'].append('关注')
+                # Boost impact score
+                news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 2, 10)
+                break
         
         item_time = None
         if 'time' in news_item:

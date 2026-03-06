@@ -30,7 +30,7 @@ const Watchlist = () => {
 
   const syncUpdate = async (newItems) => {
       try {
-          await updateWatchlist({ keywords: newItems });
+          await updateWatchlist(newItems);
           message.success('配置已保存');
       } catch (e) {
           message.error('保存失败');
