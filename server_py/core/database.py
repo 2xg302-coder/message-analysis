@@ -105,6 +105,17 @@ class DatabaseManager:
             logger.error(f"Update execution failed: {query}, error: {e}")
             return False
 
+    async def execute_many(self, query: str, params_list: List[tuple]) -> int:
+        """Execute a batch of updates/inserts"""
+        try:
+            async with self.get_connection() as conn:
+                async with conn.executemany(query, params_list) as cursor:
+                    await conn.commit()
+                    return cursor.rowcount
+        except Exception as e:
+            logger.error(f"Batch execution failed: {query}, error: {e}")
+            return 0
+
     async def execute_script(self, script: str) -> bool:
         try:
             async with self.get_connection() as conn:

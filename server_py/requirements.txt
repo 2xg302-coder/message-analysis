@@ -11,3 +11,4 @@ simhash
 flashtext
 sqlite-utils
 aiosqlite
+sqlmodel

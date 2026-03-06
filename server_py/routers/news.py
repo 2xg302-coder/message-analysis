@@ -15,7 +15,9 @@ except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
     from models import NewsItem
 
-from services.news_service import news_service
+from fastapi import Depends
+from services.news_service import NewsService
+from services.deps import get_news_service
 from core.logging import get_logger
 
 logger = get_logger("news_router")
@@ -25,20 +27,20 @@ class WatchlistUpdate(BaseModel):
     keywords: List[str]
 
 @router.post("/news")
-async def create_news(news_item: NewsItem):
+async def create_news(news_item: NewsItem, service: NewsService = Depends(get_news_service)):
     try:
         item_dict = news_item.dict()
-        added = await news_service.add_news(item_dict)
+        added = await service.add_news(item_dict)
         return {"success": True, "added": added}
     except Exception as e:
         logger.error(f"Error creating news: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/news/batch")
-async def create_news_batch(news_list: List[NewsItem]):
+async def create_news_batch(news_list: List[NewsItem], service: NewsService = Depends(get_news_service)):
     try:
         items = [item.dict() for item in news_list]
-        added_count = await news_service.add_news_batch(items)
+        added_count = await service.add_news_batch(items)
         return {"success": True, "received": len(news_list), "added": added_count}
     except Exception as e:
         logger.error(f"Error creating news batch: {e}")
@@ -53,13 +55,14 @@ async def read_news(
     source: Optional[str] = None,
     tag: Optional[str] = None,
     start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    end_date: Optional[str] = None,
+    service: NewsService = Depends(get_news_service)
 ):
     try:
         if type == 'all':
             type = None
             
-        news = await news_service.get_news(
+        news = await service.get_news(
             limit=limit, 
             offset=offset, 
             news_type=type, 
@@ -79,70 +82,70 @@ async def read_news(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/stats")
-async def read_stats(start_date: Optional[str] = None, end_date: Optional[str] = None):
+async def read_stats(start_date: Optional[str] = None, end_date: Optional[str] = None, service: NewsService = Depends(get_news_service)):
     try:
-        stats = await news_service.get_stats(start_date=start_date, end_date=end_date)
+        stats = await service.get_stats(start_date=start_date, end_date=end_date)
         return {"success": True, "data": stats}
     except Exception as e:
         logger.error(f"Error reading stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to get stats")
 
 @router.get("/stats/tags")
-async def read_tag_stats(limit: int = 100, start_date: Optional[str] = None, end_date: Optional[str] = None):
+async def read_tag_stats(limit: int = 100, start_date: Optional[str] = None, end_date: Optional[str] = None, service: NewsService = Depends(get_news_service)):
     try:
-        tags = await news_service.get_tag_stats(limit=limit, start_date=start_date, end_date=end_date)
+        tags = await service.get_tag_stats(limit=limit, start_date=start_date, end_date=end_date)
         return {"success": True, "count": len(tags), "data": tags}
     except Exception as e:
         logger.error(f"Error reading tag stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to get tag stats")
 
 @router.get("/stats/types")
-async def read_type_stats(start_date: Optional[str] = None, end_date: Optional[str] = None):
+async def read_type_stats(start_date: Optional[str] = None, end_date: Optional[str] = None, service: NewsService = Depends(get_news_service)):
     try:
-        types = await news_service.get_type_stats(start_date=start_date, end_date=end_date)
+        types = await service.get_type_stats(start_date=start_date, end_date=end_date)
         return {"success": True, "count": len(types), "data": types}
     except Exception as e:
         logger.error(f"Error reading type stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to get type stats")
 
 @router.get("/entities")
-async def read_entities(limit: int = 50, start_date: Optional[str] = None, end_date: Optional[str] = None):
+async def read_entities(limit: int = 50, start_date: Optional[str] = None, end_date: Optional[str] = None, service: NewsService = Depends(get_news_service)):
     try:
-        entities = await news_service.get_top_entities(limit=limit, start_date=start_date, end_date=end_date)
+        entities = await service.get_top_entities(limit=limit, start_date=start_date, end_date=end_date)
         return {"success": True, "count": len(entities), "data": entities}
     except Exception as e:
         logger.error(f"Error reading entities: {e}")
         raise HTTPException(status_code=500, detail="Failed to get entities")
 
 @router.get("/series")
-async def read_series():
+async def read_series(service: NewsService = Depends(get_news_service)):
     try:
-        series_list = await news_service.get_series_list()
+        series_list = await service.get_series_list()
         return {"success": True, "count": len(series_list), "data": series_list}
     except Exception as e:
         logger.error(f"Error reading series: {e}")
         raise HTTPException(status_code=500, detail="Failed to get series list")
 
 @router.get("/series/{tag}")
-async def read_series_by_tag(tag: str):
+async def read_series_by_tag(tag: str, service: NewsService = Depends(get_news_service)):
     try:
-        news = await news_service.get_news_by_series(tag)
+        news = await service.get_news_by_series(tag)
         return {"success": True, "count": len(news), "data": news}
     except Exception as e:
         logger.error(f"Error reading series tag {tag}: {e}")
         raise HTTPException(status_code=500, detail="Failed to get series news")
 
 @router.get("/watchlist")
-async def read_watchlist():
-    keywords = await news_service.get_watchlist()
+async def read_watchlist(service: NewsService = Depends(get_news_service)):
+    keywords = await service.get_watchlist()
     if not keywords:
         keywords = ['半导体', '人工智能', '新能源']
-        await news_service.update_watchlist(keywords)
+        await service.update_watchlist(keywords)
     return {"success": True, "data": keywords}
 
 @router.post("/watchlist")
-async def update_watchlist_endpoint(watchlist: WatchlistUpdate):
-    success = await news_service.update_watchlist(watchlist.keywords)
+async def update_watchlist_endpoint(watchlist: WatchlistUpdate, service: NewsService = Depends(get_news_service)):
+    success = await service.update_watchlist(watchlist.keywords)
     if not success:
          raise HTTPException(status_code=500, detail="Failed to update watchlist")
     return {"success": True}

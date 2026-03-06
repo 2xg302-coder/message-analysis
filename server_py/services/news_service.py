@@ -7,8 +7,8 @@ from core.logging import get_logger
 logger = get_logger("news_service")
 
 class NewsService:
-    def __init__(self):
-        self.db = db
+    def __init__(self, database=None):
+        self.db = database or db
 
     def _parse_json_field(self, field: Any, default: Any) -> Any:
         if not field:
@@ -44,49 +44,54 @@ class NewsService:
             logger.error(f"Error processing news item: {e}")
             return item
 
+    def _prepare_news_params(self, news_item: Dict[str, Any]) -> tuple:
+        record = news_item.copy()
+        if 'created_at' not in record:
+            record['created_at'] = datetime.now().isoformat()
+        
+        # Serialize JSON fields with ensure_ascii=False to save Chinese characters directly
+        tags = json.dumps(record.get('tags', []), ensure_ascii=False) if isinstance(record.get('tags'), list) else record.get('tags')
+        entities = json.dumps(record.get('entities', {}), ensure_ascii=False) if isinstance(record.get('entities'), dict) else record.get('entities')
+        simhash_val = str(record.get('simhash')) if record.get('simhash') is not None else None
+
+        return (
+            record.get('id'),
+            record.get('title', ''),
+            record.get('link', ''),
+            record.get('content', ''),
+            record.get('time', ''),
+            record.get('timestamp', ''),
+            record.get('scrapedAt', ''),
+            record['created_at'],
+            record.get('source', 'unknown'),
+            json.dumps(record, ensure_ascii=False),
+            record.get('type', 'article'),
+            tags,
+            entities,
+            record.get('impact_score', 0),
+            record.get('sentiment_score', 0.0),
+            simhash_val
+        )
+
     async def add_news(self, news_item: Dict[str, Any]) -> bool:
         if not news_item or 'id' not in news_item:
             return False
             
         try:
-            # Check existence
-            existing = await self.db.execute_query('SELECT id FROM news WHERE id = ?', (news_item['id'],))
-            if existing:
-                return False
+            # Check existence first (optional optimization: let INSERT OR IGNORE handle it)
+            # existing = await self.db.execute_query('SELECT id FROM news WHERE id = ?', (news_item['id'],))
+            # if existing:
+            #    return False
                 
-            record = news_item.copy()
-            record['created_at'] = datetime.now().isoformat()
-            
-            # Serialize JSON fields with ensure_ascii=False to save Chinese characters directly
-            tags = json.dumps(record.get('tags', []), ensure_ascii=False) if isinstance(record.get('tags'), list) else record.get('tags')
-            entities = json.dumps(record.get('entities', {}), ensure_ascii=False) if isinstance(record.get('entities'), dict) else record.get('entities')
-            simhash_val = str(record.get('simhash')) if record.get('simhash') is not None else None
+            params = self._prepare_news_params(news_item)
 
             query = '''
-                INSERT INTO news (
+                INSERT OR IGNORE INTO news (
                     id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data,
                     type, tags, entities, impact_score, sentiment_score, simhash
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
-            params = (
-                record.get('id'),
-                record.get('title', ''),
-                record.get('link', ''),
-                record.get('content', ''),
-                record.get('time', ''),
-                record.get('timestamp', ''),
-                record.get('scrapedAt', ''),
-                record['created_at'],
-                record.get('source', 'unknown'),
-                json.dumps(record, ensure_ascii=False),
-                record.get('type', 'article'),
-                tags,
-                entities,
-                record.get('impact_score', 0),
-                record.get('sentiment_score', 0.0),
-                simhash_val
-            )
             
             return await self.db.execute_update(query, params)
         except Exception as e:
@@ -94,11 +99,30 @@ class NewsService:
             return False
 
     async def add_news_batch(self, news_list: List[Dict[str, Any]]) -> int:
-        count = 0
-        for item in news_list:
-            if await self.add_news(item):
-                count += 1
-        return count
+        if not news_list:
+            return 0
+            
+        try:
+            params_list = []
+            for item in news_list:
+                if 'id' in item:
+                    params_list.append(self._prepare_news_params(item))
+            
+            if not params_list:
+                return 0
+
+            query = '''
+                INSERT OR IGNORE INTO news (
+                    id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data,
+                    type, tags, entities, impact_score, sentiment_score, simhash
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            '''
+            
+            return await self.db.execute_many(query, params_list)
+        except Exception as e:
+            logger.error(f"Error adding news batch: {e}")
+            return 0
 
     async def get_news(self, limit: int = 100, offset: int = 0, 
                  news_type: Optional[str] = None, 
@@ -167,23 +191,33 @@ class NewsService:
             return False
 
     async def get_tag_stats(self, limit: int = 100, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
-        query = "SELECT tags FROM news WHERE tags IS NOT NULL"
+        query = "SELECT tags FROM news WHERE tags IS NOT NULL AND tags != '[]'"
         params = []
+        
+        # Determine row limit based on context
         if start_date and end_date:
             query += " AND date(created_at) BETWEEN ? AND ?"
             params.extend([start_date, end_date])
-        query += " ORDER BY created_at DESC LIMIT 2000"
+            # When filtering by date, we want accuracy over the whole period
+            row_limit = 50000
+        else:
+            # Default to analyzing recent 5000 items for trends
+            row_limit = 5000
+            
+        query += " ORDER BY created_at DESC LIMIT ?"
+        params.append(row_limit)
         
         rows = await self.db.execute_query(query, tuple(params))
-        tag_counts = {}
+        
+        from collections import Counter
+        tag_counts = Counter()
+        
         for row in rows:
             tags = self._parse_json_field(row['tags'], [])
             if isinstance(tags, list):
-                for tag in tags:
-                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+                tag_counts.update(tags)
         
-        sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
-        return [{"name": name, "value": count} for name, count in sorted_tags]
+        return [{"name": name, "value": count} for name, count in tag_counts.most_common(limit)]
 
     async def get_type_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         query = "SELECT analysis FROM news WHERE analysis IS NOT NULL"

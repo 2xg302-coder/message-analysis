@@ -1,5 +1,6 @@
 import sys
 import asyncio
+import secrets
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -28,6 +29,10 @@ async def lifespan(app: FastAPI):
     # Start Schedulers
     start_ingestion_scheduler()
     start_analysis_scheduler()
+
+    # Init ORM DB (ensure tables)
+    from core.database_orm import init_db
+    await init_db()
     
     yield
     
@@ -70,8 +75,8 @@ async def verify_api_key(request: Request, call_next):
     api_key = request.headers.get("X-API-Key")
     
     # 验证 API Key
-    # 简单的字符串比较。在生产环境中，应使用 secrets.compare_digest 防止时序攻击
-    if api_key != settings.API_SECRET:
+    # 使用 secrets.compare_digest 防止时序攻击
+    if not api_key or not secrets.compare_digest(api_key, settings.API_SECRET):
         return JSONResponse(
             status_code=401,
             content={"detail": "未授权: API Key 无效或缺失"}
