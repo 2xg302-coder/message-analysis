@@ -56,7 +56,7 @@ async def run_ingestion(collector, source_name, processor):
 async def run_calendar_collection(collector, processor):
     logger.info("Running daily economic calendar collection...")
     try:
-        await asyncio.to_thread(collector.collect)
+        await collector.collect()
         # Reload events in processor after collection
         if hasattr(processor, 'load_expected_events'):
             processor.load_expected_events()

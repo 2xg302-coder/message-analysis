@@ -40,7 +40,7 @@ async def get_events_by_date(date_str: str):
         
         # 1. Try DB
         query = "SELECT * FROM calendar_events WHERE date = ? ORDER BY time ASC"
-        events = db.execute_query(query, (date_str,))
+        events = await db.execute_query(query, (date_str,))
         
         if events:
             return events
@@ -50,12 +50,12 @@ async def get_events_by_date(date_str: str):
         ak_date = date_str.replace('-', '')
         try:
             # This will collect and save to DB
-            collector_events = collector.collect(ak_date)
+            collector_events = await collector.collect(ak_date)
             # Re-query DB to get consistent format or return collector result
             return collector_events
         except Exception as e:
             print(f"Collection failed for {date_str}: {e}")
-            return []
+            raise HTTPException(status_code=503, detail=f"Calendar collection failed: {e}")
             
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
@@ -66,11 +66,11 @@ async def refresh_calendar():
     Manually trigger calendar refresh.
     """
     try:
-        events = collector.collect()
+        events = await collector.collect()
         return {
             "status": "success", 
             "message": f"Collected {len(events)} events.",
             "events": events
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=503, detail=f"Calendar collection failed: {e}")

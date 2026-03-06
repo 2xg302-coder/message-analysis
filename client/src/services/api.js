@@ -27,6 +27,7 @@ export const getNews = (params = {}) => {
   }
   
   if (params.tag) backendParams.tag = params.tag;
+  if (params.sentiment && params.sentiment !== 'all') backendParams.sentiment = params.sentiment;
   if (params.startDate) backendParams.start_date = params.startDate;
   if (params.endDate) backendParams.end_date = params.endDate;
   if (params.limit) backendParams.limit = params.limit;

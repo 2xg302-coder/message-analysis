@@ -21,21 +21,36 @@ const NewsFeed = () => {
     active_series: 0
   });
   const [analysisStatus, setAnalysisStatus] = useState({ running: false, current: null });
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
 
   const fetchData = async (isRefresh = false) => {
     try {
       if (!isRefresh) setLoading(true);
       
+      const { current, pageSize } = pagination;
+      const offset = (current - 1) * pageSize;
+      
+      const queryParams = {
+        ...filters,
+        limit: pageSize,
+        offset: offset
+      };
+
       const [newsRes, statsRes, statusRes] = await Promise.all([
-        getNews(filters),
+        getNews(queryParams),
         getStats(),
         getAnalysisStatus()
       ]);
 
-      if (newsRes.data && newsRes.data.data) {
-        setNews(newsRes.data.data);
+      if (newsRes.data) {
+        // 兼容不同的后端返回结构
+        const list = Array.isArray(newsRes.data) ? newsRes.data : (newsRes.data.data || []);
+        const total = newsRes.data.total || newsRes.data.count || statsRes.data?.data?.total || 0;
+        
+        setNews(list);
+        setPagination(prev => ({ ...prev, total: total }));
       }
+      
       if (statsRes.data && statsRes.data.data) {
         setStats(statsRes.data.data);
       }
@@ -53,16 +68,19 @@ const NewsFeed = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(() => fetchData(true), 30000); // 降低刷新频率避免闪烁
+    // 仅在第一页时自动刷新，避免干扰用户翻页阅读
+    const interval = setInterval(() => {
+      if (pagination.current === 1) {
+        fetchData(true);
+      }
+    }, 30000); 
     return () => clearInterval(interval);
-  }, [filters]); // 依赖 filters 变化重新加载
+  }, [filters, pagination.current, pagination.pageSize]); 
 
   const handleFilterChange = (newFilters) => {
-    // Merge new filters
-    setFilters(prev => {
-        const updated = { ...prev, ...newFilters };
-        return updated;
-    });
+    // Merge new filters and reset to page 1
+    setFilters(prev => ({ ...prev, ...newFilters }));
+    setPagination(prev => ({ ...prev, current: 1 }));
     
     // Auto switch view mode based on type
     if (newFilters.type === 'flash') setViewMode('list');
@@ -148,24 +166,23 @@ const NewsFeed = () => {
           ) : (
             <Spin spinning={loading && news.length === 0}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: viewMode === 'card' ? '16px' : '0' }}>
-                {news.slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize).map((item, index) => (
+                {news.map((item, index) => (
                   <div key={item.id || index}>
                     {viewMode === 'list' ? <NewsFlash item={item} /> : <NewsCard item={item} />}
                   </div>
                 ))}
               </div>
-              {news.length > 0 && (
-                <div style={{ marginTop: 16, textAlign: 'right' }}>
-                  <Pagination
-                    current={pagination.current}
-                    pageSize={pagination.pageSize}
-                    total={news.length}
-                    onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
-                    showSizeChanger
-                    showQuickJumper
-                  />
-                </div>
-              )}
+              <div style={{ marginTop: 16, textAlign: 'right' }}>
+                <Pagination
+                  current={pagination.current}
+                  pageSize={pagination.pageSize}
+                  total={pagination.total}
+                  onChange={(page, pageSize) => setPagination(prev => ({ ...prev, current: page, pageSize }))}
+                  showSizeChanger
+                  showQuickJumper
+                  showTotal={(total) => `共 ${total} 条`}
+                />
+              </div>
               {!loading && news.length === 0 && (
                  <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                    暂无相关新闻

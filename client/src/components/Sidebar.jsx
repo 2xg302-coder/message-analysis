@@ -39,7 +39,7 @@ const Sidebar = ({ onFilterChange, loading }) => {
 
         <Divider style={{ margin: '12px 0' }} />
 
-        <Form.Item name="importance" label="重要程度 (最低)">
+        <Form.Item name="min_impact" label="重要程度 (最低)">
            <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
              <Radio value={8}>
                <Space>

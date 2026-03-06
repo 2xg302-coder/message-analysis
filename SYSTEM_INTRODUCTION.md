@@ -20,11 +20,17 @@
     *   **LLM 深度分析**：调用 DeepSeek 等大模型对重要新闻进行深度理解，提取结构化数据（摘要、影响评分、事件类型）。
 *   **价值评分**：基于新闻实质内容进行 1-5 分的重要性打分（Impact Score），高分新闻视觉高亮。
 
-### 2.3 连续剧式主题追踪 (Series Tracking)
+### 2.4 连续剧式主题追踪 (Series Tracking)
 *   **自动聚合**：利用 LLM 提取的 `event_tag`（事件标签），自动将相关联的新闻聚合在一起。
 *   **时间轴展示**：以时间轴形式展示特定事件（如“OpenAI人事变动”）的发展脉络。
 
-### 2.4 实时监控台 & 可视化
+### 2.5 财经日历 (Economic Calendar)
+*   **多源采集**：自动采集 Baidu/Jin10/Sina 等来源的财经日历数据。
+*   **重要性筛选**：自动筛选 3 星及以上的高重要性事件。
+*   **事件匹配**：将实时新闻与日历事件关联，提升相关新闻的影响力评分。
+*   **数据持久化**：日历数据存入数据库，支持历史回溯。
+
+### 2.6 实时监控台 & 可视化
 *   **实时情报流**：支持快讯/深度两种视图模式，实时推送最新消息。
 *   **数据可视化**：展示新闻情感分布、热门实体云图、每日趋势统计。
 *   **关注配置**：支持自定义关注关键词（Watchlist），优先展示相关内容。
@@ -61,12 +67,13 @@ graph TD
 ### 3.2 技术栈
 *   **后端 (Server)**
     *   **Runtime**: Python 3.11+
-    *   **Framework**: FastAPI (分层架构: Core/Services/Routers)
-    *   **Database**: SQLite 3 (`server_py/news.db`)
-    *   **Scheduler**: APScheduler (定时任务)
+    *   **Framework**: FastAPI (全异步架构: Core/Services/Routers)
+    *   **Database**: SQLite 3 + aiosqlite (异步数据库访问)
+    *   **Scheduler**: APScheduler (异步定时任务)
     *   **NLP Tools**: SimHash (去重), FlashText (NER)
     *   **Data Source**: Akshare (财经数据接口)
     *   **AI Service**: DeepSeek-V3 (默认配置为云端 API，非本地模型)
+    *   **Security**: API Key 认证 (可选)
 *   **前端 (Client)**
     *   **Framework**: React 18 + Vite
     *   **UI Library**: Ant Design 5
@@ -80,9 +87,9 @@ message-analysis/
 ├── client/                 # 前端项目 (React + Vite)
 ├── server_py/              # 后端服务 (FastAPI)
 │   ├── core/               # 核心基础设施 (日志, 数据库连接)
-│   ├── routers/            # API 路由定义
-│   ├── services/           # 业务逻辑层 (新闻管理, 采集调度)
-│   ├── collectors/         # 数据采集器 (Sina, EastMoney)
+│   ├── routers/            # API 路由定义 (news, analysis, calendar)
+│   ├── services/           # 业务逻辑层 (news_service, ingestion, analyzer, processor)
+│   ├── collectors/         # 数据采集器 (Sina, EastMoney, Calendar)
 │   ├── models.py           # Pydantic 数据模型
 │   ├── main.py             # 应用入口
 │   ├── config.py           # 配置加载
@@ -101,6 +108,7 @@ message-analysis/
 *   Node.js >= 18 (前端)
 *   Python >= 3.11 (后端)
 *   LLM API Key (配置在 `server_py/.env`)
+*   (可选) API_SECRET: 用于保护 API 接口的密钥
 
 ### 5.2 一键启动 (Windows)
 本项目提供了 PowerShell 启动脚本，自动处理依赖安装并启动服务。
@@ -218,6 +226,14 @@ pnpm dev
     *   `simhash`: 用于去重的哈希值
 
 2.  **`watchlist` 表**：用户关注词配置。
+
+3.  **`calendar_events` 表**：财经日历事件。
+    *   `date`: 日期 (YYYY-MM-DD)
+    *   `time`: 时间
+    *   `country`: 国家/地区
+    *   `event`: 事件名称
+    *   `importance`: 重要性 (0-3)
+    *   `previous`, `consensus`, `actual`: 前值/预期/公布值
 
 ## 8. 常见问题 (FAQ)
 

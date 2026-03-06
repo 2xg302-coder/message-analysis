@@ -1,13 +1,18 @@
 import json
 import os
 import sys
-import asyncio
-from datetime import datetime, timedelta
+import re
+from datetime import datetime
 from typing import List, Dict, Any
 from core.database import db
 
+try:
+    import asyncio
+except Exception:
+    asyncio = None
+
 # Fix for Windows asyncio loop policy
-if sys.platform == 'win32':
+if sys.platform == 'win32' and asyncio is not None:
     try:
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     except:
@@ -33,10 +38,9 @@ class CalendarCollector:
         # Keep file path for legacy/backup, but primary is DB
         self.file_path = os.path.join(self.data_dir, "expected_events.json")
         
-        # Initialize DB schema if not already done (re-run init)
-        db._init_db()
+        # DB is initialized globally in core/database.py
 
-    def collect(self, date_str: str = None) -> List[Dict[str, Any]]:
+    async def collect(self, date_str: str = None) -> List[Dict[str, Any]]:
         """
         Collect economic calendar data.
         :param date_str: Date string in 'YYYYMMDD' format. Defaults to today.
@@ -52,80 +56,50 @@ class CalendarCollector:
         print(f"Fetching economic calendar for {date_str}...")
         
         events = []
+        source_errors = []
         try:
             # Import akshare here to avoid global event loop issues on Windows
             import akshare as ak
-            
-            # Helper to process dataframe from different sources
-            def process_df(df, source_name):
-                source_events = []
-                if df is None or df.empty:
-                    return source_events
-                
-                print(f"Fetched {len(df)} raw events from {source_name}.")
-                for _, row in df.iterrows():
-                    # Standardize importance (Baidu/Jin10 might have different columns)
-                    importance = row.get('重要性', 0)
-                    try:
-                        # Ensure importance is integer
-                        if isinstance(importance, str):
-                            # Check for stars (e.g. "★★★") or numeric string
-                            if '★' in importance:
-                                importance = importance.count('★')
-                            elif '高' in importance:
-                                importance = 3
-                            elif '中' in importance:
-                                importance = 2
-                            else:
-                                importance = int(importance)
-                        else:
-                            importance = int(importance)
-                    except:
-                        importance = 0
-                    
-                    if importance >= 3:
-                        source_events.append({
-                            "time": str(row.get('时间', '')),
-                            "country": str(row.get('地区', '')),
-                            "event": str(row.get('事件', '')),
-                            "importance": importance,
-                            "previous": str(row.get('前值', '')),
-                            "consensus": str(row.get('预期', '')),
-                            "actual": str(row.get('公布', ''))
-                        })
-                return source_events
 
             # Try Baidu first
             try:
                 if hasattr(ak, 'news_economic_baidu'):
-                    df_baidu = ak.news_economic_baidu(date=date_str)
-                    events = process_df(df_baidu, "Baidu")
+                    df_baidu = await asyncio.to_thread(ak.news_economic_baidu, date=date_str)
+                    events = self._process_df(df_baidu, "Baidu")
             except Exception as e:
+                source_errors.append(f"Baidu: {e}")
                 print(f"Baidu source failed: {e}")
 
             # Try Jin10 if Baidu failed or returned no events
             if not events:
                 try:
                     if hasattr(ak, 'news_economic_jin10'):
-                        df_jin10 = ak.news_economic_jin10(date=date_str)
-                        events = process_df(df_jin10, "Jin10")
+                        df_jin10 = await asyncio.to_thread(ak.news_economic_jin10, date=date_str)
+                        events = self._process_df(df_jin10, "Jin10")
                 except Exception as e:
+                    source_errors.append(f"Jin10: {e}")
                     print(f"Jin10 source failed: {e}")
 
             # Try Sina as last resort
             if not events:
                 try:
                     if hasattr(ak, 'news_economic_sina'):
-                        df_sina = ak.news_economic_sina(date=date_str)
-                        events = process_df(df_sina, "Sina")
+                        df_sina = await asyncio.to_thread(ak.news_economic_sina, date=date_str)
+                        events = self._process_df(df_sina, "Sina")
                 except Exception as e:
+                    source_errors.append(f"Sina: {e}")
                     print(f"Sina source failed: {e}")
 
+            if not events and source_errors:
+                raise RuntimeError(f"Calendar sources unavailable for {date_str}: {' | '.join(source_errors)}")
         except Exception as e:
-            print(f"Global calendar fetch error: {e}")
+            message = str(e)
+            if "No module named 'akshare'" in message:
+                raise RuntimeError("未安装 akshare 依赖，请先执行: pip install akshare") from e
+            raise RuntimeError(f"财经日历采集失败: {message}") from e
             
         # Save to DB
-        self.save_events_to_db(date_str, events)
+        await self.save_events_to_db(date_str, events)
         
         # Save to file (Backup)
         self.save_events(date_str, events)
@@ -133,7 +107,118 @@ class CalendarCollector:
         print(f"Collected {len(events)} high-importance events.")
         return events
 
-    def save_events_to_db(self, date_str: str, events: List[Dict[str, Any]]):
+    def _get_value(self, row: Dict[str, Any], keys: List[str], default: Any = "") -> Any:
+        for key in keys:
+            if key in row and row.get(key) is not None:
+                value = row.get(key)
+                if str(value).strip() != "":
+                    return value
+        return default
+
+    def _parse_importance(self, raw_value: Any) -> int:
+        if raw_value is None:
+            return 0
+        if isinstance(raw_value, (int, float)):
+            return int(raw_value)
+        text = str(raw_value).strip()
+        if not text:
+            return 0
+        
+        # Stars
+        stars = text.count('★') + text.count('⭐')
+        if stars:
+            return stars
+            
+        # Chinese
+        if '高' in text:
+            return 3
+        if '中' in text:
+            return 2
+        if '低' in text:
+            return 1
+            
+        # English
+        text_lower = text.lower()
+        if 'high' in text_lower:
+            return 3
+        if 'med' in text_lower or 'mid' in text_lower:
+            return 2
+        if 'low' in text_lower:
+            return 1
+            
+        # Numbers
+        match = re.search(r"\d+", text)
+        if match:
+            return int(match.group())
+            
+        return 0
+
+    def _process_df(self, df, source_name: str) -> List[Dict[str, Any]]:
+        source_events = []
+        try:
+            if df is None:
+                return source_events
+            
+            # Check if df has 'empty' attribute (simple DataFrame check)
+            if not hasattr(df, 'empty'):
+                print(f"Warning: {source_name} returned non-DataFrame object: {type(df)}")
+                return source_events
+
+            if df.empty:
+                return source_events
+
+            print(f"Fetched {len(df)} raw events from {source_name}.")
+            
+            # DEBUG: Print columns and first row to debug importance issue
+            print(f"DEBUG: {source_name} columns: {df.columns.tolist()}")
+            if len(df) > 0:
+                first_row = df.iloc[0].to_dict() if hasattr(df.iloc[0], "to_dict") else dict(df.iloc[0])
+                print(f"DEBUG: First row sample: {first_row}")
+            
+            # Check if iterrows exists
+            if not hasattr(df, 'iterrows'):
+                print(f"Warning: {source_name} DataFrame missing iterrows: {type(df)}")
+                return source_events
+
+            skipped_count = 0
+            for _, row in df.iterrows():
+                try:
+                    row_dict = row.to_dict() if hasattr(row, "to_dict") else dict(row)
+                    
+                    # Try more keys for importance
+                    importance_val = self._get_value(row_dict, ['重要性', '重要程度', 'importance', 'star', 'stars', 'level', 'grade', 'rank'], 0)
+                    importance = self._parse_importance(importance_val)
+                    
+                    # if importance < 3:
+                    #     if skipped_count < 3: # Log first few skipped reasons
+                    #         print(f"DEBUG: Skipped event due to low importance ({importance}): {row_dict.get('事件', row_dict.get('event', 'Unknown'))} [Raw importance: {importance_val}]")
+                    #     skipped_count += 1
+                    #     continue
+                        
+                    source_events.append({
+                        "time": str(self._get_value(row_dict, ['时间', 'time', '日期时间'], '')),
+                        "country": str(self._get_value(row_dict, ['地区', '国家', 'country'], '')),
+                        "event": str(self._get_value(row_dict, ['事件', '指标', 'event', 'title'], '')),
+                        "importance": importance,
+                        "previous": str(self._get_value(row_dict, ['前值', '前值(修正前)', 'previous'], '')),
+                        "consensus": str(self._get_value(row_dict, ['预期', '预测值', 'consensus', 'forecast'], '')),
+                        "actual": str(self._get_value(row_dict, ['公布', '今值', 'actual'], ''))
+                    })
+                except Exception as e:
+                    print(f"Error processing row from {source_name}: {e}")
+                    continue
+            
+            if skipped_count > 0:
+                print(f"DEBUG: Total skipped {skipped_count} low-importance events from {source_name}")
+                
+        except Exception as e:
+            print(f"Error in _process_df for {source_name}: {e}")
+            import traceback
+            traceback.print_exc()
+
+        return source_events
+
+    async def save_events_to_db(self, date_str: str, events: List[Dict[str, Any]]):
         if not events:
             return
             
@@ -165,7 +250,7 @@ class CalendarCollector:
                     event.get('consensus', ''),
                     event.get('actual', '')
                 )
-                if db.execute_update(query, params):
+                if await db.execute_update(query, params):
                     count += 1
             except Exception as e:
                 print(f"Error saving event to DB: {e}")
@@ -207,5 +292,6 @@ class CalendarCollector:
         return []
 
 if __name__ == "__main__":
+    import asyncio
     c = CalendarCollector(data_dir="../../server_py/data") # Adjust path for testing
-    c.collect()
+    asyncio.run(c.collect())

@@ -7,6 +7,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
+.venv/
 server_py/venv/
 *.egg-info/
 .pytest_cache/
