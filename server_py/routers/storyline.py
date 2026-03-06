@@ -14,6 +14,9 @@ class StorylineCreate(BaseModel):
     description: Optional[str] = None
     importance: int = 3
     status: str = "active"
+    series_id: Optional[str] = None
+    series_title: Optional[str] = None
+    related_event_ids: List[int] = []
 
 class StorylineResponse(BaseModel):
     id: int
@@ -26,6 +29,9 @@ class StorylineResponse(BaseModel):
     status: str
     created_at: str
     updated_at: str
+    series_id: Optional[str] = None
+    series_title: Optional[str] = None
+    related_event_ids: List[int] = []
 
     class Config:
         orm_mode = True
@@ -34,22 +40,8 @@ class StorylineResponse(BaseModel):
 async def get_storylines(date: str = Query(..., description="Date to fetch storylines for (YYYY-MM-DD)")):
     manager = StorylineManager()
     storylines = await manager.get_storylines_by_date(date)
-    
-    response = []
-    for sl in storylines:
-        response.append(StorylineResponse(
-            id=sl['id'],
-            date=sl['date'],
-            title=sl['title'],
-            keywords=sl['keywords'],
-            description=sl.get('description'),
-            importance=sl['importance'],
-            expected_impact=sl.get('expected_impact'),
-            status=sl['status'],
-            created_at=sl['created_at'],
-            updated_at=sl.get('updated_at') or sl['created_at']
-        ))
-    return response
+    # storylines are dicts processed by manager
+    return [StorylineResponse(**sl) for sl in storylines]
 
 @router.post("/", response_model=StorylineResponse)
 async def create_storyline(storyline: StorylineCreate):
@@ -57,62 +49,25 @@ async def create_storyline(storyline: StorylineCreate):
     sl = await manager.create_storyline(storyline.dict())
     if not sl:
         raise HTTPException(status_code=500, detail="Failed to create storyline")
-    return StorylineResponse(
-        id=sl['id'],
-        date=sl['date'],
-        title=sl['title'],
-        keywords=sl['keywords'],
-        description=sl.get('description'),
-        importance=sl['importance'],
-        expected_impact=sl.get('expected_impact'),
-        status=sl['status'],
-        created_at=sl['created_at'],
-        updated_at=sl.get('updated_at') or sl['created_at']
-    )
+    return StorylineResponse(**sl)
 
 @router.get("/active", response_model=List[StorylineResponse])
 async def get_active_storylines():
     manager = StorylineManager()
     storylines = await manager.get_active_storylines()
-    
-    # Process dictionaries into Pydantic models
-    response = []
-    for sl in storylines:
-        # sl is a dict from manager._process_result
-        response.append(StorylineResponse(
-            id=sl['id'],
-            date=sl['date'],
-            title=sl['title'],
-            keywords=sl['keywords'],
-            description=sl.get('description'),
-            importance=sl['importance'],
-            expected_impact=sl.get('expected_impact'),
-            status=sl['status'],
-            created_at=sl['created_at'],
-            updated_at=sl.get('updated_at') or sl['created_at']
-        ))
-    return response
+    return [StorylineResponse(**sl) for sl in storylines]
 
 @router.get("/history", response_model=List[StorylineResponse])
 async def get_history_storylines(limit: int = 50, offset: int = 0):
     manager = StorylineManager()
     storylines = await manager.get_history_storylines(limit, offset)
-    
-    response = []
-    for sl in storylines:
-        response.append(StorylineResponse(
-            id=sl['id'],
-            date=sl['date'],
-            title=sl['title'],
-            keywords=sl['keywords'],
-            description=sl.get('description'),
-            importance=sl['importance'],
-            expected_impact=sl.get('expected_impact'),
-            status=sl['status'],
-            created_at=sl['created_at'],
-            updated_at=sl.get('updated_at') or sl['created_at']
-        ))
-    return response
+    return [StorylineResponse(**sl) for sl in storylines]
+
+@router.get("/series/{series_id}", response_model=List[StorylineResponse])
+async def get_storyline_series(series_id: str):
+    manager = StorylineManager()
+    storylines = await manager.get_storyline_series(series_id)
+    return [StorylineResponse(**sl) for sl in storylines]
 
 @router.put("/{id}/archive")
 async def archive_storyline(id: int):
@@ -148,6 +103,16 @@ async def generate_storylines(date: str):
                     keywords = sl.keywords
             except:
                 keywords = []
+        
+        related_event_ids = []
+        if sl.related_event_ids:
+            try:
+                if isinstance(sl.related_event_ids, str):
+                    related_event_ids = json.loads(sl.related_event_ids)
+                elif isinstance(sl.related_event_ids, list):
+                    related_event_ids = sl.related_event_ids
+            except:
+                related_event_ids = []
                 
         response_list.append(StorylineResponse(
             id=sl.id,
@@ -159,6 +124,9 @@ async def generate_storylines(date: str):
             expected_impact=sl.expected_impact,
             status=sl.status or "active",
             created_at=sl.created_at,
-            updated_at=sl.updated_at or sl.created_at
+            updated_at=sl.updated_at or sl.created_at,
+            series_id=sl.series_id,
+            series_title=sl.series_title,
+            related_event_ids=related_event_ids
         ))
     return response_list

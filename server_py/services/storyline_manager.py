@@ -24,7 +24,27 @@ class StorylineManager:
             item['keywords'] = json.loads(item['keywords']) if item['keywords'] else []
         except Exception:
             item['keywords'] = []
+            
+        try:
+            item['related_event_ids'] = json.loads(item['related_event_ids']) if item.get('related_event_ids') else []
+        except Exception:
+            item['related_event_ids'] = []
+            
         return item
+
+    async def get_storyline_series(self, series_id: str) -> List[Dict[str, Any]]:
+        session = await self._get_session()
+        try:
+            stmt = select(Storyline).where(Storyline.series_id == series_id).order_by(Storyline.date.desc())
+            result = await session.execute(stmt)
+            storylines = result.scalars().all()
+            return [self._process_result(sl) for sl in storylines]
+        except Exception as e:
+            print(f"Error getting storyline series: {e}")
+            return []
+        finally:
+            if not self.session:
+                await session.close()
 
     async def create_storyline(self, storyline_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         session = await self._get_session()

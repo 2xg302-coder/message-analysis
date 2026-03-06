@@ -69,6 +69,9 @@ class Storyline(SQLModel, table=True):
     title: str
     description: str
     keywords: str = Field(default="[]") # JSON list of strings
+    series_id: Optional[str] = Field(default=None, index=True)
+    series_title: Optional[str] = Field(default=None)
+    related_event_ids: str = Field(default="[]") # JSON list of IDs
     importance: int
     expected_impact: str
     status: str = Field(default="active")

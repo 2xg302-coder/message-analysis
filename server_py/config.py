@@ -27,9 +27,13 @@ class Settings:
     API_SECRET = os.getenv("API_SECRET")
 
     # Embedding Settings
+    # 默认尝试使用本地模型 (FastEmbed/BGE)，若失败则回退到在线 API
+    USE_LOCAL_EMBEDDING = os.getenv("USE_LOCAL_EMBEDDING", "true").lower() == "true"
     EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY") or os.getenv("OPENAI_API_KEY") or LLM_API_KEY
+    # 在线 Embedding 接口地址。若国内无法访问 OpenAI，请配置国内兼容接口 (如 SiliconFlow, DeepSeek, Zhipu 等)
     EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL") or "https://api.openai.com/v1"
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "BAAI/bge-small-zh-v1.5")
     
     # Vector DB Path
     VECTOR_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "chroma_db"))

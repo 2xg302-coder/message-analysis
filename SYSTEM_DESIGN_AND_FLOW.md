@@ -107,7 +107,7 @@ graph TD
 - **模型 (`models_orm.py`)**:
     - `News`: 存储新闻主体，包括 `content`, `source`, `tags` (JSON), `entities` (JSON), `impact_score` 等。
     - `CalendarEvent`: 存储财经日历数据。
-    - `Storyline`: 存储市场主线，包括 `date`, `title`, `keywords`, `description`, `importance`, `status` (active/archived)。
+    - `Storyline`: 存储市场主线，包括 `date`, `title`, `keywords`, `description`, `importance`, `status`, `series_id`, `series_title`, `related_event_ids` (JSON)。
 
 ### 4.4 API 接口 (API Layer)
 后端通过 FastAPI 提供服务，主要路由在 `server_py/routers/`：
@@ -139,13 +139,21 @@ graph TD
 
 ### 4.6 主线生成 (Storyline Generation)
 - **模块**: `server_py/services/storyline_generator.py`
-- **功能**: 利用大模型基于每日财经日历数据，自动提取当日 3-5 个核心市场主线。
+- **功能**: 利用大模型基于每日财经日历数据，自动提取当日 3-5 个核心市场主线，并尝试将其与历史主线关联，形成连续剧。
 - **依赖**: `server_py/services/llm_service.py` (通用 LLM 服务封装)。
 - **流程**:
-    1.  **数据获取**: 从 `CalendarEvent` 表获取当日重要性 >= 2 的事件。
-    2.  **Prompt 构建**: 使用 `server_py/prompts/storyline_prompt.py` 中的模板，将日历数据格式化。
-    3.  **LLM 推理**: 调用 LLM 生成 JSON 格式的主线列表（包含标题、关键词、描述、影响、重要性）。
-    4.  **存储**: 将结果存入 `Storyline` 表，状态为 `active`。
+    1.  **数据获取**: 从 `CalendarEvent` 表获取当日重要性 >= 2 的事件，同时获取最近 7 天的活跃主线作为上下文。
+    2.  **Prompt 构建**: 使用 `server_py/prompts/storyline_prompt.py` 中的模板，将日历数据和历史主线数据格式化。
+    3.  **LLM 推理**: 调用 LLM 生成 JSON 格式的主线列表。AI 需判断新主线是否为历史主线的延续，并返回 `parent_id`。
+    4.  **关联处理**: 若存在 `parent_id`，继承其 `series_id`；否则生成新的 `series_id`。同时记录 `related_event_ids`。
+    5.  **存储**: 将结果存入 `Storyline` 表，状态为 `active`。
+
+### 4.10 跨日连续剧追踪 (Cross-day Series Tracking)
+- **目标**: 解决每日生成的孤立主线无法串联的问题，提供基于时间轴的事件发展视图。
+- **实现机制**:
+    - **Series ID**: 在 `Storyline` 表中引入 `series_id` (UUID)，同一叙事链条下的所有主线共享该 ID。
+    - **LLM 判别**: 生成新主线时，将历史主线作为上下文喂给 LLM，由 LLM 判断是否属于同一系列。
+    - **前端展示**: 在主线卡片上提供“追踪剧情”入口，点击后通过侧边栏 (Drawer) 展示该系列的时间轴 (Timeline)。
 
 ### 4.7 主线管理 (Storyline Manager)
 - **模块**: `server_py/services/storyline_manager.py`
@@ -159,12 +167,14 @@ graph TD
 - **模块**: `server_py/services/vector_store.py`
 - **功能**: 实现新闻与主线标签的深层语义关联，解决关键词匹配的局限性。
 - **技术栈**:
-    - **Embedding**: OpenAI `text-embedding-3-small` (推荐) 或兼容 API。
+    - **Embedding**: 支持本地轻量级模型 `FastEmbed` (BAAI/bge-small-zh-v1.5) 和云端 API (OpenAI/兼容接口) 混合模式。
     - **Vector DB**: ChromaDB (本地持久化存储)。
 - **流程**:
-    1.  **主线向量化**: 将活跃主线的标题和描述转为向量存入 ChromaDB。
-    2.  **新闻查询**: 新闻入库时，将其内容转为向量，在库中检索最相似的主线。
-    3.  **标签生成**: 根据检索结果生成 `主线:xxx` 标签，实现自动归类。
+    1.  **初始化**: 优先加载本地模型。若加载失败（环境问题），自动回退到在线 API 模式。
+    2.  **运行时容错**: 在计算向量时，若本地模型发生运行时错误，自动尝试调用在线 API 进行补救。
+    3.  **主线向量化**: 将活跃主线的标题和描述转为向量存入 ChromaDB。
+    4.  **新闻查询**: 新闻入库时，将其内容转为向量，在库中检索最相似的主线。
+    5.  **标签生成**: 根据检索结果生成 `主线:xxx` 标签，实现自动归类。
 
 ### 4.9 实体挖掘 (Entity Mining)
 - **模块**: `server_py/services/entity_miner.py`
@@ -219,3 +229,23 @@ graph TD
 
 ### 6.3 配置文件
 - 后端配置位于 `server_py/.env` (可参考 `.env.example`)，包含数据库路径、API 密钥等敏感信息。
+
+### 6.4 Docker 部署 (Docker Deployment)
+为了解决环境依赖一致性问题（特别是 Python 的 fastembed/onnxruntime 库在不同系统下的兼容性），项目提供了 Docker 支持。
+
+- **适用场景**: 生产环境部署、非 Windows/WSL 开发环境、或者需要纯净隔离环境时。
+- **文件结构**:
+    - `server_py/Dockerfile`: 后端镜像定义。
+    - `client/Dockerfile`: 前端镜像定义。
+    - `docker-compose.yml`: 容器编排配置。
+- **启动命令**:
+    ```bash
+    # 在项目根目录执行
+    docker-compose up -d --build
+    ```
+- **服务地址**:
+    - 前端: http://localhost:5173
+    - 后端: http://localhost:8000
+- **注意事项**:
+    - 数据库文件 (`news.db`) 和 向量数据库 (`chroma_db`) 通过挂载卷持久化在宿主机的 `server_py/` 目录下。
+    - 开发模式下，修改 `server_py` 代码会自动重启后端服务；前端修改也会触发热更新 (HMR)。
