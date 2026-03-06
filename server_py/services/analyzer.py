@@ -132,7 +132,9 @@ async def process_single_news(news: Dict[str, Any]):
             watchlist = await news_service.get_watchlist()
             
             # LLM Analysis (Fast Mode)
-            analysis = await analyze_news(content, watchlist=watchlist, mode="fast")
+            # Since FAST_LLM_* is disabled in .env, this will fallback to Main Client using the new configuration
+            # The 'mode="fast"' parameter will still be passed, but llm_service will route it correctly
+            analysis = await analyze_news(content, watchlist=watchlist, mode="standard")
             
             # Fallback if LLM fails or returns error
             if 'error' in analysis:

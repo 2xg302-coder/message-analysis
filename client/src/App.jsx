@@ -8,6 +8,7 @@ import SeriesView from './pages/SeriesView';
 import DataExplorer from './pages/DataExplorer';
 import CalendarView from './pages/CalendarView';
 import StorylineView from './pages/StorylineView';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const App = () => {
   return (
@@ -20,8 +21,16 @@ const App = () => {
           <Route path="trends" element={<Trends />} />
           <Route path="calendar" element={<CalendarView />} />
           <Route path="watchlist" element={<Watchlist />} />
-          <Route path="series" element={<SeriesView />} />
-          <Route path="series/:tag" element={<SeriesView />} />
+          <Route path="series" element={
+            <ErrorBoundary>
+              <SeriesView />
+            </ErrorBoundary>
+          } />
+          <Route path="series/:tag" element={
+            <ErrorBoundary>
+              <SeriesView />
+            </ErrorBoundary>
+          } />
         </Route>
       </Routes>
     </BrowserRouter>

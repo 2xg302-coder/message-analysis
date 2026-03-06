@@ -116,7 +116,12 @@ class StorylineGenerator:
                     try:
                         # parent_id might be int, ensure type compatibility
                         parent_id_int = int(parent_id)
-                        parent_storyline = await session.get(Storyline, parent_id_int)
+                        # Use select statement instead of session.get() for async session compatibility if needed, though get should work
+                        # parent_storyline = await session.get(Storyline, parent_id_int)
+                        stmt = select(Storyline).where(Storyline.id == parent_id_int)
+                        result = await session.execute(stmt)
+                        parent_storyline = result.scalar_one_or_none()
+                        
                         if parent_storyline:
                             if parent_storyline.series_id:
                                 series_id = parent_storyline.series_id
@@ -129,8 +134,8 @@ class StorylineGenerator:
                                 session.add(parent_storyline)
                                 series_id = new_series_id
                                 series_title = parent_storyline.title
-                    except (ValueError, TypeError):
-                        logger.warning(f"Invalid parent_id format: {parent_id}")
+                    except (ValueError, TypeError, Exception) as e:
+                        logger.warning(f"Invalid parent_id processing: {parent_id}, error: {e}")
                 
                 if not series_id:
                     # New series

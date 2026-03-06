@@ -137,9 +137,13 @@ const SeriesView = () => {
                              {analysis.score && (
                                <Tag color={analysis.score >= 7 ? 'red' : 'blue'}>评分: {analysis.score}</Tag>
                              )}
-                             {analysis.entities && analysis.entities.map((e, idx) => (
-                               <Tag key={idx}>{e.name}</Tag>
-                             ))}
+                             {/* Handle entities whether it's an array or object */}
+                             {analysis.entities && (Array.isArray(analysis.entities) 
+                               ? analysis.entities.map((e, idx) => <Tag key={idx}>{e.name || e}</Tag>)
+                               : typeof analysis.entities === 'object' 
+                                 ? Object.values(analysis.entities).map((name, idx) => <Tag key={idx}>{name}</Tag>)
+                                 : null
+                             )}
                           </div>
                         </Card>
                       </Timeline.Item>

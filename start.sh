@@ -71,5 +71,5 @@ echo "提示: 按 Ctrl+C 可停止所有服务"
     --prefix "[{name}]" \
     --names "BACKEND,FRONTEND" \
     --prefix-colors "blue,magenta" \
-    "cd server_py && source venv/bin/activate && python main.py" \
+    "cd server_py && venv/bin/python main.py" \
     "cd client && pnpm dev"
