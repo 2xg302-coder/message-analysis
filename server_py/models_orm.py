@@ -62,6 +62,18 @@ class CalendarEvent(SQLModel, table=True):
     consensus: Optional[str] = None
     actual: Optional[str] = None
 
+class Series(SQLModel, table=True):
+    __tablename__ = "series"
+    id: str = Field(primary_key=True)  # Using UUID or slug as ID
+    title: str = Field(index=True)
+    description: str
+    category: str = Field(default="general")  # 'macro', 'geopolitics', 'industry', 'other'
+    keywords: str = Field(default="[]")  # JSON list for initial matching
+    status: str = Field(default="active")  # 'active', 'archived'
+    current_summary: Optional[str] = None  # Dynamic summary of the series
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
 class Storyline(SQLModel, table=True):
     __tablename__ = "storylines"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -69,9 +81,10 @@ class Storyline(SQLModel, table=True):
     title: str
     description: str
     keywords: str = Field(default="[]") # JSON list of strings
-    series_id: Optional[str] = Field(default=None, index=True)
+    series_id: Optional[str] = Field(default=None, index=True) # Linked to Series.id
     series_title: Optional[str] = Field(default=None)
-    related_event_ids: str = Field(default="[]") # JSON list of IDs
+    related_event_ids: str = Field(default="[]") # JSON list of Calendar IDs
+    related_news_ids: str = Field(default="[]") # JSON list of News IDs
     importance: int
     expected_impact: str
     status: str = Field(default="active")

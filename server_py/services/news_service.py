@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+import difflib
 from core.database import db
 from core.logging import get_logger
 
@@ -345,6 +346,94 @@ class NewsService:
         sorted_entities = sorted(entity_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
         return [{"name": name, "count": count} for name, count in sorted_entities]
 
+    def _merge_similar_tags(self, series_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Merge similar tags to reduce fragmentation.
+        Strategy:
+        1. Substring merging: Merge longer tags into shorter parent tags (e.g., "OpenAI内斗" -> "OpenAI").
+        2. Fuzzy merging: Merge low-frequency tags into high-frequency similar tags (e.g., typos).
+        """
+        if not series_list:
+            return []
+            
+        # Sort by length (asc) for substring merging
+        # We process shortest tags first, treating them as potential parents
+        sorted_by_len = sorted(series_list, key=lambda x: len(x['tag']))
+        
+        # Use a dictionary to track merged results: tag -> data
+        # We initiate it with all items, but we will modify it
+        # Actually better to build it up
+        merged_map = {}
+        
+        # Pass 1: Substring Merging (Long -> Short)
+        # We iterate through sorted_by_len. For each tag, we check if it can be merged into an existing (shorter) tag in merged_map.
+        # But wait, if we have "A", "AB", "ABC".
+        # 1. Process "A". Add to map.
+        # 2. Process "AB". Check if "A" in "AB". Yes. Merge "AB" into "A".
+        # 3. Process "ABC". Check if "A" in "ABC". Yes. Merge "ABC" into "A".
+        
+        for item in sorted_by_len:
+            tag = item['tag']
+            merged = False
+            
+            # Try to find a parent in the already processed items (which are shorter or equal length)
+            # We iterate over keys of merged_map to find a parent
+            for parent_tag in list(merged_map.keys()):
+                # Rule 1: Parent must be at least 2 chars to avoid over-merging generic chars
+                if len(parent_tag) < 2: 
+                    continue
+                
+                # Rule 2: Substring match (parent is substring of current tag)
+                if parent_tag in tag:
+                    # Merge current (longer) into parent (shorter)
+                    parent_data = merged_map[parent_tag]
+                    parent_data['count'] += item['count']
+                    # Keep the latest date
+                    if item['latest_date'] > parent_data['latest_date']:
+                        parent_data['latest_date'] = item['latest_date']
+                    # Keep the longer summary if parent has none or short one? 
+                    # Actually let's just keep the parent's summary unless empty
+                    if not parent_data.get('sample_summary') and item.get('sample_summary'):
+                        parent_data['sample_summary'] = item['sample_summary']
+                        
+                    merged = True
+                    break
+            
+            if not merged:
+                merged_map[tag] = item
+
+        # Pass 2: Fuzzy Merging (Levenshtein)
+        # Now we work with the result of Pass 1
+        # Sort by frequency DESC to prioritize keeping popular tags
+        current_list = sorted(merged_map.values(), key=lambda x: x['count'], reverse=True)
+        final_map = {}
+        
+        for item in current_list:
+            tag = item['tag']
+            merged = False
+            
+            for main_tag in list(final_map.keys()):
+                # Skip if length diff is too big (optimization)
+                if abs(len(tag) - len(main_tag)) > 3:
+                    continue
+                    
+                # Calculate similarity
+                ratio = difflib.SequenceMatcher(None, tag, main_tag).ratio()
+                # Threshold 0.8 is conservative enough for typos or very close variants
+                if ratio > 0.8:
+                    # Merge current (lower freq) into main (higher freq)
+                    main_data = final_map[main_tag]
+                    main_data['count'] += item['count']
+                    if item['latest_date'] > main_data['latest_date']:
+                        main_data['latest_date'] = item['latest_date']
+                    merged = True
+                    break
+            
+            if not merged:
+                final_map[tag] = item
+                
+        return sorted(final_map.values(), key=lambda x: (x['count'], x['latest_date']), reverse=True)
+
     async def get_series_list(self) -> List[Dict[str, Any]]:
         rows = await self.db.execute_query("SELECT analysis, created_at FROM news WHERE analysis IS NOT NULL AND analysis LIKE '%\"event_tag\"%' ORDER BY created_at DESC LIMIT 2000")
         series_map = {}
@@ -353,6 +442,10 @@ class NewsService:
             analysis = self._parse_json_field(row['analysis'], {})
             tag = analysis.get('event_tag')
             if tag:
+                # Basic cleaning
+                tag = tag.strip()
+                if not tag: continue
+                
                 if tag not in series_map:
                     series_map[tag] = {
                         'tag': tag,
@@ -361,17 +454,178 @@ class NewsService:
                         'sample_summary': analysis.get('summary')
                     }
                 series_map[tag]['count'] += 1
-                
-        return sorted(series_map.values(), key=lambda x: x['latest_date'], reverse=True)
+        
+        # Convert map to list
+        raw_list = list(series_map.values())
+        
+        # Apply merging logic
+        merged_list = self._merge_similar_tags(raw_list)
+        
+        return merged_list
 
     async def get_news_by_series(self, tag: str) -> List[Dict[str, Any]]:
         rows = await self.db.execute_query("SELECT * FROM news WHERE analysis LIKE ? ORDER BY created_at DESC", (f'%{tag}%',))
         result = []
         for row in rows:
             item = self._process_news_item(row)
-            if item.get('analysis', {}).get('event_tag') == tag:
+            event_tag = item.get('analysis', {}).get('event_tag')
+            # Relaxed match: 
+            # 1. Exact match (legacy behavior)
+            # 2. Tag is substring of event_tag (handles merged cases like "OpenAI" matching "OpenAI内斗")
+            if event_tag and (tag == event_tag or tag in event_tag):
                 result.append(item)
         return result
+
+    async def _calculate_similarity(self, series: Dict[str, Any], tag: str, target_entities: set, other_entities_map: Dict[str, set]) -> Optional[Dict[str, Any]]:
+        """Helper to calculate similarity for a single series (async)"""
+        try:
+            other_tag = series['tag']
+            if other_tag == tag:
+                return None
+                
+            other_entities = other_entities_map.get(other_tag, set())
+            
+            if not other_entities:
+                return None
+
+            intersection = target_entities.intersection(other_entities)
+            union = target_entities.union(other_entities)
+            
+            if not union:
+                score = 0
+            else:
+                score = len(intersection) / len(union)
+
+            if score > 0:
+                return {
+                    'tag': other_tag,
+                    'score': score,
+                    'shared_entities': list(intersection)[:3],
+                    'count': series['count'],
+                    'latest_date': series['latest_date']
+                }
+            return None
+        except Exception as e:
+            logger.error(f"Error comparing series {tag} vs {series.get('tag')}: {e}")
+            return None
+
+    async def get_related_series(self, tag: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Calculate correlation between event series based on shared entities using Jaccard similarity.
+        Optimized to batch fetch entities and avoid N+1 queries.
+        """
+        try:
+            import asyncio
+            
+            # 1. Get entities for the target tag
+            target_news = await self.get_news_by_series(tag)
+            
+            logger.info(f"Calculating related series for '{tag}'. Found {len(target_news)} news items.")
+            
+            if not target_news:
+                return []
+
+            def get_entity_set(news_list):
+                entities = set()
+                for item in news_list:
+                    analysis = item.get('analysis', {})
+                    if not analysis: continue
+                    ents = analysis.get('entities', {})
+                    
+                    if isinstance(ents, dict):
+                        entities.update(ents.keys())
+                    elif isinstance(ents, list):
+                        for e in ents:
+                            if isinstance(e, dict):
+                                name = e.get('name')
+                            elif isinstance(e, str):
+                                name = e
+                            else:
+                                name = None
+                            if name and isinstance(name, str):
+                                entities.add(name)
+                return entities
+
+            target_entities = get_entity_set(target_news)
+            if not target_entities:
+                logger.info(f"No entities found for tag '{tag}'")
+                return []
+
+            # 2. Get all other series
+            all_series = await self.get_series_list()
+            
+            # Optimization: Filter top 50 series
+            top_series = all_series[:50]
+            top_tags = [s['tag'] for s in top_series if s['tag'] != tag]
+            
+            if not top_tags:
+                return []
+
+            # 3. Batch fetch news for all candidate series
+            # We need to construct a query that fetches entities for all these tags
+            # Since SQLite doesn't have array parameters easily, we'll fetch news where analysis contains any of these tags
+            # OR we can just fetch ALL news with analysis and filter in memory? No, too big.
+            # We can use OR conditions: analysis LIKE '%tag1%' OR analysis LIKE '%tag2%' ...
+            # But with 50 tags, query might be long.
+            # Alternative: Since we only need entities, we can optimize the query.
+            
+            # Let's construct a batch query
+            placeholders = " OR ".join(["analysis LIKE ?"] * len(top_tags))
+            params = [f'%{t}%' for t in top_tags]
+            
+            # We only need analysis field!
+            query = f"SELECT analysis FROM news WHERE analysis IS NOT NULL AND ({placeholders}) ORDER BY created_at DESC LIMIT 5000"
+            
+            rows = await self.db.execute_query(query, tuple(params))
+            
+            # 4. Group entities by tag in memory
+            other_entities_map = {} # tag -> set(entities)
+            
+            for row in rows:
+                analysis = self._parse_json_field(row['analysis'], {})
+                event_tag = analysis.get('event_tag')
+                
+                # Check which top_tag this news belongs to (handling the substring match logic)
+                matched_tags = []
+                for t in top_tags:
+                    if event_tag and (t == event_tag or t in event_tag):
+                        matched_tags.append(t)
+                
+                if not matched_tags:
+                    continue
+                    
+                ents = analysis.get('entities', {})
+                row_entities = set()
+                if isinstance(ents, dict):
+                    row_entities.update(ents.keys())
+                elif isinstance(ents, list):
+                    for e in ents:
+                        name = e.get('name') if isinstance(e, dict) else e
+                        if name and isinstance(name, str):
+                            row_entities.add(name)
+                            
+                for t in matched_tags:
+                    if t not in other_entities_map:
+                        other_entities_map[t] = set()
+                    other_entities_map[t].update(row_entities)
+
+            # 5. Calculate similarities in memory (CPU bound, but fast for sets)
+            tasks = []
+            for series in top_series:
+                tasks.append(self._calculate_similarity(series, tag, target_entities, other_entities_map))
+            
+            results = await asyncio.gather(*tasks)
+            
+            # Filter None results
+            related_scores = [r for r in results if r is not None]
+
+            # Sort by score DESC
+            return sorted(related_scores, key=lambda x: x['score'], reverse=True)[:limit]
+        except Exception as e:
+            logger.error(f"Error calculating related series for {tag}: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
 
     async def get_watchlist(self) -> List[str]:
         rows = await self.db.execute_query('SELECT keyword FROM watchlist ORDER BY created_at ASC')

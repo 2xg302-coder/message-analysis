@@ -10,6 +10,7 @@ import {
   CalendarOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
+import TaskStatus from '../components/TaskStatus';
 
 const { Header, Content, Footer, Sider } = Layout;
 
@@ -48,7 +49,9 @@ const MainLayout = () => {
         />
       </Sider>
       <Layout>
-        <Header style={{ padding: 0, background: colorBgContainer }} />
+        <Header style={{ padding: 0, background: colorBgContainer, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingRight: 24 }}>
+          <TaskStatus />
+        </Header>
         <Content style={{ margin: '0 16px' }}>
           <div
             style={{

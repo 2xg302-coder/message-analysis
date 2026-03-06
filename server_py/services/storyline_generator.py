@@ -10,23 +10,27 @@ import uuid
 # Ensure imports work when running from server_py root
 try:
     from core.database_orm import engine
-    from models_orm import CalendarEvent, Storyline
+    from models_orm import CalendarEvent, Storyline, Series
     from services.llm_service import llm_service
     from prompts.storyline_prompt import STORYLINE_SYSTEM_PROMPT, STORYLINE_USER_PROMPT_TEMPLATE
+    from services.news_service import news_service
+    from services.storyline_manager import StorylineManager
 except ImportError:
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from core.database_orm import engine
-    from models_orm import CalendarEvent, Storyline
+    from models_orm import CalendarEvent, Storyline, Series
     from services.llm_service import llm_service
     from prompts.storyline_prompt import STORYLINE_SYSTEM_PROMPT, STORYLINE_USER_PROMPT_TEMPLATE
+    from services.news_service import news_service
+    from services.storyline_manager import StorylineManager
 
 logger = logging.getLogger(__name__)
 
 class StorylineGenerator:
     def __init__(self):
-        pass
+        self.manager = StorylineManager()
 
     async def _get_session(self) -> AsyncSession:
         async_session = sessionmaker(
@@ -36,30 +40,42 @@ class StorylineGenerator:
 
     async def generate_daily_storylines(self, date: str) -> List[Storyline]:
         """
-        Generates storylines for a given date based on calendar events.
+        Generates storylines for a given date based on calendar events AND news.
+        Uses Series-based classification.
         """
         logger.info(f"Starting storyline generation for {date}")
+        
+        # Ensure seed series exist
+        await self.manager.ensure_seed_series()
         
         session = await self._get_session()
         try:
             # 1. Fetch calendar events
             events = await self._get_calendar_events(session, date)
-            if not events:
-                logger.warning(f"No calendar events found for {date} (importance >= 2)")
+            
+            # 2. Fetch High-Impact News
+            news_items = await self._get_daily_news(date)
+            
+            if not events and not news_items:
+                logger.warning(f"No calendar events or news found for {date}")
                 return []
 
-            # 2. Fetch recent storylines (history)
-            history_data_str = await self._get_history_context(session, date)
-
-            # 3. Format prompt
+            # 3. Fetch Active Series
+            active_series = await self.manager.get_all_series(status='active')
+            
+            # 4. Format prompt
             calendar_data_str = self._format_events(events)
+            news_data_str = self._format_news(news_items)
+            series_data_str = self._format_series(active_series)
+            
             prompt = STORYLINE_USER_PROMPT_TEMPLATE.format(
                 calendar_data=calendar_data_str,
-                history_data=history_data_str
+                news_data=news_data_str,
+                series_data=series_data_str
             )
 
-            # 4. Call LLM
-            logger.info(f"Generating storylines for {date} with {len(events)} events using model: {llm_service.model}...")
+            # 5. Call LLM
+            logger.info(f"Generating storylines for {date} with {len(events)} events and {len(news_items)} news items...")
             result = await llm_service.chat_completion(
                 prompt=prompt,
                 system_prompt=STORYLINE_SYSTEM_PROMPT,
@@ -79,10 +95,11 @@ class StorylineGenerator:
                 logger.warning("No storylines found in LLM response")
                 return []
 
-            # 5. Save to DB
+            # 6. Save to DB
             storylines = []
             
-            # Clear old ones for the same date
+            # Clear old ones for the same date (Re-generation strategy)
+            # Be careful: This deletes existing storylines for the day.
             statement = select(Storyline).where(Storyline.date == date)
             existing_result = await session.execute(statement)
             existing = existing_result.scalars().all()
@@ -90,56 +107,68 @@ class StorylineGenerator:
                 await session.delete(e)
             
             for item in storylines_data:
-                # Handle keywords list or string
+                # Handle keywords
                 keywords = item.get("keywords", [])
                 if isinstance(keywords, list):
                     keywords_str = json.dumps(keywords, ensure_ascii=False)
                 else:
                     keywords_str = str(keywords)
 
-                # Handle related events
-                related_indices = item.get("related_event_indices", [])
-                related_event_ids = []
-                for idx in related_indices:
+                # Handle Related Calendar Events
+                related_cal_indices = item.get("related_calendar_indices", [])
+                related_cal_ids = []
+                for idx in related_cal_indices:
                     if isinstance(idx, int) and 0 <= idx < len(events):
                         if events[idx].id:
-                            related_event_ids.append(events[idx].id)
-                related_event_ids_str = json.dumps(related_event_ids)
+                            related_cal_ids.append(events[idx].id)
+                related_event_ids_str = json.dumps(related_cal_ids)
+
+                # Handle Related News
+                related_news_indices = item.get("related_news_indices", [])
+                related_news_ids = []
+                for idx in related_news_indices:
+                    if isinstance(idx, int) and 0 <= idx < len(news_items):
+                        if 'id' in news_items[idx]:
+                            related_news_ids.append(news_items[idx]['id'])
+                related_news_ids_str = json.dumps(related_news_ids)
 
                 # Handle Series Logic
-                parent_id = item.get("parent_id")
-                series_id = None
-                series_title = item.get("title") # Default series title
-
-                if parent_id:
-                    # Try to find parent
-                    try:
-                        # parent_id might be int, ensure type compatibility
-                        parent_id_int = int(parent_id)
-                        # Use select statement instead of session.get() for async session compatibility if needed, though get should work
-                        # parent_storyline = await session.get(Storyline, parent_id_int)
-                        stmt = select(Storyline).where(Storyline.id == parent_id_int)
-                        result = await session.execute(stmt)
-                        parent_storyline = result.scalar_one_or_none()
-                        
-                        if parent_storyline:
-                            if parent_storyline.series_id:
-                                series_id = parent_storyline.series_id
-                                series_title = parent_storyline.series_title or parent_storyline.title
-                            else:
-                                # Parent has no series_id (legacy), generate one for it
-                                new_series_id = uuid.uuid4().hex
-                                parent_storyline.series_id = new_series_id
-                                parent_storyline.series_title = parent_storyline.title
-                                session.add(parent_storyline)
-                                series_id = new_series_id
-                                series_title = parent_storyline.title
-                    except (ValueError, TypeError, Exception) as e:
-                        logger.warning(f"Invalid parent_id processing: {parent_id}, error: {e}")
+                series_id = item.get("series_id")
+                series_title = None
                 
-                if not series_id:
-                    # New series
-                    series_id = uuid.uuid4().hex
+                # Check new series proposal
+                new_proposal = item.get("new_series_proposal")
+                
+                if series_id:
+                    # Validate series_id exists
+                    series_check = await session.get(Series, series_id)
+                    if series_check:
+                        series_title = series_check.title
+                        # Update series timestamp
+                        series_check.updated_at = datetime.now().isoformat()
+                        session.add(series_check)
+                    else:
+                        logger.warning(f"LLM returned invalid series_id: {series_id}")
+                        series_id = None # Fallback
+
+                if not series_id and new_proposal:
+                    # Create new series
+                    try:
+                        new_series = Series(
+                            id=uuid.uuid4().hex, # or slugify title
+                            title=new_proposal.get("title", "New Series"),
+                            description=new_proposal.get("description", ""),
+                            category=new_proposal.get("category", "general"),
+                            keywords=json.dumps([], ensure_ascii=False),
+                            status="active"
+                        )
+                        session.add(new_series)
+                        await session.flush() # Get ID? No, we set it.
+                        series_id = new_series.id
+                        series_title = new_series.title
+                        logger.info(f"Created new series: {series_title}")
+                    except Exception as e:
+                        logger.error(f"Error creating new series: {e}")
 
                 storyline = Storyline(
                     date=date,
@@ -151,7 +180,8 @@ class StorylineGenerator:
                     status="active",
                     series_id=series_id,
                     series_title=series_title,
-                    related_event_ids=related_event_ids_str
+                    related_event_ids=related_event_ids_str,
+                    related_news_ids=related_news_ids_str
                 )
                 session.add(storyline)
                 storylines.append(storyline)
@@ -178,8 +208,34 @@ class StorylineGenerator:
         statement = select(CalendarEvent).where(CalendarEvent.date == date).where(CalendarEvent.importance >= 2)
         result = await session.execute(statement)
         return result.scalars().all()
+    
+    async def _get_daily_news(self, date: str) -> List[Dict[str, Any]]:
+        """Fetch important news for the day to supplement calendar events"""
+        try:
+            # We want news from [date 00:00:00] to [date 23:59:59]
+            # Since news_service uses 'created_at' or 'time', let's rely on 'created_at' for now as it is indexed/used in get_news
+            # But wait, 'created_at' is when it was inserted. 'time' is event time. 
+            # Ideally we use 'time' but format varies. Let's use start_date/end_date in get_news which filters on created_at.
+            # Assuming scraper runs daily.
+            
+            # Fetch more and filter? 
+            # Let's fetch top 50 news with impact >= 2 or just general news if impact not set.
+            # Note: impact_score might be 0 if not analyzed yet.
+            # We should probably fetch unanalyzed news too if we want real-time. 
+            # But StorylineGenerator is likely run after some initial ingestion.
+            
+            news = await news_service.get_news(limit=50, start_date=date, end_date=date)
+            
+            # Simple deduplication based on title similarity could be done here if needed
+            # For now, just return
+            return news
+        except Exception as e:
+            logger.error(f"Error fetching daily news: {e}")
+            return []
 
     def _format_events(self, events: List[CalendarEvent]) -> str:
+        if not events:
+            return "无重要财经日历事件。"
         lines = []
         for i, e in enumerate(events):
             line = f"[{i}] {e.time} [{e.country}] {e.event} (重要性: {e.importance})"
@@ -190,36 +246,25 @@ class StorylineGenerator:
             lines.append(line)
         return "\n".join(lines)
 
-    async def _get_history_context(self, session: AsyncSession, current_date_str: str) -> str:
-        """
-        Get active storylines from previous 7 days
-        """
-        try:
-            current_date = datetime.strptime(current_date_str, "%Y-%m-%d")
-            start_date = current_date - timedelta(days=7)
-            start_date_str = start_date.strftime("%Y-%m-%d")
-            
-            # Select active storylines in range [start_date, current_date)
-            # Use < current_date to exclude today's (if any exist/re-generating)
-            statement = select(Storyline).where(
-                Storyline.date >= start_date_str,
-                Storyline.date < current_date_str,
-                Storyline.status == "active"
-            ).order_by(Storyline.date.desc())
-            
-            result = await session.execute(statement)
-            storylines = result.scalars().all()
-            
-            if not storylines:
-                return "无近期历史主线。"
-            
-            lines = []
-            for s in storylines:
-                lines.append(f"- ID: {s.id} | 日期: {s.date} | 标题: {s.title} | 描述: {s.description[:50]}...")
-            
-            return "\n".join(lines)
-        except Exception as e:
-            logger.error(f"Error getting history context: {e}")
-            return "无法获取历史数据。"
+    def _format_news(self, news_items: List[Dict[str, Any]]) -> str:
+        if not news_items:
+            return "无重要新闻快讯。"
+        lines = []
+        for i, item in enumerate(news_items):
+            # Limit content length
+            content = item.get('content', '')[:100].replace('\n', ' ')
+            source = item.get('source', 'Unknown')
+            line = f"[{i}] 【{source}】{content}..."
+            lines.append(line)
+        return "\n".join(lines)
+
+    def _format_series(self, series_list: List[Dict[str, Any]]) -> str:
+        if not series_list:
+            return "当前无活跃主题。"
+        lines = []
+        for s in series_list:
+            desc = s.get('description', '')[:50]
+            lines.append(f"- ID: {s['id']} | 标题: {s['title']} | 类别: {s['category']} | 描述: {desc}...")
+        return "\n".join(lines)
 
 storyline_generator = StorylineGenerator()

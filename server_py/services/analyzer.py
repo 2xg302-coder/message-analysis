@@ -103,7 +103,7 @@ def get_analysis_status():
 async def get_semaphore():
     global sem
     if sem is None:
-        sem = asyncio.Semaphore(3) # Limit to 3 concurrent LLM calls
+        sem = asyncio.Semaphore(5) # Limit to 5 concurrent LLM calls
     return sem
 
 async def process_single_news(news: Dict[str, Any]):
@@ -161,7 +161,7 @@ async def analysis_job():
     try:
         # Get batch of unanalyzed news
         # Note: news_service.get_unanalyzed_news will be async later
-        news_list = await news_service.get_unanalyzed_news(limit=10)
+        news_list = await news_service.get_unanalyzed_news(limit=5)
         
         if not news_list:
             return
@@ -178,11 +178,18 @@ async def analysis_job():
 async def start_scheduler():
     await load_sentiment_dicts()
     
-    # Add job: run every 10 seconds (High Frequency)
-    scheduler.add_job(analysis_job, IntervalTrigger(seconds=10), id='analysis_job', replace_existing=True)
+    # Add job: run every 30 seconds (Normal Frequency) to avoid overlap warnings
+    scheduler.add_job(
+        analysis_job, 
+        IntervalTrigger(seconds=30), 
+        id='analysis_job', 
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True
+    )
     
     scheduler.start()
-    logger.info("Analysis Scheduler started with 10 second interval (Fast Mode).")
+    logger.info("Analysis Scheduler started with 30 second interval.")
     
     # Schedule an immediate run
     # asyncio.create_task(analysis_job())

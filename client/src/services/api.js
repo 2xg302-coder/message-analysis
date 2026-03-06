@@ -57,6 +57,7 @@ export const setAnalysisControl = (running) => api.post('/analysis/control', { r
 
 export const getSeriesList = () => api.get('/series');
 export const getSeriesNews = (tag) => api.get(`/series/${encodeURIComponent(tag)}`);
+export const getRelatedSeries = (tag) => api.get(`/series/${encodeURIComponent(tag)}/related`);
 
 export const getWatchlist = () => api.get('/watchlist');
 export const updateWatchlist = (keywords) => api.post('/watchlist', { keywords });
@@ -77,5 +78,8 @@ export const getHistoryStorylines = (limit = 50, offset = 0) => api.get('/storyl
 export const generateStorylines = (date) => api.post(`/storylines/generate`, null, { params: { date } });
 export const archiveStoryline = (id) => api.put(`/storylines/${id}/archive`);
 export const getStorylineSeries = (seriesId) => api.get(`/storylines/series/${seriesId}`);
+export const getAllSeries = (status = 'active') => api.get('/storylines/series', { params: { status } });
+export const startBatchGeneration = (days = 7) => api.post('/storylines/batch-generate', null, { params: { days } });
+export const getTaskStatus = (taskId) => api.get(`/storylines/tasks/${taskId}`);
 
 export default api;

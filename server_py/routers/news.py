@@ -140,6 +140,17 @@ async def read_series_by_tag(tag: str, service: NewsService = Depends(get_news_s
         logger.error(f"Error reading series tag {tag}: {e}")
         raise HTTPException(status_code=500, detail="Failed to get series news")
 
+@router.get("/series/{tag}/related")
+async def read_related_series(tag: str, limit: int = 5, service: NewsService = Depends(get_news_service)):
+    try:
+        related = await service.get_related_series(tag, limit=limit)
+        return {"success": True, "count": len(related), "data": related}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Error reading related series for {tag}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get related series: {str(e)}")
+
 @router.get("/watchlist")
 async def read_watchlist(service: NewsService = Depends(get_news_service)):
     keywords = await service.get_watchlist()
