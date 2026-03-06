@@ -95,7 +95,10 @@ graph TD
 4.  **关注匹配 (Watchlist Matching)**:
     - **来源**: `server_py/services/processor.py`
     - **机制**: 实时加载用户配置的关键词，若新闻内容匹配，自动打上 `关注` 标签，并提升 `impact_score` (+2)，确保重要信息不被遗漏。
-5.  **评分 (Scoring)**:
+5.  **语义匹配 (Semantic Matching)**:
+    - **来源**: `server_py/services/vector_store.py`
+    - **机制**: 对长文本新闻（>20字符）进行向量化，并在 ChromaDB 中检索相似的主线（Storyline）。若匹配度高于阈值（0.45），自动打上 `主线:xxx` 标签，并提升 `impact_score`。
+6.  **评分 (Scoring)**:
     - **规则打分**: 根据关键词（如“重磅”、“突发”）和来源权重计算 `impact_score`。
     - **情感分析**: 基于词典匹配计算 `sentiment_score`。
 
@@ -104,6 +107,7 @@ graph TD
 - **模型 (`models_orm.py`)**:
     - `News`: 存储新闻主体，包括 `content`, `source`, `tags` (JSON), `entities` (JSON), `impact_score` 等。
     - `CalendarEvent`: 存储财经日历数据。
+    - `Storyline`: 存储市场主线，包括 `date`, `title`, `keywords`, `description`, `importance`, `status` (active/archived)。
 
 ### 4.4 API 接口 (API Layer)
 后端通过 FastAPI 提供服务，主要路由在 `server_py/routers/`：
@@ -111,6 +115,10 @@ graph TD
     - **参数**: `limit`, `offset`, `type` (flash/article), `min_impact` (0-10), `sentiment` (positive/negative/neutral), `entity` (核心实体搜索), `tag` (标签搜索), `start_date`, `end_date`。
     - **返回**: `{"total": int, "count": int, "data": [...]}`。
 - `GET /api/calendar/today`: 获取今日财经日历。
+- `GET /api/storylines/active`: 获取当前活跃的主线。
+- `GET /api/storylines/history`: 获取历史归档的主线。
+- `POST /api/storylines`: 手动创建主线。
+- `PUT /api/storylines/{id}/archive`: 归档指定主线。
 - `GET /api/stats`: 获取统计数据（用于 DataExplorer）。
 - `GET /api/entities`: 获取核心实体排行（用于 Trends 页面的词云）。
     - **参数**: `limit`, `start_date`, `end_date`。
@@ -128,6 +136,45 @@ graph TD
 3.  **AI 深度分析 (LLM Analysis)**:
     - **来源**: `server_py/prompts.py`
     - **机制**: 异步调用大模型生成的深度标签，包括 `event_tag`（用于连续剧追踪）和通用分类标签（如“地缘政治”、“半导体”）。这些标签最终会合并入数据库的 `tags` 字段。
+
+### 4.6 主线生成 (Storyline Generation)
+- **模块**: `server_py/services/storyline_generator.py`
+- **功能**: 利用大模型基于每日财经日历数据，自动提取当日 3-5 个核心市场主线。
+- **依赖**: `server_py/services/llm_service.py` (通用 LLM 服务封装)。
+- **流程**:
+    1.  **数据获取**: 从 `CalendarEvent` 表获取当日重要性 >= 2 的事件。
+    2.  **Prompt 构建**: 使用 `server_py/prompts/storyline_prompt.py` 中的模板，将日历数据格式化。
+    3.  **LLM 推理**: 调用 LLM 生成 JSON 格式的主线列表（包含标题、关键词、描述、影响、重要性）。
+    4.  **存储**: 将结果存入 `Storyline` 表，状态为 `active`。
+
+### 4.7 主线管理 (Storyline Manager)
+- **模块**: `server_py/services/storyline_manager.py`
+- **功能**: 管理每日市场主线（Storyline），支持创建、激活、归档和查询。
+- **流程**:
+    1.  **生成**: 由 Module A (Daily Storyline) 生成每日主线候选。
+    2.  **存储**: 存入 `Storyline` 表，状态默认为 `active`。
+    3.  **归档**: 每日定期将旧的主线归档 (`archived`)，保留历史记录。
+
+### 4.8 语义匹配与向量化 (Semantic Matching & Vectorization)
+- **模块**: `server_py/services/vector_store.py`
+- **功能**: 实现新闻与主线标签的深层语义关联，解决关键词匹配的局限性。
+- **技术栈**:
+    - **Embedding**: OpenAI `text-embedding-3-small` (推荐) 或兼容 API。
+    - **Vector DB**: ChromaDB (本地持久化存储)。
+- **流程**:
+    1.  **主线向量化**: 将活跃主线的标题和描述转为向量存入 ChromaDB。
+    2.  **新闻查询**: 新闻入库时，将其内容转为向量，在库中检索最相似的主线。
+    3.  **标签生成**: 根据检索结果生成 `主线:xxx` 标签，实现自动归类。
+
+### 4.9 实体挖掘 (Entity Mining)
+- **模块**: `server_py/services/entity_miner.py`
+- **功能**: 实时分析最近 N 小时（默认 2 小时）的新闻流，挖掘实体间的共现关系，发现潜在的热点事件簇。
+- **算法**:
+    - **共现网络构建**: 遍历新闻的 `entities` 字段，构建实体共现图 (Graph)，边权重代表共现频率。
+    - **社区发现**: 使用 Louvain 算法对共现图进行社区划分 (Community Detection)，每个社区代表一个相关性极强的事件簇。
+- **接口**:
+    - `GET /api/analysis/entity-graph`: 返回共现网络图数据 (Nodes, Links)，用于前端可视化。
+    - `GET /api/analysis/hot-clusters`: 返回识别出的高频实体簇。
 
 ## 5. 核心模块详解 (Key Modules)
 

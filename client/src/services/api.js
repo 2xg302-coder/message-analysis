@@ -70,4 +70,10 @@ export const getCalendarEvents = (date) => {
 };
 export const refreshCalendar = () => api.post('/calendar/refresh');
 
+// Storylines
+export const getActiveStorylines = () => api.get('/storylines/active');
+export const getHistoryStorylines = (limit = 50, offset = 0) => api.get('/storylines/history', { params: { limit, offset } });
+export const generateStorylines = (date) => api.post(`/storylines/generate`, null, { params: { date } });
+export const archiveStoryline = (id) => api.put(`/storylines/${id}/archive`);
+
 export default api;

@@ -26,4 +26,12 @@ class Settings:
     # 如果设置了此值，则必须在请求头中携带 X-API-Key: YOUR_SECRET
     API_SECRET = os.getenv("API_SECRET")
 
+    # Embedding Settings
+    EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY") or os.getenv("OPENAI_API_KEY") or LLM_API_KEY
+    EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL") or "https://api.openai.com/v1"
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    
+    # Vector DB Path
+    VECTOR_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "chroma_db"))
+
 settings = Settings()

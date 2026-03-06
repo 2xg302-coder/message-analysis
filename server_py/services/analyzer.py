@@ -128,8 +128,11 @@ async def process_single_news(news: Dict[str, Any]):
 
             logger.info(f"Analyzing news {news['id']} (Fast Mode)...")
             
+            # Get current watchlist
+            watchlist = await news_service.get_watchlist()
+            
             # LLM Analysis (Fast Mode)
-            analysis = await analyze_news(content, mode="fast")
+            analysis = await analyze_news(content, watchlist=watchlist, mode="fast")
             
             # Fallback if LLM fails or returns error
             if 'error' in analysis:

@@ -378,16 +378,13 @@ class NewsService:
         return [row['keyword'] for row in rows]
 
     async def update_watchlist(self, keywords: List[str]) -> bool:
-        # Transactional update
-        # For aiosqlite, we can use the helper method or manual connection
-        # But our execute_update helper only does single query.
-        # We need to do multiple queries in a transaction.
         try:
             async with self.db.get_connection() as conn:
                 await conn.execute('DELETE FROM watchlist')
                 current_time = datetime.now().isoformat()
-                for kw in keywords:
-                    await conn.execute('INSERT INTO watchlist (keyword, created_at) VALUES (?, ?)', (kw, current_time))
+                if keywords:
+                    await conn.executemany('INSERT INTO watchlist (keyword, created_at) VALUES (?, ?)',
+                                         [(kw, current_time) for kw in keywords])
                 await conn.commit()
             return True
         except Exception as e:

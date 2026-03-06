@@ -17,3 +17,6 @@ pytest-asyncio
 httpx
 pytest-cov
 pytest-mock
+chromadb
+networkx
+python-louvain

@@ -6,6 +6,7 @@ from simhash import Simhash
 from flashtext import KeywordProcessor
 import akshare as ak
 from services.news_service import news_service
+from services.vector_store import vector_store
 import os
 import logging
 import asyncio
@@ -332,5 +333,41 @@ class NewsProcessor:
                     news_item['tags'].append(tag)
             
             news_item['expected_events'] = expected_matches
+
+        # Semantic Match Storylines
+        # Only perform semantic matching if content is sufficient length
+        if clean_content and len(clean_content) > 20:
+            try:
+                # Use a slightly higher threshold to ensure quality (e.g. 0.45 cosine similarity)
+                matches = await vector_store.query_news_tags(clean_content, threshold=0.45)
+                
+                if matches:
+                    matched_tags = []
+                    
+                    # Boost score if matched storyline
+                    # Base boost for any match
+                    news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 1, 10)
+                    
+                    for m in matches:
+                        tag = f"主线:{m['title']}"
+                        matched_tags.append(tag)
+                        
+                        # Extra boost for high confidence match
+                        if m['score'] > 0.6:
+                             news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 1, 10)
+
+                    # Add to tags
+                    if 'tags' not in news_item:
+                        news_item['tags'] = []
+                    
+                    for tag in matched_tags:
+                        if tag not in news_item['tags']:
+                            news_item['tags'].append(tag)
+                            
+                    # Add detailed match info
+                    news_item['storyline_matches'] = matches
+                    
+            except Exception as e:
+                logger.error(f"Error in semantic matching: {e}")
 
         return news_item

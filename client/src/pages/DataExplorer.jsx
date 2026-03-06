@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Typography, Spin, Table, Tag, Statistic, Progress, Space, DatePicker, Radio, Button, Modal, List, Empty } from 'antd';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { DatabaseOutlined, RocketOutlined, TagOutlined, DeploymentUnitOutlined, ReloadOutlined } from '@ant-design/icons';
-import { getStats, getTagStats, getTypeStats, getTopEntities, getAnalysisStatus, getNews } from '../services/api';
+import { getStats, getTagStats, getTypeStats, getTopEntities, getAnalysisStatus, getNews, setAnalysisControl } from '../services/api';
 import dayjs from 'dayjs';
 import NewsCard from '../components/NewsCard';
 
@@ -18,6 +18,7 @@ const DataExplorer = () => {
   const [types, setTypes] = useState([]);
   const [entities, setEntities] = useState([]);
   const [analysisStatus, setAnalysisStatus] = useState({ isRunning: false, currentTask: null });
+  const [toggling, setToggling] = useState(false);
   
   // Date filter state
   const [dateRange, setDateRange] = useState([dayjs().subtract(29, 'day'), dayjs()]);
@@ -99,8 +100,13 @@ const DataExplorer = () => {
     setModalVisible(true);
     setTagNewsLoading(true);
     
-    const startDate = dateRange[0].format('YYYY-MM-DD');
-    const endDate = dateRange[1].format('YYYY-MM-DD');
+    let startDate = null;
+    let endDate = null;
+
+    if (quickDate !== 'all' && dateRange && dateRange[0] && dateRange[1]) {
+      startDate = dateRange[0].format('YYYY-MM-DD');
+      endDate = dateRange[1].format('YYYY-MM-DD');
+    }
     
     try {
       const res = await getNews({ 
@@ -131,6 +137,21 @@ const DataExplorer = () => {
       ) 
     }
   ];
+
+    const handleToggleAnalysis = async () => {
+        setToggling(true);
+        try {
+            const newStatus = !analysisStatus.isRunning;
+            const res = await setAnalysisControl(newStatus);
+            if (res.data.success) {
+                setAnalysisStatus(prev => ({ ...prev, isRunning: newStatus }));
+            }
+        } catch (error) {
+            console.error("Failed to toggle analysis", error);
+        } finally {
+            setToggling(false);
+        }
+    };
 
   return (
     <div style={{ padding: '24px' }}>
@@ -188,6 +209,17 @@ const DataExplorer = () => {
                 value={stats.pending} 
                 prefix={<RocketOutlined />} 
                 styles={{ content: { color: stats.pending > 100 ? '#cf1322' : '#fa8c16' } }} 
+                extra={
+                    <Button 
+                        size="small" 
+                        type={analysisStatus.isRunning ? 'default' : 'primary'}
+                        danger={analysisStatus.isRunning}
+                        loading={toggling}
+                        onClick={handleToggleAnalysis}
+                    >
+                        {analysisStatus.isRunning ? '暂停分析' : '启动分析'}
+                    </Button>
+                }
               />
               <Text type="secondary" style={{ fontSize: 12 }}>
                 {analysisStatus.isRunning ? '🟢 分析服务运行中 (Fast Mode)' : '🔴 分析服务已暂停'}

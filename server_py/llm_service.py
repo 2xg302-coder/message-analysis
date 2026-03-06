@@ -67,21 +67,20 @@ async def call_llm(messages: List[Dict[str, str]], timeout: float = 30.0, use_fa
         content = content.strip().strip('`')
         return json.loads(content)
 
-async def analyze_news(news_content: str, existing_tags: List[str] = [], mode: str = "standard") -> Dict[str, Any]:
+async def analyze_news(news_content: str, watchlist: List[str] = [], mode: str = "standard") -> Dict[str, Any]:
     if not client and not fast_client:
         return {'error': 'No API Key'}
 
-    # Note: existing_tags logic is temporarily removed to focus on strict structure compliance
-    # If context is needed, we can inject it into the prompt template.
+    watchlist_str = ", ".join(watchlist) if watchlist else "无"
     
     if mode == "fast":
         system_prompt = FAST_ANALYSIS_SYSTEM_PROMPT
-        user_prompt = FAST_ANALYSIS_USER_PROMPT_TEMPLATE.format(content=news_content)
+        user_prompt = FAST_ANALYSIS_USER_PROMPT_TEMPLATE.format(content=news_content, watchlist=watchlist_str)
         timeout = 10.0 # Fast timeout
         use_fast_model = True
     else:
         system_prompt = ANALYSIS_SYSTEM_PROMPT
-        user_prompt = ANALYSIS_USER_PROMPT_TEMPLATE.format(content=news_content)
+        user_prompt = ANALYSIS_USER_PROMPT_TEMPLATE.format(content=news_content, watchlist=watchlist_str)
         timeout = 45.0
         use_fast_model = False
     

@@ -61,3 +61,16 @@ class CalendarEvent(SQLModel, table=True):
     previous: Optional[str] = None
     consensus: Optional[str] = None
     actual: Optional[str] = None
+
+class Storyline(SQLModel, table=True):
+    __tablename__ = "storylines"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    date: str = Field(index=True)
+    title: str
+    description: str
+    keywords: str = Field(default="[]") # JSON list of strings
+    importance: int
+    expected_impact: str
+    status: str = Field(default="active")
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
