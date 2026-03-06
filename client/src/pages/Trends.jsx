@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Card, Row, Col, Statistic, Spin, Progress, Switch, Alert, Steps, Tag } from 'antd';
+import { Typography, Card, Row, Col, Statistic, Spin, Progress, Switch, Alert, Steps, Tag, Space } from 'antd';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { getStats, getAnalysisStatus, setAnalysisControl } from '../services/api';
 import { RobotOutlined, PauseCircleOutlined, PlayCircleOutlined, FireOutlined } from '@ant-design/icons';

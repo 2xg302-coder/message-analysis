@@ -1,20 +1,21 @@
 import re
 import json
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from simhash import Simhash
 from flashtext import KeywordProcessor
 import akshare as ak
 from services.news_service import news_service
 import os
 import logging
+import asyncio
 
 logger = logging.getLogger("processor")
 
 class NewsProcessor:
     def __init__(self):
         self.keyword_processor = KeywordProcessor()
-        self.simhash_cache: List[Dict[str, Any]] = [] # {simhash, time}
+        self.simhash_cache: List[Dict[str, Any]] = [] # {simhash, time, id, text}
         self.expected_events: Dict[str, List[Dict[str, Any]]] = {}
         self.load_expected_events()
         self.rules = {
@@ -52,24 +53,8 @@ class NewsProcessor:
             logger.error(f"Error loading expected events: {e}")
 
     def load_recent_hashes(self):
-        logger.info("Loading recent news for deduplication...")
-        try:
-            # Load last 1000 items (approx 24-48 hours of volume?)
-            # NOTE: news_service.get_news is async now.
-            # We are in __init__ (sync). We cannot call async method directly.
-            # We can run it in a new event loop or just use a dedicated sync connection here since it's startup.
-            # Or better, just skipping loading cache for now if it's too complex, but dedupe is important.
-            # Let's use asyncio.run() if there is no loop running, but FastAPI has a loop.
-            # processor is initialized in ingestion.py -> start_ingestion_scheduler -> processor = NewsProcessor()
-            # start_ingestion_scheduler is called from main.py lifespan (async context manager).
-            # So there is a running loop.
-            
-            # Since we are inside a running loop (lifespan), we cannot use asyncio.run().
-            # But NewsProcessor.__init__ is synchronous.
-            # We should probably make an async init method.
-            pass
-        except Exception as e:
-            logger.error(f"Error loading recent hashes: {e}")
+        # Sync method kept for compatibility, but logic moved to init_async
+        pass
             
     async def init_async(self):
         logger.info("Loading recent news for deduplication (Async)...")
@@ -77,18 +62,39 @@ class NewsProcessor:
             recent_news = await news_service.get_news(limit=1000)
             count = 0
             for item in recent_news:
+                # Need valid ID to enable deletion logic
+                if 'id' not in item:
+                    continue
+                    
+                # Compute clean text for containment check
+                raw_content = item.get('content', '') or item.get('title', '')
+                clean_content = self.clean_text(raw_content)
+                
+                # Use existing simhash or recompute
+                sh = None
                 if 'simhash' in item and item['simhash']:
                     try:
-                        val = item['simhash']
-                        sh = Simhash(val)
-                        
-                        t_str = item.get('created_at') or item.get('scrapedAt')
-                        if t_str:
-                            t = datetime.fromisoformat(t_str)
-                            self.simhash_cache.append({'hash': sh, 'time': t})
-                            count += 1
+                        sh = Simhash(item['simhash'])
                     except:
                         pass
+                
+                if not sh and clean_content:
+                    sh = self.calculate_simhash(clean_content)
+                
+                if sh:
+                    t_str = item.get('created_at') or item.get('scrapedAt')
+                    if t_str:
+                        try:
+                            t = datetime.fromisoformat(t_str)
+                            self.simhash_cache.append({
+                                'hash': sh, 
+                                'time': t,
+                                'id': item['id'],
+                                'text': clean_content
+                            })
+                            count += 1
+                        except:
+                            pass
             
             logger.info(f"Loaded {count} items into deduplication cache.")
         except Exception as e:
@@ -122,24 +128,67 @@ class NewsProcessor:
     def clean_text(self, text: str) -> str:
         if not text:
             return ""
+        # Remove HTML tags
         text = re.sub(r'<[^>]+>', '', text)
+        # Remove standard disclaimers
         text = re.sub(r'【免责声明】.*', '', text)
+        # Remove reporter info
         text = re.sub(r'（记者\s+.*?）', '', text)
         text = re.sub(r'\(记者\s+.*?\)', '', text)
+        
+        # Remove source prefixes like "财联社3月6日电，" or "财联社3月6日讯，"
+        # Pattern: 2-6 chars (source) + date + 电/讯 + comma/space
+        text = re.sub(r'^.{2,6}\d{1,2}月\d{1,2}日[电讯][，,]', '', text)
+        
+        # Remove bracketed titles at start if they look like summaries
+        # e.g. 【Title】Content...
+        text = re.sub(r'^【.*?】', '', text)
+        
         return text.strip()
 
     def calculate_simhash(self, text: str) -> Simhash:
         return Simhash(text)
 
-    def is_duplicate(self, current_simhash: Simhash, current_time: datetime) -> bool:
+    def is_duplicate(self, current_simhash: Simhash, current_text: str, current_time: datetime) -> Tuple[bool, List[str]]:
+        """
+        Check if duplicate.
+        Returns: (is_duplicate_new, ids_to_delete)
+        """
         cutoff = current_time - timedelta(hours=24)
         self.simhash_cache = [x for x in self.simhash_cache if x['time'] > cutoff]
         
+        ids_to_delete = []
+        is_dupe = False
+        
         for item in self.simhash_cache:
+            # 1. SimHash Distance Check
             distance = current_simhash.distance(item['hash'])
             if distance <= 3:
-                return True
-        return False
+                # Found a very similar item.
+                # Usually we discard the new one.
+                is_dupe = True
+                # But check if new one is significantly longer/better?
+                # For now, stick to simple SimHash logic: first come first serve.
+                break
+            
+            # 2. Containment Check
+            cached_text = item.get('text', '')
+            if not cached_text or not current_text:
+                continue
+                
+            # If new text is contained in old text (and old text is longer) -> New is duplicate
+            if len(current_text) < len(cached_text) and current_text in cached_text:
+                is_dupe = True
+                break
+                
+            # If old text is contained in new text (and new text is longer) -> Old is duplicate (delete old)
+            if len(cached_text) < len(current_text) and cached_text in current_text:
+                # Mark old for deletion, but keep checking other items
+                # We don't set is_dupe = True here because we want to keep the new one
+                if item.get('id'):
+                    ids_to_delete.append(item['id'])
+        
+        return is_dupe, ids_to_delete
 
     def extract_entities(self, text: str) -> List[Dict[str, Any]]:
         keywords_found = self.keyword_processor.extract_keywords(text)
@@ -198,7 +247,7 @@ class NewsProcessor:
             "tags": list(tags)
         }
 
-    def process(self, news_item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def process(self, news_item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         raw_content = news_item.get('content', '') or news_item.get('title', '')
         if not raw_content:
             return None
@@ -209,11 +258,26 @@ class NewsProcessor:
         current_time = datetime.now()
         simhash = self.calculate_simhash(clean_content)
         
-        if len(clean_content) > 20:
-            if self.is_duplicate(simhash, current_time):
+        if len(clean_content) > 10: # Lowered threshold slightly
+            is_dupe, ids_to_delete = self.is_duplicate(simhash, clean_content, current_time)
+            
+            if ids_to_delete:
+                logger.info(f"Found {len(ids_to_delete)} inferior duplicates to delete.")
+                for old_id in ids_to_delete:
+                    await news_service.delete_news(old_id)
+                    # Also remove from cache
+                    self.simhash_cache = [x for x in self.simhash_cache if x.get('id') != old_id]
+            
+            if is_dupe:
+                logger.info(f"Duplicate detected: {clean_content[:20]}...")
                 return None
             
-        self.simhash_cache.append({'hash': simhash, 'time': current_time})
+        self.simhash_cache.append({
+            'hash': simhash, 
+            'time': current_time,
+            'id': news_item.get('id'),
+            'text': clean_content
+        })
         news_item['simhash'] = simhash.value
         
         entities = self.extract_entities(clean_content)

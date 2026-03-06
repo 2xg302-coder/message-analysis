@@ -20,8 +20,8 @@ const DataExplorer = () => {
   const [analysisStatus, setAnalysisStatus] = useState({ isRunning: false, currentTask: null });
   
   // Date filter state
-  const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()]);
-  const [quickDate, setQuickDate] = useState('week'); // 'day', 'week', 'month'
+  const [dateRange, setDateRange] = useState([dayjs().subtract(29, 'day'), dayjs()]);
+  const [quickDate, setQuickDate] = useState('month'); // 'day', 'week', 'month', 'all'
 
   // Tag display state
   const [showAllTags, setShowAllTags] = useState(false);
@@ -34,11 +34,14 @@ const DataExplorer = () => {
   const [tagNewsLoading, setTagNewsLoading] = useState(false);
 
   const fetchData = async () => {
-    if (!dateRange || !dateRange[0] || !dateRange[1]) return;
-    
     setLoading(true);
-    const startDate = dateRange[0].format('YYYY-MM-DD');
-    const endDate = dateRange[1].format('YYYY-MM-DD');
+    let startDate = null;
+    let endDate = null;
+
+    if (quickDate !== 'all' && dateRange && dateRange[0] && dateRange[1]) {
+      startDate = dateRange[0].format('YYYY-MM-DD');
+      endDate = dateRange[1].format('YYYY-MM-DD');
+    }
 
     try {
       const [statsRes, tagsRes, typesRes, entitiesRes, statusRes] = await Promise.all([
@@ -70,21 +73,19 @@ const DataExplorer = () => {
        if (statusRes.data.success) setAnalysisStatus(statusRes.data.data);
     }, 10000); 
     return () => clearInterval(interval);
-  }, [dateRange]); // Trigger when dateRange changes
+  }, [dateRange, quickDate]); // Trigger when dateRange or quickDate changes
 
   const handleQuickDateChange = (e) => {
     const value = e.target.value;
     setQuickDate(value);
     
+    if (value === 'all') {
+      setDateRange(null);
+      return;
+    }
+
     const end = dayjs();
     let start = dayjs();
-    
-    if (value === 'day') start = dayjs().subtract(0, 'day'); // Today (or last 24h?) Usually means today. 
-    // If 'day' means last 24h, use subtract(1, 'day'). 
-    // If it means 'Today', use startOf('day')? 
-    // Backend uses YYYY-MM-DD string comparison. 
-    // If I select 'day', I usually want 'Today'.
-    // Let's assume 'day' = Today. 
     
     if (value === 'day') start = dayjs(); 
     else if (value === 'week') start = dayjs().subtract(6, 'day');
@@ -143,6 +144,7 @@ const DataExplorer = () => {
             <Radio.Button value="day">今天</Radio.Button>
             <Radio.Button value="week">近一周</Radio.Button>
             <Radio.Button value="month">近一月</Radio.Button>
+            <Radio.Button value="all">全部</Radio.Button>
           </Radio.Group>
           <RangePicker 
             value={dateRange} 

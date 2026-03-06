@@ -12,3 +12,8 @@ flashtext
 sqlite-utils
 aiosqlite
 sqlmodel
+pytest
+pytest-asyncio
+httpx
+pytest-cov
+pytest-mock

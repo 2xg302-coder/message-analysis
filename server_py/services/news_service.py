@@ -149,8 +149,10 @@ class NewsService:
             params.append(f'%{escaped_tag}%')
 
         if start_date and end_date:
-            query += " AND date(created_at) BETWEEN ? AND ?"
-            params.extend([start_date, end_date])
+            # Use string comparison for performance and reliability (avoids date() function issues)
+            # created_at is ISO format (e.g. 2023-01-01T12:00:00)
+            query += " AND created_at >= ? AND created_at <= ?"
+            params.extend([start_date, end_date + "T23:59:59.999999"])
             
         query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
         params.append(limit)
@@ -190,14 +192,22 @@ class NewsService:
             logger.error(f"Error saving analysis for {news_id}: {e}")
             return False
 
+    async def delete_news(self, news_id: str) -> bool:
+        try:
+            query = "DELETE FROM news WHERE id = ?"
+            return await self.db.execute_update(query, (news_id,))
+        except Exception as e:
+            logger.error(f"Error deleting news {news_id}: {e}")
+            return False
+
     async def get_tag_stats(self, limit: int = 100, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         query = "SELECT tags FROM news WHERE tags IS NOT NULL AND tags != '[]'"
         params = []
         
         # Determine row limit based on context
         if start_date and end_date:
-            query += " AND date(created_at) BETWEEN ? AND ?"
-            params.extend([start_date, end_date])
+            query += " AND created_at >= ? AND created_at <= ?"
+            params.extend([start_date, end_date + "T23:59:59.999999"])
             # When filtering by date, we want accuracy over the whole period
             row_limit = 50000
         else:
@@ -223,8 +233,8 @@ class NewsService:
         query = "SELECT analysis FROM news WHERE analysis IS NOT NULL"
         params = []
         if start_date and end_date:
-            query += " AND date(created_at) BETWEEN ? AND ?"
-            params.extend([start_date, end_date])
+            query += " AND created_at >= ? AND created_at <= ?"
+            params.extend([start_date, end_date + "T23:59:59.999999"])
         query += " ORDER BY created_at DESC LIMIT 2000"
         
         rows = await self.db.execute_query(query, tuple(params))
@@ -241,8 +251,8 @@ class NewsService:
             where_clause = ""
             params = []
             if start_date and end_date:
-                where_clause = " WHERE date(created_at) BETWEEN ? AND ?"
-                params.extend([start_date, end_date])
+                where_clause = " WHERE created_at >= ? AND created_at <= ?"
+                params.extend([start_date, end_date + "T23:59:59.999999"])
 
             total_query = f'SELECT COUNT(*) as count FROM news{where_clause}'
             total_res = await self.db.execute_query(total_query, tuple(params))
@@ -278,8 +288,8 @@ class NewsService:
         query = "SELECT entities FROM news WHERE entities IS NOT NULL"
         params = []
         if start_date and end_date:
-            query += " AND date(created_at) BETWEEN ? AND ?"
-            params.extend([start_date, end_date])
+            query += " AND created_at >= ? AND created_at <= ?"
+            params.extend([start_date, end_date + "T23:59:59.999999"])
         query += " ORDER BY created_at DESC LIMIT 1000"
 
         rows = await self.db.execute_query(query, tuple(params))

@@ -22,7 +22,7 @@ async def run_ingestion(collector, source_name, processor):
             for news in news_list:
                 try:
                     # Process news (clean, dedupe, NER, rate)
-                    processed = processor.process(news)
+                    processed = await processor.process(news)
                     if processed:
                         # Map processed fields to NewsItem/DB schema
                         if 'rating' in processed:
