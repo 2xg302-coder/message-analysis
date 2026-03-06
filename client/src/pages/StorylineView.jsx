@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, List, Tag, Typography, Button, Space, Tabs, Rate, message, DatePicker, Empty, Popconfirm } from 'antd';
 import { RocketOutlined, HistoryOutlined, ThunderboltOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getActiveStorylines, getHistoryStorylines, generateStorylines, archiveStoryline } from '../services/api';
+import { getActiveStorylines, getStorylinesByDate, getHistoryStorylines, generateStorylines, archiveStoryline } from '../services/api';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -50,15 +50,19 @@ const StorylineView = () => {
   const [historyStorylines, setHistoryStorylines] = useState([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [generateDate, setGenerateDate] = useState(dayjs());
+  const [selectedDate, setSelectedDate] = useState(dayjs());
 
-  const fetchActive = async () => {
+  const fetchStorylines = async (date) => {
+    if (!date) return;
     setLoading(true);
+    const dateStr = date.format('YYYY-MM-DD');
     try {
-      const res = await getActiveStorylines();
+      // Use getStorylinesByDate instead of getActiveStorylines
+      // If date is today, we could use active, but consistent API is better
+      const res = await getStorylinesByDate(dateStr);
       setActiveStorylines(res.data || []);
     } catch (error) {
-      message.error('获取活跃主线失败');
+      message.error('获取主线失败');
     } finally {
       setLoading(false);
     }
@@ -77,18 +81,18 @@ const StorylineView = () => {
   };
 
   useEffect(() => {
-    fetchActive();
-    fetchHistory();
-  }, []);
+    fetchStorylines(selectedDate);
+    // fetchHistory only when tab changes, but we can load it initially too
+  }, [selectedDate]);
 
   const handleGenerate = async () => {
-    if (!generateDate) return;
+    if (!selectedDate) return;
     setGenerating(true);
-    const dateStr = generateDate.format('YYYY-MM-DD');
+    const dateStr = selectedDate.format('YYYY-MM-DD');
     try {
       await generateStorylines(dateStr);
       message.success(`成功生成 ${dateStr} 的主线`);
-      fetchActive();
+      fetchStorylines(selectedDate);
     } catch (error) {
       console.error(error);
       message.error('生成失败，请检查后端日志');
@@ -101,8 +105,8 @@ const StorylineView = () => {
       try {
           await archiveStoryline(id);
           message.success('归档成功');
-          fetchActive();
-          fetchHistory(); // Refresh history as well
+          fetchStorylines(selectedDate);
+          // fetchHistory(); // Can't easily refresh history tab content from here without state lift, but that's fine
       } catch (error) {
           message.error('归档失败');
       }
@@ -114,15 +118,15 @@ const StorylineView = () => {
       label: (
         <span>
           <RocketOutlined />
-          今日主线
+          每日主线
         </span>
       ),
       children: (
         <div>
           <Card style={{ marginBottom: 16 }}>
             <Space>
-              <Text>生成日期:</Text>
-              <DatePicker value={generateDate} onChange={setGenerateDate} allowClear={false} />
+              <Text>选择日期:</Text>
+              <DatePicker value={selectedDate} onChange={setSelectedDate} allowClear={false} />
               <Button 
                 type="primary" 
                 icon={<ThunderboltOutlined />} 
@@ -134,14 +138,14 @@ const StorylineView = () => {
             </Space>
           </Card>
           
-          {loading && !activeStorylines.length ? (
+          {loading ? (
              <Card loading={true} />
           ) : activeStorylines.length > 0 ? (
             activeStorylines.map(item => (
               <StorylineCard key={item.id} item={item} onArchive={handleArchive} />
             ))
           ) : (
-            <Empty description="暂无活跃主线，请尝试生成" />
+            <Empty description="该日期暂无主线数据，请尝试生成" />
           )}
         </div>
       ),

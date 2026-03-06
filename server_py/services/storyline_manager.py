@@ -104,6 +104,20 @@ class StorylineManager:
             if not self.session:
                 await session.close()
 
+    async def get_storylines_by_date(self, date: str) -> List[Dict[str, Any]]:
+        session = await self._get_session()
+        try:
+            stmt = select(Storyline).where(Storyline.date == date).order_by(Storyline.importance.desc())
+            result = await session.execute(stmt)
+            storylines = result.scalars().all()
+            return [self._process_result(sl) for sl in storylines]
+        except Exception as e:
+            print(f"Error getting storylines by date: {e}")
+            return []
+        finally:
+            if not self.session:
+                await session.close()
+
     async def get_active_storylines(self) -> List[Dict[str, Any]]:
         session = await self._get_session()
         try:

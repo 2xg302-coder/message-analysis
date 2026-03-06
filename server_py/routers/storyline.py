@@ -30,6 +30,27 @@ class StorylineResponse(BaseModel):
     class Config:
         orm_mode = True
 
+@router.get("/", response_model=List[StorylineResponse])
+async def get_storylines(date: str = Query(..., description="Date to fetch storylines for (YYYY-MM-DD)")):
+    manager = StorylineManager()
+    storylines = await manager.get_storylines_by_date(date)
+    
+    response = []
+    for sl in storylines:
+        response.append(StorylineResponse(
+            id=sl['id'],
+            date=sl['date'],
+            title=sl['title'],
+            keywords=sl['keywords'],
+            description=sl.get('description'),
+            importance=sl['importance'],
+            expected_impact=sl.get('expected_impact'),
+            status=sl['status'],
+            created_at=sl['created_at'],
+            updated_at=sl.get('updated_at') or sl['created_at']
+        ))
+    return response
+
 @router.post("/", response_model=StorylineResponse)
 async def create_storyline(storyline: StorylineCreate):
     manager = StorylineManager()

@@ -52,7 +52,7 @@ class StorylineGenerator:
             prompt = STORYLINE_USER_PROMPT_TEMPLATE.format(calendar_data=calendar_data_str)
 
             # 3. Call LLM
-            logger.info(f"Generating storylines for {date} with {len(events)} events...")
+            logger.info(f"Generating storylines for {date} with {len(events)} events using model: {llm_service.model}...")
             result = await llm_service.chat_completion(
                 prompt=prompt,
                 system_prompt=STORYLINE_SYSTEM_PROMPT,
