@@ -26,16 +26,20 @@ sem: Optional[asyncio.Semaphore] = None
 positive_words = set()
 negative_words = set()
 
-def load_sentiment_dicts():
+async def load_sentiment_dicts():
     global positive_words, negative_words
     try:
-        if os.path.exists(settings.POSITIVE_WORDS_PATH):
-            with open(settings.POSITIVE_WORDS_PATH, 'r', encoding='utf-8') as f:
-                positive_words = set(line.strip() for line in f if line.strip())
+        def _read_file(path):
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    return set(line.strip() for line in f if line.strip())
+            return set()
+
+        if settings.POSITIVE_WORDS_PATH:
+            positive_words = await asyncio.to_thread(_read_file, settings.POSITIVE_WORDS_PATH)
         
-        if os.path.exists(settings.NEGATIVE_WORDS_PATH):
-            with open(settings.NEGATIVE_WORDS_PATH, 'r', encoding='utf-8') as f:
-                negative_words = set(line.strip() for line in f if line.strip())
+        if settings.NEGATIVE_WORDS_PATH:
+            negative_words = await asyncio.to_thread(_read_file, settings.NEGATIVE_WORDS_PATH)
                 
         logger.info(f"Loaded sentiment dicts: {len(positive_words)} positive, {len(negative_words)} negative")
     except Exception as e:
@@ -166,8 +170,8 @@ async def analysis_job():
     except Exception as e:
         logger.error(f"Analysis job error: {e}")
 
-def start_scheduler():
-    load_sentiment_dicts()
+async def start_scheduler():
+    await load_sentiment_dicts()
     
     # Add job: run every 10 seconds (High Frequency)
     scheduler.add_job(analysis_job, IntervalTrigger(seconds=10), id='analysis_job', replace_existing=True)

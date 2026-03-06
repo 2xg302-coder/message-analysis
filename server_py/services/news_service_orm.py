@@ -102,31 +102,71 @@ class NewsServiceORM:
                  news_type: Optional[str] = None, 
                  min_impact: Optional[int] = None,
                  tag: Optional[str] = None,
+                 sentiment: Optional[str] = None,
+                 keyword: Optional[str] = None,
                  start_date: Optional[str] = None,
-                 end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+                 end_date: Optional[str] = None,
+                 return_total: bool = False) -> Any:
         
         session = await self._get_session()
         try:
-            stmt = select(News).order_by(News.created_at.desc()).offset(offset).limit(limit)
+            # Build filters
+            filters = []
             
             if news_type:
-                stmt = stmt.where(News.type == news_type)
+                filters.append(News.type == news_type)
             
             if min_impact is not None:
-                stmt = stmt.where(News.impact_score >= min_impact)
+                filters.append(News.impact_score >= min_impact)
                 
             if tag:
                 # SQLite JSON specific search or string search
-                stmt = stmt.where(col(News.tags).contains(tag))
+                filters.append(col(News.tags).contains(tag))
+
+            if sentiment:
+                if sentiment == 'positive':
+                    filters.append(News.sentiment_score > 0.05)
+                elif sentiment == 'negative':
+                    filters.append(News.sentiment_score < -0.05)
+                elif sentiment == 'neutral':
+                    filters.append(News.sentiment_score >= -0.05)
+                    filters.append(News.sentiment_score <= 0.05)
+
+            if keyword:
+                # Search in title, content, or entities
+                # entities is stored as JSON string, so contains works
+                filters.append(
+                    (News.title.contains(keyword)) | 
+                    (News.content.contains(keyword)) | 
+                    (col(News.entities).contains(keyword))
+                )
                 
             if start_date and end_date:
                 # Assuming created_at is ISO string, string comparison works for YYYY-MM-DD
-                stmt = stmt.where(News.created_at >= start_date).where(News.created_at <= end_date)
+                filters.append(News.created_at >= start_date)
+                filters.append(News.created_at <= end_date + "T23:59:59.999999")
+
+            # 1. Get Data
+            stmt = select(News).order_by(News.created_at.desc()).offset(offset).limit(limit)
+            if filters:
+                stmt = stmt.where(*filters)
 
             result = await session.execute(stmt)
             news_list = result.scalars().all()
+            processed_list = [self._process_result(news) for news in news_list]
             
-            return [self._process_result(news) for news in news_list]
+            if not return_total:
+                return processed_list
+
+            # 2. Get Total Count
+            stmt_count = select(func.count(News.id))
+            if filters:
+                stmt_count = stmt_count.where(*filters)
+            
+            total = await session.scalar(stmt_count)
+            
+            return processed_list, (total or 0)
+
         finally:
             if not self.session:
                 await session.close()

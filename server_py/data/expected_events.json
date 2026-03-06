@@ -2462,7 +2462,7 @@
       "importance": 1,
       "previous": "511.86",
       "consensus": "nan",
-      "actual": "nan"
+      "actual": "488.35"
     },
     {
       "time": "11:00",
@@ -2480,7 +2480,7 @@
       "importance": 1,
       "previous": "9.3",
       "consensus": "nan",
-      "actual": "nan"
+      "actual": "8.5"
     },
     {
       "time": "11:05",
@@ -2489,7 +2489,7 @@
       "importance": 1,
       "previous": "2.53",
       "consensus": "2.75",
-      "actual": "nan"
+      "actual": "3.35"
     },
     {
       "time": "11:05",
@@ -2498,7 +2498,7 @@
       "importance": 1,
       "previous": "-17.8",
       "consensus": "-20.25",
-      "actual": "nan"
+      "actual": "-10.45"
     },
     {
       "time": "11:05",
@@ -2507,7 +2507,7 @@
       "importance": 1,
       "previous": "49.2",
       "consensus": "14.0",
-      "actual": "nan"
+      "actual": "4.4"
     },
     {
       "time": "11:05",
@@ -2516,7 +2516,7 @@
       "importance": 1,
       "previous": "29.7",
       "consensus": "14.3",
-      "actual": "nan"
+      "actual": "5.7"
     },
     {
       "time": "11:05",
@@ -2525,7 +2525,7 @@
       "importance": 1,
       "previous": "21.5",
       "consensus": "nan",
-      "actual": "nan"
+      "actual": "1.0"
     },
     {
       "time": "14:00",

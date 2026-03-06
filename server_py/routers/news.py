@@ -54,6 +54,8 @@ async def read_news(
     min_impact: Optional[int] = None,
     source: Optional[str] = None,
     tag: Optional[str] = None,
+    sentiment: Optional[str] = None,
+    entity: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     service: NewsService = Depends(get_news_service)
@@ -62,21 +64,24 @@ async def read_news(
         if type == 'all':
             type = None
             
-        news = await service.get_news(
+        news, total = await service.get_news(
             limit=limit, 
             offset=offset, 
             news_type=type, 
             min_impact=min_impact,
             tag=tag,
+            sentiment=sentiment,
+            keyword=entity,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            return_total=True
         )
         
         # Filter by source if needed (DB doesn't index source efficiently yet, do in memory or update service)
         if source:
              news = [n for n in news if n.get('source') == source]
 
-        return {"count": len(news), "data": news}
+        return {"total": total, "count": len(news), "data": news}
     except Exception as e:
         logger.error(f"Error reading news: {e}")
         raise HTTPException(status_code=500, detail=str(e))

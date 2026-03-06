@@ -26,13 +26,17 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Application starting up...")
     
-    # Start Schedulers
-    start_ingestion_scheduler()
-    start_analysis_scheduler()
+    # Init Database (Raw) - Moved from sync import time to async startup
+    from core.database import db
+    await db.init_db()
 
     # Init ORM DB (ensure tables)
     from core.database_orm import init_db
     await init_db()
+
+    # Start Schedulers
+    await start_ingestion_scheduler()
+    await start_analysis_scheduler()
     
     yield
     

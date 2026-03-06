@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict
 from datetime import datetime
 from sqlmodel import Field, SQLModel, JSON
-from sqlalchemy import Column
+from sqlalchemy import Column, UniqueConstraint
 import json
 
 class NewsBase(SQLModel):
@@ -49,6 +49,9 @@ class Watchlist(SQLModel, table=True):
 
 class CalendarEvent(SQLModel, table=True):
     __tablename__ = "calendar_events"
+    __table_args__ = (
+        UniqueConstraint("date", "time", "event", "country", name="uq_calendar_event"),
+    )
     id: Optional[int] = Field(default=None, primary_key=True)
     date: str
     time: str

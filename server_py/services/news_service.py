@@ -128,38 +128,69 @@ class NewsService:
                  news_type: Optional[str] = None, 
                  min_impact: Optional[int] = None,
                  tag: Optional[str] = None,
+                 sentiment: Optional[str] = None,
+                 keyword: Optional[str] = None,
                  start_date: Optional[str] = None,
-                 end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+                 end_date: Optional[str] = None,
+                 return_total: bool = False) -> Any:
         
-        query = "SELECT * FROM news WHERE 1=1"
+        where_clauses = ["1=1"]
         params = []
         
         if news_type:
-            query += " AND type = ?"
+            where_clauses.append("type = ?")
             params.append(news_type)
             
         if min_impact is not None:
-            query += " AND impact_score >= ?"
+            where_clauses.append("impact_score >= ?")
             params.append(min_impact)
 
         if tag:
             escaped_tag = json.dumps(tag).strip('"')
-            query += " AND (tags LIKE ? OR tags LIKE ?)"
+            where_clauses.append("(tags LIKE ? OR tags LIKE ?)")
             params.append(f'%{tag}%')
             params.append(f'%{escaped_tag}%')
 
+        if sentiment:
+            if sentiment == 'positive':
+                where_clauses.append("sentiment_score > ?")
+                params.append(0.05)
+            elif sentiment == 'negative':
+                where_clauses.append("sentiment_score < ?")
+                params.append(-0.05)
+            elif sentiment == 'neutral':
+                where_clauses.append("sentiment_score >= ? AND sentiment_score <= ?")
+                params.extend([-0.05, 0.05])
+
+        if keyword:
+            # Search in title, content, or entities
+            # entities is stored as JSON string, so LIKE works
+            where_clauses.append("(title LIKE ? OR content LIKE ? OR entities LIKE ?)")
+            kw_param = f'%{keyword}%'
+            params.extend([kw_param, kw_param, kw_param])
+
         if start_date and end_date:
-            # Use string comparison for performance and reliability (avoids date() function issues)
-            # created_at is ISO format (e.g. 2023-01-01T12:00:00)
-            query += " AND created_at >= ? AND created_at <= ?"
+            where_clauses.append("created_at >= ? AND created_at <= ?")
             params.extend([start_date, end_date + "T23:59:59.999999"])
             
-        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
-        params.append(limit)
-        params.append(offset)
+        where_sql = " AND ".join(where_clauses)
         
-        rows = await self.db.execute_query(query, tuple(params))
-        return [self._process_news_item(row) for row in rows]
+        # 1. Get Data
+        query = f"SELECT * FROM news WHERE {where_sql} ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        query_params = params + [limit, offset]
+        
+        rows = await self.db.execute_query(query, tuple(query_params))
+        news_list = [self._process_news_item(row) for row in rows]
+        
+        if not return_total:
+            return news_list
+            
+        # 2. Get Total Count
+        count_query = f"SELECT COUNT(*) as count FROM news WHERE {where_sql}"
+        count_res = await self.db.execute_query(count_query, tuple(params))
+        total = count_res[0]['count'] if count_res else 0
+        
+        return news_list, total
 
     async def get_unanalyzed_news(self, limit: int = 10) -> List[Dict[str, Any]]:
         query = 'SELECT * FROM news WHERE analysis IS NULL ORDER BY created_at ASC LIMIT ?'

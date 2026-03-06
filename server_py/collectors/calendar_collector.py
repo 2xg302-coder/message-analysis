@@ -271,6 +271,17 @@ class CalendarCollector:
         formatted_date = datetime.strptime(date_str, '%Y%m%d').strftime('%Y-%m-%d')
         data[formatted_date] = events
         
+        # Clean up old data (Keep only last 30 days)
+        try:
+            sorted_dates = sorted(data.keys())
+            if len(sorted_dates) > 30:
+                dates_to_remove = sorted_dates[:-30]
+                for d in dates_to_remove:
+                    del data[d]
+                print(f"Cleaned up {len(dates_to_remove)} old days from expected_events.json")
+        except Exception as e:
+            print(f"Error cleaning up old calendar data: {e}")
+        
         # Save
         with open(self.file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)

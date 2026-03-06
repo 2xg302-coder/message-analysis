@@ -54,6 +54,26 @@ async def run_ingestion(collector, source_name, processor):
         logger.error(f"Ingestion error for {source_name}: {e}")
 
 async def run_calendar_collection(collector, processor):
+    from datetime import datetime
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    logger.info(f"Checking calendar data for {today_str}...")
+    
+    # Check if we already have data for today
+    from core.database import db
+    try:
+        count_query = "SELECT COUNT(*) as count FROM calendar_events WHERE date = ?"
+        result = await db.execute_query(count_query, (today_str,))
+        count = result[0]['count'] if result else 0
+        
+        if count > 0:
+            logger.info(f"Calendar events for {today_str} already exist ({count} events). Skipping startup collection.")
+            # Still load expected events into processor cache if needed
+            if hasattr(processor, 'load_expected_events'):
+                processor.load_expected_events()
+            return
+    except Exception as e:
+        logger.warning(f"Failed to check existing calendar events: {e}")
+
     logger.info("Running daily economic calendar collection...")
     try:
         await collector.collect()
@@ -64,7 +84,7 @@ async def run_calendar_collection(collector, processor):
     except Exception as e:
         logger.error(f"Calendar collection error: {e}")
 
-def start_ingestion_scheduler():
+async def start_ingestion_scheduler():
     try:
         # Import here to avoid circular imports or early initialization issues
         from collectors.sina_collector import SinaCollector
@@ -77,8 +97,8 @@ def start_ingestion_scheduler():
         calendar_collector = CalendarCollector(data_dir="data")
         processor = NewsProcessor()
         # Initialize processor async state (cache)
-        # Since we are in a synchronous function (start_ingestion_scheduler), we can use create_task to run init
-        asyncio.create_task(processor.init_async())
+        # Since we are in an async function, we can await it directly or create task
+        await processor.init_async()
         
         # News Ingestion Jobs
         scheduler.add_job(run_ingestion, IntervalTrigger(seconds=30), args=[sina_collector, 'Sina', processor], id='sina_ingestion', replace_existing=True)
@@ -90,10 +110,14 @@ def start_ingestion_scheduler():
         scheduler.start()
         logger.info("Ingestion Scheduler started.")
         
-        # Run immediately
-        asyncio.create_task(run_ingestion(sina_collector, 'Sina', processor))
-        # Run calendar immediately if it doesn't exist for today
-        asyncio.create_task(run_calendar_collection(calendar_collector, processor))
+        # Run immediately but with a small delay to allow server startup
+        async def delayed_start():
+            await asyncio.sleep(5)  # Wait 5 seconds
+            logger.info("Starting initial ingestion tasks...")
+            await run_ingestion(sina_collector, 'Sina', processor)
+            await run_calendar_collection(calendar_collector, processor)
+
+        asyncio.create_task(delayed_start())
         
     except ImportError as e:
         logger.warning(f"Collectors or Processor not available: {e}")
