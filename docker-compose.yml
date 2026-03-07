@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./server_py
+    container_name: message-analysis-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./server_py:/app
+      # 避免容器内使用宿主机的 venv，防止环境冲突
+      - /app/venv
+      # 排除 __pycache__
+      - /app/__pycache__
+    environment:
+      - PYTHONUNBUFFERED=1
+      # 确保容器内使用 UTF-8
+      - LANG=C.UTF-8
+    restart: unless-stopped
+    # 共享宿主机网络 (可选，但在 WSL2 下直接用端口映射更好)
+
+  frontend:
+    build: ./client
+    container_name: message-analysis-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    environment:
+      # 开启轮询，解决某些环境下文件更改不触发热重载的问题
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+    restart: unless-stopped

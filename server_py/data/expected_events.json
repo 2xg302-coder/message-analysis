@@ -1,0 +1,4002 @@
+{
+  "2026-03-05": [
+    {
+      "time": "00:00",
+      "country": "俄罗斯",
+      "event": "俄罗斯1月失业率(%)",
+      "importance": 1,
+      "previous": "2.2",
+      "consensus": "2.3",
+      "actual": "2.2"
+    },
+    {
+      "time": "00:00",
+      "country": "俄罗斯",
+      "event": "俄罗斯12月实际薪资年率(%)",
+      "importance": 1,
+      "previous": "5.8",
+      "consensus": "4.4",
+      "actual": "4.4"
+    },
+    {
+      "time": "00:00",
+      "country": "俄罗斯",
+      "event": "俄罗斯1月实际零售销售年率(%)",
+      "importance": 1,
+      "previous": "3.9",
+      "consensus": "1.7",
+      "actual": "0.7"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月4日4个月国债竞拍-中标利率(%)",
+      "importance": 1,
+      "previous": "3.59",
+      "consensus": "nan",
+      "actual": "3.59"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月4日4个月国债竞拍-投标倍数(倍)",
+      "importance": 1,
+      "previous": "3.2",
+      "consensus": "nan",
+      "actual": "3.25"
+    },
+    {
+      "time": "01:30",
+      "country": "巴西",
+      "event": "巴西截至2月23日当周外汇流-月初至周期日(亿美元)",
+      "importance": 1,
+      "previous": "18.7",
+      "consensus": "nan",
+      "actual": "20.71"
+    },
+    {
+      "time": "05:00",
+      "country": "韩国",
+      "event": "韩国2月外汇储备(亿美元)",
+      "importance": 1,
+      "previous": "4259.1",
+      "consensus": "nan",
+      "actual": "4276.2"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日iShares白银持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "79.14",
+      "consensus": "nan",
+      "actual": "-33.81"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日NYMEX钯金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "2021.81",
+      "consensus": "nan",
+      "actual": "2021.81"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日NYMEX铂金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "-16.28"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日COMEX黄金库存-每日更新(百盎司)",
+      "importance": 2,
+      "previous": "330715.98",
+      "consensus": "nan",
+      "actual": "330404.85"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日NYMEX钯金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日COMEX白银库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-23915.37",
+      "consensus": "nan",
+      "actual": "-29539.65"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日iShares黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "498.82",
+      "consensus": "nan",
+      "actual": "498.46"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日COMEX白银库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "3551738.37",
+      "consensus": "nan",
+      "actual": "3522198.72"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日iShares白银持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "15981.38",
+      "consensus": "nan",
+      "actual": "15947.57"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日NYMEX铂金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "5871.59",
+      "consensus": "nan",
+      "actual": "5855.31"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日iShares黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-0.5",
+      "consensus": "nan",
+      "actual": "-0.36"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日SPDR黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-2.29",
+      "consensus": "nan",
+      "actual": "-18.0"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日SPDR黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "1099.04",
+      "consensus": "nan",
+      "actual": "1081.04"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日COMEX黄金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-995.38",
+      "consensus": "nan",
+      "actual": "-311.13"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚1月进口月率(%)",
+      "importance": 2,
+      "previous": "-0.8",
+      "consensus": "nan",
+      "actual": "0.8"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚1月商品及服务贸易帐(亿澳元)",
+      "importance": 2,
+      "previous": "33.73",
+      "consensus": "39.0",
+      "actual": "26.31"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚1月出口月率(%)",
+      "importance": 2,
+      "previous": "1.0",
+      "consensus": "nan",
+      "actual": "-0.9"
+    },
+    {
+      "time": "13:00",
+      "country": "新加坡",
+      "event": "新加坡1月季调后核心零售销售月率(%)",
+      "importance": 1,
+      "previous": "-6.7",
+      "consensus": "nan",
+      "actual": "7.1"
+    },
+    {
+      "time": "13:00",
+      "country": "新加坡",
+      "event": "新加坡1月核心零售销售年率(%)",
+      "importance": 1,
+      "previous": "1.7",
+      "consensus": "nan",
+      "actual": "-2.8"
+    },
+    {
+      "time": "13:00",
+      "country": "新加坡",
+      "event": "新加坡1月零售销售年率(%)",
+      "importance": 1,
+      "previous": "2.7",
+      "consensus": "2.8",
+      "actual": "-0.4"
+    },
+    {
+      "time": "13:00",
+      "country": "新加坡",
+      "event": "新加坡1月季调后零售销售月率(%)",
+      "importance": 1,
+      "previous": "-5.4",
+      "consensus": "nan",
+      "actual": "6.1"
+    },
+    {
+      "time": "15:00",
+      "country": "马来西亚",
+      "event": "马来西亚3月5日隔夜政策利率(%)",
+      "importance": 1,
+      "previous": "2.75",
+      "consensus": "2.75",
+      "actual": "2.75"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月5日上期所每日仓单变动-黄金(千克)",
+      "importance": 1,
+      "previous": "-27.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月5日上期所每日仓单变动-铜(吨)",
+      "importance": 2,
+      "previous": "1970.0",
+      "consensus": "nan",
+      "actual": "1157.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月5日上期所每日仓单变动-白银(千克)",
+      "importance": 1,
+      "previous": "-12661.0",
+      "consensus": "nan",
+      "actual": "-22102.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月5日上期所每日仓单变动-原油(桶)",
+      "importance": 2,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月5日上期所每日仓单变动-燃料油(吨)",
+      "importance": 1,
+      "previous": "-43500.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "15:45",
+      "country": "法国",
+      "event": "法国1月制造业产出年率(%)",
+      "importance": 1,
+      "previous": "2.1",
+      "consensus": "nan",
+      "actual": "2.7"
+    },
+    {
+      "time": "15:45",
+      "country": "法国",
+      "event": "法国1月工业产出月率(%)",
+      "importance": 1,
+      "previous": "-0.7",
+      "consensus": "0.5",
+      "actual": "0.5"
+    },
+    {
+      "time": "15:45",
+      "country": "法国",
+      "event": "法国1月制造业产出月率(%)",
+      "importance": 1,
+      "previous": "-0.8",
+      "consensus": "0.1",
+      "actual": "0.6"
+    },
+    {
+      "time": "15:45",
+      "country": "法国",
+      "event": "法国1月工业产出年率(%)",
+      "importance": 1,
+      "previous": "1.7",
+      "consensus": "2.3",
+      "actual": "2.4"
+    },
+    {
+      "time": "16:00",
+      "country": "新加坡",
+      "event": "新加坡截至3月4日当周残剩油库存(万桶)",
+      "importance": 1,
+      "previous": "2263.2",
+      "consensus": "nan",
+      "actual": "2328.6"
+    },
+    {
+      "time": "16:00",
+      "country": "新加坡",
+      "event": "新加坡截至3月4日当周中间馏分油燃料库存(万桶)",
+      "importance": 1,
+      "previous": "752.7",
+      "consensus": "nan",
+      "actual": "764.7"
+    },
+    {
+      "time": "16:00",
+      "country": "西班牙",
+      "event": "西班牙1月未季调工业产出年率(%)",
+      "importance": 1,
+      "previous": "2.8",
+      "consensus": "nan",
+      "actual": "-2.7"
+    },
+    {
+      "time": "16:00",
+      "country": "瑞士",
+      "event": "瑞士2月未季调失业率(%)",
+      "importance": 2,
+      "previous": "3.2",
+      "consensus": "3.2",
+      "actual": "3.2"
+    },
+    {
+      "time": "16:00",
+      "country": "新加坡",
+      "event": "新加坡截至3月4日当周燃料总库存(万桶)",
+      "importance": 2,
+      "previous": "4744.3",
+      "consensus": "nan",
+      "actual": "4996.5"
+    },
+    {
+      "time": "16:00",
+      "country": "瑞士",
+      "event": "瑞士2月季调后失业率(%)",
+      "importance": 2,
+      "previous": "2.9",
+      "consensus": "2.9",
+      "actual": "3.0"
+    },
+    {
+      "time": "16:00",
+      "country": "中国台湾",
+      "event": "中国台湾1月工业产出年率(%)",
+      "importance": 1,
+      "previous": "21.57",
+      "consensus": "28.9",
+      "actual": "28.51"
+    },
+    {
+      "time": "16:00",
+      "country": "西班牙",
+      "event": "西班牙1月季调后工业产出年率(%)",
+      "importance": 1,
+      "previous": "-0.3",
+      "consensus": "1.7",
+      "actual": "0.3"
+    },
+    {
+      "time": "16:00",
+      "country": "新加坡",
+      "event": "新加坡截至3月4日当周轻馏分油燃料库存(万桶)",
+      "importance": 1,
+      "previous": "1728.4",
+      "consensus": "nan",
+      "actual": "1903.2"
+    },
+    {
+      "time": "16:20",
+      "country": "中国台湾",
+      "event": "中国台湾2月外汇存底(亿美元)",
+      "importance": 1,
+      "previous": "6044.57",
+      "consensus": "nan",
+      "actual": "6054.87"
+    },
+    {
+      "time": "17:00",
+      "country": "意大利",
+      "event": "意大利1月零售销售年率(%)",
+      "importance": 1,
+      "previous": "0.9",
+      "consensus": "nan",
+      "actual": "2.3"
+    },
+    {
+      "time": "17:00",
+      "country": "意大利",
+      "event": "意大利1月季调后零售销售月率(%)",
+      "importance": 1,
+      "previous": "-0.8",
+      "consensus": "nan",
+      "actual": "-0.8"
+    },
+    {
+      "time": "17:00",
+      "country": "英国",
+      "event": "英国3月乘用车新车登记(辆)",
+      "importance": 1,
+      "previous": "144127.0",
+      "consensus": "nan",
+      "actual": "90100.0"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区1月零售销售月率(%)",
+      "importance": 2,
+      "previous": "-0.5",
+      "consensus": "0.3",
+      "actual": "-0.1"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区1月零售销售年率(%)",
+      "importance": 2,
+      "previous": "1.3",
+      "consensus": "1.7",
+      "actual": "2.0"
+    },
+    {
+      "time": "20:00",
+      "country": "墨西哥",
+      "event": "墨西哥2月消费者信心指数-未季调",
+      "importance": 1,
+      "previous": "44.3",
+      "consensus": "nan",
+      "actual": "44.5"
+    },
+    {
+      "time": "20:00",
+      "country": "巴西",
+      "event": "巴西1月失业率-全国家庭抽样调查(%)",
+      "importance": 1,
+      "previous": "5.1",
+      "consensus": "5.4",
+      "actual": "5.4"
+    },
+    {
+      "time": "20:00",
+      "country": "墨西哥",
+      "event": "墨西哥2月消费者信心指数-季调后",
+      "importance": 1,
+      "previous": "44.0",
+      "consensus": "nan",
+      "actual": "44.4"
+    },
+    {
+      "time": "20:00",
+      "country": "墨西哥",
+      "event": "墨西哥12月固定资产投资总额月率(%)",
+      "importance": 1,
+      "previous": "0.4",
+      "consensus": "0.7",
+      "actual": "0.5"
+    },
+    {
+      "time": "20:00",
+      "country": "墨西哥",
+      "event": "墨西哥12月固定资产投资总额年率(%)",
+      "importance": 1,
+      "previous": "-6.4",
+      "consensus": "-2.8",
+      "actual": "0.0"
+    },
+    {
+      "time": "20:30",
+      "country": "美国",
+      "event": "美国2月挑战者企业裁员月率(%)",
+      "importance": 1,
+      "previous": "203.77",
+      "consensus": "nan",
+      "actual": "-55.45"
+    },
+    {
+      "time": "20:30",
+      "country": "美国",
+      "event": "美国2月挑战者企业裁员人数(万)",
+      "importance": 2,
+      "previous": "10.84",
+      "consensus": "nan",
+      "actual": "4.83"
+    },
+    {
+      "time": "20:30",
+      "country": "美国",
+      "event": "美国2月挑战者企业裁员年率(%)",
+      "importance": 1,
+      "previous": "117.8",
+      "consensus": "nan",
+      "actual": "-71.9"
+    },
+    {
+      "time": "21:00",
+      "country": "俄罗斯",
+      "event": "俄罗斯截至2月26日当周黄金与外汇储备(亿美元)",
+      "importance": 1,
+      "previous": "8061.0",
+      "consensus": "nan",
+      "actual": "8111.0"
+    },
+    {
+      "time": "21:00",
+      "country": "俄罗斯",
+      "event": "俄罗斯1月预算占GDP比重(%)",
+      "importance": 1,
+      "previous": "1.9",
+      "consensus": "nan",
+      "actual": "-2.1"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月出口物价指数年率(%)",
+      "importance": 1,
+      "previous": "3.1",
+      "consensus": "nan",
+      "actual": "2.6"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月出口物价指数月率(%)",
+      "importance": 1,
+      "previous": "0.3",
+      "consensus": "0.3",
+      "actual": "0.6"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月进口物价指数年率(%)",
+      "importance": 2,
+      "previous": "0.0",
+      "consensus": "0.2",
+      "actual": "-0.1"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国第四季度单位劳动力成本季率初值(%)",
+      "importance": 1,
+      "previous": "-1.9",
+      "consensus": "2.0",
+      "actual": "2.8"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国截至2月28日当周初请失业金人数(万)",
+      "importance": 2,
+      "previous": "21.2",
+      "consensus": "21.5",
+      "actual": "21.3"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国第四季度非农生产率季率初值(%)",
+      "importance": 1,
+      "previous": "4.9",
+      "consensus": "1.9",
+      "actual": "2.8"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月进口物价指数月率(%)",
+      "importance": 2,
+      "previous": "0.1",
+      "consensus": "0.2",
+      "actual": "0.2"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国截至2月28日当周初请失业金人数四周均值(万)",
+      "importance": 1,
+      "previous": "22.03",
+      "consensus": "nan",
+      "actual": "21.57"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国截至2月21日当周续请失业金人数(万)",
+      "importance": 2,
+      "previous": "183.3",
+      "consensus": "185.0",
+      "actual": "186.8"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA天然气隐含流量(亿立方英尺)",
+      "importance": 1,
+      "previous": "-520.0",
+      "consensus": "nan",
+      "actual": "-1320.0"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA天然气库存变动(亿立方英尺)",
+      "importance": 1,
+      "previous": "-520.0",
+      "consensus": "-1210.0",
+      "actual": "-1320.0"
+    }
+  ],
+  "2026-03-04": [
+    {
+      "time": "01:30",
+      "country": "巴西",
+      "event": "巴西1月CAGED就业人数变动(万人)",
+      "importance": 1,
+      "previous": "-61.82",
+      "consensus": "9.2",
+      "actual": "11.2"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周API原油库存变动(万桶)",
+      "importance": 2,
+      "previous": "1142.7",
+      "consensus": "220.0",
+      "actual": "564.7"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周API每周取暖油库存(万桶)",
+      "importance": 1,
+      "previous": "-7.1",
+      "consensus": "nan",
+      "actual": "0.5"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周API馏分油库存变动(万桶)",
+      "importance": 1,
+      "previous": "-277.1",
+      "consensus": "-260.7",
+      "actual": "51.6"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周API库欣原油库存变动(万桶)",
+      "importance": 1,
+      "previous": "179.2",
+      "consensus": "nan",
+      "actual": "154.0"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周API每周投产原油量(万桶)",
+      "importance": 1,
+      "previous": "-43.6",
+      "consensus": "nan",
+      "actual": "22.6"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周API汽油库存变动(万桶)",
+      "importance": 2,
+      "previous": "-153.5",
+      "consensus": "nan",
+      "actual": "-328.6"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周API每周成品油进口(万桶)",
+      "importance": 1,
+      "previous": "8.4",
+      "consensus": "nan",
+      "actual": "-17.3"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周API每周原油进口(万桶)",
+      "importance": 1,
+      "previous": "48.6",
+      "consensus": "nan",
+      "actual": "-15.1"
+    },
+    {
+      "time": "05:45",
+      "country": "新西兰",
+      "event": "新西兰第四季度贸易条件季率-未季调(%)",
+      "importance": 1,
+      "previous": "-2.1",
+      "consensus": "-0.7",
+      "actual": "3.7"
+    },
+    {
+      "time": "05:45",
+      "country": "新西兰",
+      "event": "新西兰第四季度出口量-季调后(%)",
+      "importance": 1,
+      "previous": "3.4",
+      "consensus": "nan",
+      "actual": "-3.2"
+    },
+    {
+      "time": "05:45",
+      "country": "新西兰",
+      "event": "新西兰第四季度出口价格-季调后(%)",
+      "importance": 1,
+      "previous": "-1.6",
+      "consensus": "0.5",
+      "actual": "5.3"
+    },
+    {
+      "time": "05:45",
+      "country": "新西兰",
+      "event": "新西兰第四季度进口价格-季调后(%)",
+      "importance": 1,
+      "previous": "0.5",
+      "consensus": "0.8",
+      "actual": "1.5"
+    },
+    {
+      "time": "06:00",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月AIG工业新订单指数",
+      "importance": 1,
+      "previous": "-14.2",
+      "consensus": "nan",
+      "actual": "-2.1"
+    },
+    {
+      "time": "06:00",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月AIG建筑业表现指数",
+      "importance": 1,
+      "previous": "5.2",
+      "consensus": "nan",
+      "actual": "-8.2"
+    },
+    {
+      "time": "06:00",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月AIG工业指数-所有工业季调后",
+      "importance": 1,
+      "previous": "-12.3",
+      "consensus": "nan",
+      "actual": "-1.5"
+    },
+    {
+      "time": "06:00",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月AIG制造业表现指数",
+      "importance": 2,
+      "previous": "-19.4",
+      "consensus": "nan",
+      "actual": "-15.6"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日iShares黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "499.61",
+      "consensus": "nan",
+      "actual": "498.82"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日SPDR黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "1101.33",
+      "consensus": "nan",
+      "actual": "1099.04"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日COMEX黄金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-1499.99",
+      "consensus": "nan",
+      "actual": "-995.38"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日SPDR黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "-2.29"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日NYMEX铂金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "5871.59",
+      "consensus": "nan",
+      "actual": "5871.59"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日iShares白银持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "15902.24",
+      "consensus": "nan",
+      "actual": "15981.38"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日iShares白银持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-90.16",
+      "consensus": "nan",
+      "actual": "79.14"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月3日iShares黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "0.29",
+      "consensus": "nan",
+      "actual": "-0.5"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日COMEX白银库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-27671.3",
+      "consensus": "nan",
+      "actual": "-23915.37"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日COMEX黄金库存-每日更新(百盎司)",
+      "importance": 2,
+      "previous": "331711.36",
+      "consensus": "nan",
+      "actual": "330715.98"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日NYMEX钯金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日NYMEX钯金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "2021.81",
+      "consensus": "nan",
+      "actual": "2021.81"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日NYMEX铂金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-9.07",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日COMEX白银库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "3575653.73",
+      "consensus": "nan",
+      "actual": "3551738.37"
+    },
+    {
+      "time": "07:00",
+      "country": "韩国",
+      "event": "韩国1月零售总额月率(%)",
+      "importance": 1,
+      "previous": "0.9",
+      "consensus": "nan",
+      "actual": "2.3"
+    },
+    {
+      "time": "07:00",
+      "country": "韩国",
+      "event": "韩国1月季调后工业产出月率(%)",
+      "importance": 1,
+      "previous": "1.7",
+      "consensus": "0.5",
+      "actual": "-1.9"
+    },
+    {
+      "time": "07:00",
+      "country": "韩国",
+      "event": "韩国1月季调后服务业产出月率(%)",
+      "importance": 1,
+      "previous": "1.1",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "07:00",
+      "country": "韩国",
+      "event": "韩国1月未季调工业产出年率(%)",
+      "importance": 1,
+      "previous": "-0.3",
+      "consensus": "2.2",
+      "actual": "7.1"
+    },
+    {
+      "time": "08:30",
+      "country": "新西兰",
+      "event": "新西兰2月ANZ商品价格指数-纽元计价",
+      "importance": 1,
+      "previous": "334.7",
+      "consensus": "nan",
+      "actual": "338.8"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度GDP最终消费支出季率-季调后(%)",
+      "importance": 1,
+      "previous": "0.6",
+      "consensus": "nan",
+      "actual": "0.5"
+    },
+    {
+      "time": "08:30",
+      "country": "全球",
+      "event": "全球2月ANZ商品价格指数月率(%)",
+      "importance": 2,
+      "previous": "2.0",
+      "consensus": "nan",
+      "actual": "4.2"
+    },
+    {
+      "time": "08:30",
+      "country": "新西兰",
+      "event": "新西兰2月ANZ商品价格指数月率-纽元计价(%)",
+      "importance": 1,
+      "previous": "1.3",
+      "consensus": "nan",
+      "actual": "1.2"
+    },
+    {
+      "time": "08:30",
+      "country": "日本",
+      "event": "日本2月Jibun综合PMI终值",
+      "importance": 1,
+      "previous": "53.1",
+      "consensus": "nan",
+      "actual": "53.9"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度GDP年率(%)",
+      "importance": 2,
+      "previous": "2.1",
+      "consensus": "2.2",
+      "actual": "2.6"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度季调后GDP季率(%)",
+      "importance": 2,
+      "previous": "0.4",
+      "consensus": "0.6",
+      "actual": "0.8"
+    },
+    {
+      "time": "08:30",
+      "country": "全球",
+      "event": "全球2月ANZ商品价格指数",
+      "importance": 1,
+      "previous": "378.2",
+      "consensus": "nan",
+      "actual": "394.1"
+    },
+    {
+      "time": "08:30",
+      "country": "日本",
+      "event": "日本2月Jibun服务业PMI终值",
+      "importance": 1,
+      "previous": "53.7",
+      "consensus": "nan",
+      "actual": "53.8"
+    },
+    {
+      "time": "08:30",
+      "country": "新西兰",
+      "event": "新西兰2月ANZ商品价格指数年率-纽元计价(%)",
+      "importance": 1,
+      "previous": "-3.2",
+      "consensus": "nan",
+      "actual": "-4.3"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度总固定资本支出季率-季调后(%)",
+      "importance": 1,
+      "previous": "3.0",
+      "consensus": "nan",
+      "actual": "0.7"
+    },
+    {
+      "time": "08:30",
+      "country": "新西兰",
+      "event": "新西兰2月ANZ商品价格指数月率-纽元计价(%)(4-6日)",
+      "importance": 1,
+      "previous": "1.3",
+      "consensus": "nan",
+      "actual": "1.2"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度GDP价格指数季率-未季调(%)",
+      "importance": 1,
+      "previous": "0.8",
+      "consensus": "nan",
+      "actual": "1.4"
+    },
+    {
+      "time": "08:30",
+      "country": "全球",
+      "event": "全球2月ANZ商品价格指数年率(%)",
+      "importance": 2,
+      "previous": "-2.3",
+      "consensus": "nan",
+      "actual": "-1.1"
+    },
+    {
+      "time": "09:30",
+      "country": "中国",
+      "event": "中国2月官方制造业PMI",
+      "importance": 2,
+      "previous": "49.3",
+      "consensus": "49.1",
+      "actual": "49.0"
+    },
+    {
+      "time": "09:30",
+      "country": "中国",
+      "event": "中国2月官方非制造业PMI",
+      "importance": 1,
+      "previous": "49.4",
+      "consensus": "49.6",
+      "actual": "49.5"
+    },
+    {
+      "time": "09:30",
+      "country": "中国",
+      "event": "中国2月官方综合PMI",
+      "importance": 1,
+      "previous": "49.8",
+      "consensus": "nan",
+      "actual": "49.5"
+    },
+    {
+      "time": "11:00",
+      "country": "日本",
+      "event": "日本截至2月28日当周PAJ汽油库存变动-GAS(万千升)",
+      "importance": 1,
+      "previous": "-4.86",
+      "consensus": "nan",
+      "actual": "7.44"
+    },
+    {
+      "time": "11:00",
+      "country": "日本",
+      "event": "日本截至2月28日当周PAJ商业原油库存变动(万千升)",
+      "importance": 1,
+      "previous": "58.05",
+      "consensus": "nan",
+      "actual": "37.85"
+    },
+    {
+      "time": "11:00",
+      "country": "日本",
+      "event": "日本截至2月28日当周PAJ精炼厂平均开工率(%)",
+      "importance": 1,
+      "previous": "90.5",
+      "consensus": "nan",
+      "actual": "86.2"
+    },
+    {
+      "time": "11:00",
+      "country": "日本",
+      "event": "日本截至2月28日当周PAJ煤油库存变动-KER(万千升)",
+      "importance": 1,
+      "previous": "-7.48",
+      "consensus": "nan",
+      "actual": "-0.56"
+    },
+    {
+      "time": "13:00",
+      "country": "日本",
+      "event": "日本2月家庭消费者信心指数",
+      "importance": 1,
+      "previous": "37.9",
+      "consensus": "38.1",
+      "actual": "40.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月4日上期所每日仓单变动-铜(吨)",
+      "importance": 2,
+      "previous": "4624.0",
+      "consensus": "nan",
+      "actual": "1970.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月4日上期所每日仓单变动-燃料油(吨)",
+      "importance": 1,
+      "previous": "-6000.0",
+      "consensus": "nan",
+      "actual": "-43500.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月4日上期所每日仓单变动-原油(桶)",
+      "importance": 2,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月4日上期所每日仓单变动-白银(千克)",
+      "importance": 1,
+      "previous": "-1952.0",
+      "consensus": "nan",
+      "actual": "-12661.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月4日上期所每日仓单变动-黄金(千克)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "-27.0"
+    },
+    {
+      "time": "15:15",
+      "country": "南非",
+      "event": "南非2月汇丰银行整体经济PMI",
+      "importance": 1,
+      "previous": "50.0",
+      "consensus": "nan",
+      "actual": "50.0"
+    },
+    {
+      "time": "15:30",
+      "country": "瑞士",
+      "event": "瑞士2月CPI年率(%)",
+      "importance": 2,
+      "previous": "0.1",
+      "consensus": "-0.1",
+      "actual": "0.1"
+    },
+    {
+      "time": "15:30",
+      "country": "瑞士",
+      "event": "瑞士2月未季调CPI读数",
+      "importance": 1,
+      "previous": "99.9",
+      "consensus": "nan",
+      "actual": "100.6"
+    },
+    {
+      "time": "15:30",
+      "country": "瑞士",
+      "event": "瑞士2月CPI月率(%)",
+      "importance": 1,
+      "previous": "-0.1",
+      "consensus": "0.5",
+      "actual": "0.6"
+    },
+    {
+      "time": "16:00",
+      "country": "西班牙",
+      "event": "西班牙1月国际旅游人数(万人)",
+      "importance": 1,
+      "previous": "878.96",
+      "consensus": "nan",
+      "actual": "812.63"
+    },
+    {
+      "time": "16:00",
+      "country": "中国台湾",
+      "event": "中国台湾1月外销订单年率(%)",
+      "importance": 1,
+      "previous": "43.8",
+      "consensus": "50.87",
+      "actual": "60.1"
+    },
+    {
+      "time": "16:30",
+      "country": "中国香港",
+      "event": "中国香港1月零售销售额年率(%)",
+      "importance": 1,
+      "previous": "6.6",
+      "consensus": "4.2",
+      "actual": "5.5"
+    },
+    {
+      "time": "16:30",
+      "country": "中国香港",
+      "event": "中国香港1月零售销售量年率(%)",
+      "importance": 1,
+      "previous": "5.1",
+      "consensus": "3.0",
+      "actual": "3.3"
+    },
+    {
+      "time": "17:00",
+      "country": "俄罗斯",
+      "event": "俄罗斯3月外汇干预(亿卢布)",
+      "importance": 1,
+      "previous": "-2268.0",
+      "consensus": "nan",
+      "actual": "-2268.0"
+    },
+    {
+      "time": "17:00",
+      "country": "意大利",
+      "event": "意大利1月单月失业率(%)",
+      "importance": 1,
+      "previous": "5.6",
+      "consensus": "5.6",
+      "actual": "5.1"
+    },
+    {
+      "time": "17:30",
+      "country": "英国",
+      "event": "英国2月政府官方净储备变动(亿美元)",
+      "importance": 2,
+      "previous": "74.72",
+      "consensus": "nan",
+      "actual": "20.22"
+    },
+    {
+      "time": "17:30",
+      "country": "英国",
+      "event": "英国2月储备资产总额(亿美元)",
+      "importance": 1,
+      "previous": "2322.66",
+      "consensus": "nan",
+      "actual": "2366.66"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区1月PPI年率(%)",
+      "importance": 1,
+      "previous": "-2.1",
+      "consensus": "-2.7",
+      "actual": "-2.1"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区2月调和CPI年率-未季调初值(%)",
+      "importance": 2,
+      "previous": "1.7",
+      "consensus": "1.7",
+      "actual": "1.9"
+    },
+    {
+      "time": "18:00",
+      "country": "意大利",
+      "event": "意大利第四季度GDP年率终值(%)",
+      "importance": 1,
+      "previous": "0.8",
+      "consensus": "0.8",
+      "actual": "0.8"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区1月失业率(%)",
+      "importance": 2,
+      "previous": "6.2",
+      "consensus": "6.2",
+      "actual": "6.1"
+    },
+    {
+      "time": "18:00",
+      "country": "意大利",
+      "event": "意大利第四季度GDP季率终值(%)",
+      "importance": 1,
+      "previous": "0.3",
+      "consensus": "0.3",
+      "actual": "0.3"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区1月PPI月率(%)",
+      "importance": 1,
+      "previous": "-0.3",
+      "consensus": "0.2",
+      "actual": "0.7"
+    },
+    {
+      "time": "20:00",
+      "country": "美国",
+      "event": "美国截至2月27日当周MBA抵押贷款购买指数",
+      "importance": 1,
+      "previous": "149.7",
+      "consensus": "nan",
+      "actual": "158.9"
+    },
+    {
+      "time": "20:00",
+      "country": "美国",
+      "event": "美国截至2月27日当周MBA抵押贷款再融资活动指数",
+      "importance": 1,
+      "previous": "1432.9",
+      "consensus": "nan",
+      "actual": "1637.5"
+    },
+    {
+      "time": "20:00",
+      "country": "美国",
+      "event": "美国截至2月27日当周MBA抵押贷款申请活动指数周环比(%)",
+      "importance": 1,
+      "previous": "0.4",
+      "consensus": "nan",
+      "actual": "11.0"
+    },
+    {
+      "time": "20:00",
+      "country": "美国",
+      "event": "美国截至2月27日当周MBA抵押贷款申请活动指数",
+      "importance": 1,
+      "previous": "340.2",
+      "consensus": "nan",
+      "actual": "377.5"
+    },
+    {
+      "time": "20:00",
+      "country": "美国",
+      "event": "美国截至2月27日当周MBA30年期固定抵押贷款利率(%)",
+      "importance": 1,
+      "previous": "6.09",
+      "consensus": "nan",
+      "actual": "6.09"
+    },
+    {
+      "time": "20:00",
+      "country": "巴西",
+      "event": "巴西1月PPI月率(%)",
+      "importance": 1,
+      "previous": "0.12",
+      "consensus": "nan",
+      "actual": "0.34"
+    },
+    {
+      "time": "21:15",
+      "country": "美国",
+      "event": "美国2月ADP就业人数变动(万)",
+      "importance": 2,
+      "previous": "2.2",
+      "consensus": "5.0",
+      "actual": "6.3"
+    },
+    {
+      "time": "21:15",
+      "country": "加拿大",
+      "event": "加拿大2月储备资产总额(亿美元)",
+      "importance": 2,
+      "previous": "1286.55",
+      "consensus": "nan",
+      "actual": "1281.3"
+    },
+    {
+      "time": "21:30",
+      "country": "加拿大",
+      "event": "加拿大第四季度劳动生产率季率(%)",
+      "importance": 1,
+      "previous": "0.9",
+      "consensus": "-0.1",
+      "actual": "-0.1"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM非制造业供应商交付指数",
+      "importance": 1,
+      "previous": "54.2",
+      "consensus": "nan",
+      "actual": "53.9"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM非制造业PMI分项-企业活动指数",
+      "importance": 1,
+      "previous": "57.4",
+      "consensus": "nan",
+      "actual": "59.9"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM非制造业PMI",
+      "importance": 2,
+      "previous": "53.8",
+      "consensus": "53.5",
+      "actual": "56.1"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM非制造业新订单指数",
+      "importance": 1,
+      "previous": "53.1",
+      "consensus": "nan",
+      "actual": "58.6"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM非制造业就业指数",
+      "importance": 1,
+      "previous": "50.3",
+      "consensus": "nan",
+      "actual": "51.8"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM非制造业投入物价指数",
+      "importance": 1,
+      "previous": "66.6",
+      "consensus": "nan",
+      "actual": "63.0"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM非制造业库存指数",
+      "importance": 1,
+      "previous": "45.1",
+      "consensus": "nan",
+      "actual": "56.4"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA每周取暖油库存(万桶)",
+      "importance": 1,
+      "previous": "-11.9",
+      "consensus": "nan",
+      "actual": "35.5"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA精炼厂设备利用率变动(%)",
+      "importance": 1,
+      "previous": "-2.4",
+      "consensus": "0.0",
+      "actual": "0.6"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA每周馏分油产量变动(万桶)",
+      "importance": 1,
+      "previous": "-13.6",
+      "consensus": "nan",
+      "actual": "6.1"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA精炼厂设备利用率(%)",
+      "importance": 1,
+      "previous": "88.6",
+      "consensus": "88.5",
+      "actual": "89.2"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA每周汽油产量变动(万桶)",
+      "importance": 1,
+      "previous": "-22.3",
+      "consensus": "nan",
+      "actual": "11.9"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周DOE蒸馏油引伸需求(万桶/日)",
+      "importance": 1,
+      "previous": "512.6",
+      "consensus": "nan",
+      "actual": "492.47"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA汽油库存变动(万桶)",
+      "importance": 2,
+      "previous": "-101.1",
+      "consensus": "-78.4",
+      "actual": "-170.4"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周DOE汽油引伸需求(万桶/日)",
+      "importance": 1,
+      "previous": "950.24",
+      "consensus": "nan",
+      "actual": "935.86"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA原油总产量(万桶/日)",
+      "importance": 1,
+      "previous": "1370.2",
+      "consensus": "nan",
+      "actual": "1369.6"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA俄克拉荷马州-库欣原油库存(万桶)",
+      "importance": 2,
+      "previous": "88.1",
+      "consensus": "nan",
+      "actual": "156.4"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA每周成品油进口变动(万桶)",
+      "importance": 1,
+      "previous": "57.8",
+      "consensus": "nan",
+      "actual": "-60.5"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周DOE燃料乙醇库存(万桶)",
+      "importance": 1,
+      "previous": "2564.6",
+      "consensus": "nan",
+      "actual": "2633.7"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周DOE燃料乙醇总产量(万桶/日)",
+      "importance": 1,
+      "previous": "111.3",
+      "consensus": "nan",
+      "actual": "109.5"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA每周投产原油量变动(万桶)",
+      "importance": 1,
+      "previous": "-41.6",
+      "consensus": "nan",
+      "actual": "18.0"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA原油库存变动(万桶)",
+      "importance": 2,
+      "previous": "1598.9",
+      "consensus": "230.5",
+      "actual": "347.5"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA精炼油库存变动(万桶)",
+      "importance": 2,
+      "previous": "25.2",
+      "consensus": "-259.6",
+      "actual": "42.9"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周DOE原油引伸需求(万桶/日)",
+      "importance": 1,
+      "previous": "1807.7",
+      "consensus": "nan",
+      "actual": "1952.4"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA每周原油进口变动(万桶)",
+      "importance": 2,
+      "previous": "41.2",
+      "consensus": "nan",
+      "actual": "-1.9"
+    },
+    {
+      "time": "23:30",
+      "country": "美国",
+      "event": "美国截至2月27日当周EIA每周新配方汽油库存变动(万桶)",
+      "importance": 1,
+      "previous": "0.3",
+      "consensus": "nan",
+      "actual": "-1.2"
+    }
+  ],
+  "2026-03-01": [],
+  "2026-03-02": [
+    {
+      "time": "08:00",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月TD-MI通胀指数月率(%)",
+      "importance": 1,
+      "previous": "0.2",
+      "consensus": "nan",
+      "actual": "-0.2"
+    },
+    {
+      "time": "08:00",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月TD-MI通胀指数年率(%)",
+      "importance": 1,
+      "previous": "3.6",
+      "consensus": "nan",
+      "actual": "3.6"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度企业获利季率(%)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "1.9",
+      "actual": "5.8"
+    },
+    {
+      "time": "08:30",
+      "country": "马来西亚",
+      "event": "马来西亚2月制造业PMI",
+      "importance": 2,
+      "previous": "50.2",
+      "consensus": "nan",
+      "actual": "49.3"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度季调后企业库存年率(%)",
+      "importance": 1,
+      "previous": "0.2",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度公司税前利润季率-季调后(%)",
+      "importance": 1,
+      "previous": "0.4",
+      "consensus": "nan",
+      "actual": "1.6"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度企业获利年率(%)",
+      "importance": 1,
+      "previous": "1.1",
+      "consensus": "nan",
+      "actual": "3.8"
+    },
+    {
+      "time": "08:30",
+      "country": "日本",
+      "event": "日本2月Jibun制造业PMI终值",
+      "importance": 1,
+      "previous": "51.5",
+      "consensus": "nan",
+      "actual": "53.0"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月季调后ANZ网络招聘广告月率(%)",
+      "importance": 1,
+      "previous": "4.4",
+      "consensus": "nan",
+      "actual": "3.2"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度季调后企业库存季率(%)",
+      "importance": 1,
+      "previous": "-0.9",
+      "consensus": "-0.3",
+      "actual": "-0.1"
+    },
+    {
+      "time": "12:00",
+      "country": "印度尼西亚",
+      "event": "印尼1月贸易差额(亿美元)",
+      "importance": 1,
+      "previous": "25.2",
+      "consensus": "27.6",
+      "actual": "9.6"
+    },
+    {
+      "time": "12:00",
+      "country": "印度尼西亚",
+      "event": "印尼1月进口年率(%)",
+      "importance": 1,
+      "previous": "10.81",
+      "consensus": "13.23",
+      "actual": "18.21"
+    },
+    {
+      "time": "12:00",
+      "country": "印度尼西亚",
+      "event": "印尼2月CPI月率(%)",
+      "importance": 1,
+      "previous": "-0.15",
+      "consensus": "0.3",
+      "actual": "0.68"
+    },
+    {
+      "time": "12:00",
+      "country": "印度尼西亚",
+      "event": "印尼2月CPI年率(%)",
+      "importance": 1,
+      "previous": "3.55",
+      "consensus": "4.31",
+      "actual": "4.76"
+    },
+    {
+      "time": "12:00",
+      "country": "印度尼西亚",
+      "event": "印尼2月核心CPI年率(%)",
+      "importance": 1,
+      "previous": "2.45",
+      "consensus": "2.48",
+      "actual": "2.63"
+    },
+    {
+      "time": "12:00",
+      "country": "印度尼西亚",
+      "event": "印尼1月出口年率(%)",
+      "importance": 1,
+      "previous": "11.64",
+      "consensus": "11.07",
+      "actual": "3.39"
+    },
+    {
+      "time": "13:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月RBA商品价格指数-澳元计价月率(%)",
+      "importance": 1,
+      "previous": "2.6",
+      "consensus": "nan",
+      "actual": "-2.7"
+    },
+    {
+      "time": "13:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月RBA商品价格指数-SDR计价月率(%)",
+      "importance": 1,
+      "previous": "4.0",
+      "consensus": "nan",
+      "actual": "0.7"
+    },
+    {
+      "time": "13:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月RBA商品价格指数-澳元计价",
+      "importance": 1,
+      "previous": "79.7",
+      "consensus": "nan",
+      "actual": "76.1"
+    },
+    {
+      "time": "13:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月RBA商品价格指数-SDR计价年率(%)",
+      "importance": 1,
+      "previous": "2.6",
+      "consensus": "nan",
+      "actual": "3.4"
+    },
+    {
+      "time": "13:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚2月RBA商品价格指数-澳元计价年率(%)",
+      "importance": 1,
+      "previous": "5.4",
+      "consensus": "nan",
+      "actual": "-2.9"
+    },
+    {
+      "time": "15:00",
+      "country": "德国",
+      "event": "德国1月实际零售销售月率(%)",
+      "importance": 2,
+      "previous": "0.1",
+      "consensus": "-0.2",
+      "actual": "-0.9"
+    },
+    {
+      "time": "15:00",
+      "country": "英国",
+      "event": "英国2月Nationwide房价指数月率(%)",
+      "importance": 1,
+      "previous": "0.3",
+      "consensus": "0.3",
+      "actual": "0.3"
+    },
+    {
+      "time": "15:00",
+      "country": "英国",
+      "event": "英国2月Nationwide房价指数年率(%)",
+      "importance": 1,
+      "previous": "1.0",
+      "consensus": "0.7",
+      "actual": "1.0"
+    },
+    {
+      "time": "15:00",
+      "country": "德国",
+      "event": "德国1月实际零售销售年率(%)",
+      "importance": 2,
+      "previous": "1.5",
+      "consensus": "1.3",
+      "actual": "1.2"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月2日上期所每日仓单变动-黄金(千克)",
+      "importance": 1,
+      "previous": "-12.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月2日上期所每日仓单变动-燃料油(吨)",
+      "importance": 1,
+      "previous": "-5000.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月2日上期所每日仓单变动-白银(千克)",
+      "importance": 1,
+      "previous": "-39773.0",
+      "consensus": "nan",
+      "actual": "2840.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月2日上期所每日仓单变动-铜(吨)",
+      "importance": 2,
+      "previous": "1375.0",
+      "consensus": "nan",
+      "actual": "5287.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月2日上期所每日仓单变动-原油(桶)",
+      "importance": 2,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "15:30",
+      "country": "瑞士",
+      "event": "瑞士1月实际零售销售年率(%)",
+      "importance": 1,
+      "previous": "2.9",
+      "consensus": "nan",
+      "actual": "-1.1"
+    },
+    {
+      "time": "16:30",
+      "country": "瑞士",
+      "event": "瑞士2月瑞信/SVME制造业PMI",
+      "importance": 1,
+      "previous": "48.8",
+      "consensus": "50.0",
+      "actual": "47.4"
+    },
+    {
+      "time": "17:00",
+      "country": "瑞士",
+      "event": "瑞士截至2月27日当周活期存款总计金额(亿瑞郎)",
+      "importance": 1,
+      "previous": "4575.5",
+      "consensus": "nan",
+      "actual": "4597.5"
+    },
+    {
+      "time": "17:00",
+      "country": "瑞士",
+      "event": "瑞士截至2月27日当周国内活期存款周平均额(亿瑞郎)",
+      "importance": 1,
+      "previous": "4406.01",
+      "consensus": "nan",
+      "actual": "4404.58"
+    },
+    {
+      "time": "17:30",
+      "country": "英国",
+      "event": "英国1月M4货币供应年率(%)",
+      "importance": 1,
+      "previous": "4.7",
+      "consensus": "nan",
+      "actual": "3.0"
+    },
+    {
+      "time": "17:30",
+      "country": "英国",
+      "event": "英国1月央行抵押贷款许可(万件)",
+      "importance": 1,
+      "previous": "6.1",
+      "consensus": "6.2",
+      "actual": "6.0"
+    },
+    {
+      "time": "17:30",
+      "country": "英国",
+      "event": "英国1月M4货币供应(亿英镑)",
+      "importance": 1,
+      "previous": "32126.65",
+      "consensus": "nan",
+      "actual": "32076.91"
+    },
+    {
+      "time": "17:30",
+      "country": "英国",
+      "event": "英国1月央行消费信贷(亿英镑)",
+      "importance": 1,
+      "previous": "15.24",
+      "consensus": "17.0",
+      "actual": "18.12"
+    },
+    {
+      "time": "17:30",
+      "country": "英国",
+      "event": "英国1月央行抵押贷款(亿英镑)",
+      "importance": 1,
+      "previous": "46.01",
+      "consensus": "nan",
+      "actual": "40.76"
+    },
+    {
+      "time": "17:30",
+      "country": "英国",
+      "event": "英国1月M4货币供应月率(%)",
+      "importance": 1,
+      "previous": "0.3",
+      "consensus": "nan",
+      "actual": "-0.1"
+    },
+    {
+      "time": "18:30",
+      "country": "印度",
+      "event": "印度1月工业产值年率(%)",
+      "importance": 1,
+      "previous": "7.8",
+      "consensus": "6.5",
+      "actual": "4.8"
+    },
+    {
+      "time": "19:00",
+      "country": "西班牙",
+      "event": "西班牙2月新车登记年率(%)",
+      "importance": 1,
+      "previous": "1.1",
+      "consensus": "nan",
+      "actual": "7.5"
+    },
+    {
+      "time": "19:00",
+      "country": "西班牙",
+      "event": "西班牙2月新车登记月率(%)",
+      "importance": 1,
+      "previous": "-29.0",
+      "consensus": "nan",
+      "actual": "32.8"
+    },
+    {
+      "time": "20:00",
+      "country": "南非",
+      "event": "南非2月新汽车销售总量年率(%)",
+      "importance": 1,
+      "previous": "7.5",
+      "consensus": "nan",
+      "actual": "11.4"
+    },
+    {
+      "time": "20:00",
+      "country": "南非",
+      "event": "南非2月新汽车销售总量(辆)",
+      "importance": 1,
+      "previous": "50073.0",
+      "consensus": "nan",
+      "actual": "53455.0"
+    },
+    {
+      "time": "21:00",
+      "country": "新加坡",
+      "event": "新加坡2月SIPMM制造业PMI",
+      "importance": 1,
+      "previous": "50.5",
+      "consensus": "nan",
+      "actual": "50.6"
+    },
+    {
+      "time": "21:00",
+      "country": "加拿大",
+      "event": "加拿大截至2月27日当周全国经济信心指数",
+      "importance": 1,
+      "previous": "53.4",
+      "consensus": "nan",
+      "actual": "54.2"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM制造业库存指数",
+      "importance": 1,
+      "previous": "47.6",
+      "consensus": "nan",
+      "actual": "48.8"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM制造业新订单指数",
+      "importance": 1,
+      "previous": "57.1",
+      "consensus": "nan",
+      "actual": "55.8"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM制造业产出指数",
+      "importance": 1,
+      "previous": "55.9",
+      "consensus": "nan",
+      "actual": "53.5"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM制造业物价支付指数",
+      "importance": 1,
+      "previous": "59.0",
+      "consensus": "nan",
+      "actual": "70.5"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM制造业就业指数",
+      "importance": 1,
+      "previous": "48.1",
+      "consensus": "nan",
+      "actual": "48.8"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国2月ISM制造业PMI",
+      "importance": 2,
+      "previous": "52.6",
+      "consensus": "51.8",
+      "actual": "52.4"
+    }
+  ],
+  "2026-03-06": [
+    {
+      "time": "00:00",
+      "country": "俄罗斯",
+      "event": "俄罗斯1月GDP年率-每月(%)",
+      "importance": 1,
+      "previous": "1.9",
+      "consensus": "0.9",
+      "actual": "-2.1"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月5日4星期国债竞拍-投标倍数(倍)",
+      "importance": 1,
+      "previous": "2.88",
+      "consensus": "nan",
+      "actual": "2.89"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月5日4星期国债竞拍-中标利率(%)",
+      "importance": 1,
+      "previous": "3.63",
+      "consensus": "nan",
+      "actual": "3.64"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月5日8周国债竞拍-中标利率(%)",
+      "importance": 1,
+      "previous": "3.63",
+      "consensus": "nan",
+      "actual": "3.63"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月5日8周国债竞拍-投标倍数(倍)",
+      "importance": 1,
+      "previous": "2.8",
+      "consensus": "nan",
+      "actual": "3.21"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月5日4星期国债竞拍-高配置百分比(%)",
+      "importance": 1,
+      "previous": "72.51",
+      "consensus": "nan",
+      "actual": "30.66"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月5日4星期国债竞拍-总金额(亿美元)",
+      "importance": 1,
+      "previous": "1068.08",
+      "consensus": "nan",
+      "actual": "1053.28"
+    },
+    {
+      "time": "02:00",
+      "country": "巴西",
+      "event": "巴西2月贸易差额(亿美元)",
+      "importance": 1,
+      "previous": "43.43",
+      "consensus": "42.28",
+      "actual": "42.08"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至2月28日当周外国央行持有美国国债(亿美元)",
+      "importance": 1,
+      "previous": "-150.61",
+      "consensus": "nan",
+      "actual": "-93.33"
+    },
+    {
+      "time": "05:30",
+      "country": "美国",
+      "event": "美国截至3月4日美联储资产负债表(万亿美元)",
+      "importance": 2,
+      "previous": "6.61",
+      "consensus": "nan",
+      "actual": "6.61"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日COMEX白银库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-29539.65",
+      "consensus": "nan",
+      "actual": "-8779.46"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日iShares黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "498.46",
+      "consensus": "nan",
+      "actual": "498.46"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日COMEX白银库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "3522198.72",
+      "consensus": "nan",
+      "actual": "3513419.25"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日SPDR黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "1081.04",
+      "consensus": "nan",
+      "actual": "1075.89"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日NYMEX钯金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "2021.81",
+      "consensus": "nan",
+      "actual": "2050.98"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日SPDR黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-18.0",
+      "consensus": "nan",
+      "actual": "-5.15"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日iShares黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-0.36",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日COMEX黄金库存-每日更新(百盎司)",
+      "importance": 2,
+      "previous": "330404.85",
+      "consensus": "nan",
+      "actual": "331002.94"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日NYMEX铂金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "5855.31",
+      "consensus": "nan",
+      "actual": "5834.52"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日NYMEX铂金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-16.28",
+      "consensus": "nan",
+      "actual": "-20.79"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日iShares白银持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "15947.57",
+      "consensus": "nan",
+      "actual": "15809.52"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日NYMEX钯金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "29.17"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日iShares白银持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-33.81",
+      "consensus": "nan",
+      "actual": "-138.05"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月4日COMEX黄金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-311.13",
+      "consensus": "nan",
+      "actual": "598.08"
+    },
+    {
+      "time": "07:00",
+      "country": "韩国",
+      "event": "韩国2月CPI年率(%)",
+      "importance": 1,
+      "previous": "2.0",
+      "consensus": "2.1",
+      "actual": "2.0"
+    },
+    {
+      "time": "07:00",
+      "country": "韩国",
+      "event": "韩国2月核心CPI年率(%)",
+      "importance": 1,
+      "previous": "2.0",
+      "consensus": "nan",
+      "actual": "2.3"
+    },
+    {
+      "time": "07:00",
+      "country": "韩国",
+      "event": "韩国2月CPI月率(%)",
+      "importance": 1,
+      "previous": "0.4",
+      "consensus": "0.4",
+      "actual": "0.3"
+    },
+    {
+      "time": "07:00",
+      "country": "韩国",
+      "event": "韩国2月未季调CPI读数",
+      "importance": 1,
+      "previous": "118.03",
+      "consensus": "nan",
+      "actual": "118.4"
+    },
+    {
+      "time": "07:00",
+      "country": "韩国",
+      "event": "韩国1月经常帐(亿美元)",
+      "importance": 1,
+      "previous": "187.0",
+      "consensus": "nan",
+      "actual": "132.6"
+    },
+    {
+      "time": "07:50",
+      "country": "日本",
+      "event": "日本2月外汇储备(亿美元)",
+      "importance": 1,
+      "previous": "13948.0",
+      "consensus": "nan",
+      "actual": "14107.0"
+    },
+    {
+      "time": "10:00",
+      "country": "新西兰",
+      "event": "新西兰2月储备资产总额(亿纽元)",
+      "importance": 1,
+      "previous": "511.86",
+      "consensus": "nan",
+      "actual": "488.35"
+    },
+    {
+      "time": "11:00",
+      "country": "印度尼西亚",
+      "event": "印尼2月外汇储备(亿美元)",
+      "importance": 1,
+      "previous": "154.6",
+      "consensus": "nan",
+      "actual": "151.9"
+    },
+    {
+      "time": "11:05",
+      "country": "越南",
+      "event": "越南2月零售销售额年率(%)",
+      "importance": 1,
+      "previous": "9.3",
+      "consensus": "nan",
+      "actual": "8.5"
+    },
+    {
+      "time": "11:05",
+      "country": "越南",
+      "event": "越南2月CPI年率(%)",
+      "importance": 1,
+      "previous": "2.53",
+      "consensus": "2.75",
+      "actual": "3.35"
+    },
+    {
+      "time": "11:05",
+      "country": "越南",
+      "event": "越南2月贸易帐(亿美元)",
+      "importance": 1,
+      "previous": "-17.8",
+      "consensus": "-20.25",
+      "actual": "-10.45"
+    },
+    {
+      "time": "11:05",
+      "country": "越南",
+      "event": "越南2月进口年率(%)",
+      "importance": 1,
+      "previous": "49.2",
+      "consensus": "14.0",
+      "actual": "4.4"
+    },
+    {
+      "time": "11:05",
+      "country": "越南",
+      "event": "越南2月出口年率(%)",
+      "importance": 1,
+      "previous": "29.7",
+      "consensus": "14.3",
+      "actual": "5.7"
+    },
+    {
+      "time": "11:05",
+      "country": "越南",
+      "event": "越南2月工业产出年率(%)",
+      "importance": 1,
+      "previous": "21.5",
+      "consensus": "nan",
+      "actual": "1.0"
+    },
+    {
+      "time": "14:00",
+      "country": "南非",
+      "event": "南非2月黄金与外汇储备总额(亿美元)",
+      "importance": 1,
+      "previous": "801.93",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "14:00",
+      "country": "南非",
+      "event": "南非2月黄金与外汇储备净额(亿美元)",
+      "importance": 1,
+      "previous": "748.77",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:00",
+      "country": "英国",
+      "event": "英国2月Halifax季调后房价指数年率(%)",
+      "importance": 1,
+      "previous": "1.0",
+      "consensus": "0.9",
+      "actual": "nan"
+    },
+    {
+      "time": "15:00",
+      "country": "马来西亚",
+      "event": "马来西亚截至2月16日当周国际储备(亿美元)",
+      "importance": 1,
+      "previous": "1279.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:00",
+      "country": "德国",
+      "event": "德国1月工业订单月率(%)",
+      "importance": 1,
+      "previous": "7.8",
+      "consensus": "-4.3",
+      "actual": "nan"
+    },
+    {
+      "time": "15:00",
+      "country": "德国",
+      "event": "德国1月制造业产出当前价格年率-季调后(%)",
+      "importance": 1,
+      "previous": "13.7",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:00",
+      "country": "德国",
+      "event": "德国1月季调后消费品指数-制造业分项",
+      "importance": 1,
+      "previous": "111.5",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:00",
+      "country": "英国",
+      "event": "英国2月Halifax季调后房价指数月率(%)",
+      "importance": 1,
+      "previous": "0.7",
+      "consensus": "0.3",
+      "actual": "nan"
+    },
+    {
+      "time": "15:00",
+      "country": "德国",
+      "event": "德国1月季调后制造业订单月率(%)",
+      "importance": 1,
+      "previous": "7.8",
+      "consensus": "-4.3",
+      "actual": "nan"
+    },
+    {
+      "time": "15:00",
+      "country": "德国",
+      "event": "德国1月工作日调整后制造业订单年率(%)",
+      "importance": 1,
+      "previous": "13.0",
+      "consensus": "13.2",
+      "actual": "nan"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月6日上期所每日仓单变动-白银(千克)",
+      "importance": 1,
+      "previous": "-22102.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月6日上期所每日仓单变动-原油(桶)",
+      "importance": 2,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月6日上期所每日仓单变动-铜(吨)",
+      "importance": 2,
+      "previous": "1157.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月6日上期所每日仓单变动-黄金(千克)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月6日上期所每日仓单变动-燃料油(吨)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:30",
+      "country": "泰国",
+      "event": "泰国截至3月1日外汇储备-含黄金与可兑换外汇(亿美元)",
+      "importance": 1,
+      "previous": "2918.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "15:45",
+      "country": "法国",
+      "event": "法国2月储备资产合计(亿欧元)",
+      "importance": 1,
+      "previous": "4092.63",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "中国台湾",
+      "event": "中国台湾2月未季调CPI读数",
+      "importance": 1,
+      "previous": "110.2",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "瑞士",
+      "event": "瑞士2月外汇储备(亿瑞郎)",
+      "importance": 1,
+      "previous": "7119.81",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "中国台湾",
+      "event": "中国台湾2月季调后CPI月率(%)",
+      "importance": 1,
+      "previous": "0.1",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "中国台湾",
+      "event": "中国台湾2月CPI年率(%)",
+      "importance": 1,
+      "previous": "0.69",
+      "consensus": "1.5",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "中国台湾",
+      "event": "中国台湾2月未季调CPI月率(%)",
+      "importance": 1,
+      "previous": "-0.04",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "16:30",
+      "country": "中国香港",
+      "event": "中国香港2月外汇储备(亿美元)",
+      "importance": 1,
+      "previous": "4356.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "17:30",
+      "country": "英国",
+      "event": "英国2月抵押贷款利率(%)",
+      "importance": 1,
+      "previous": "6.62",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "17:36",
+      "country": "全球",
+      "event": "全球2月工业生产周期转折点领先指标",
+      "importance": 2,
+      "previous": "100.85",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区第四季度季调后GDP季率终值(%)",
+      "importance": 2,
+      "previous": "0.3",
+      "consensus": "0.3",
+      "actual": "nan"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区第四季度季调后就业人数年率终值(%)",
+      "importance": 1,
+      "previous": "0.6",
+      "consensus": "0.6",
+      "actual": "nan"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区第四季度季调后就业人数季率终值(%)",
+      "importance": 1,
+      "previous": "0.2",
+      "consensus": "0.2",
+      "actual": "nan"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区第四季度就业人口总数-日历调整及季调后终值(万人)",
+      "importance": 1,
+      "previous": "17251.66",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "18:00",
+      "country": "希腊",
+      "event": "希腊第四季度单季失业率(%)",
+      "importance": 1,
+      "previous": "8.2",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区第四季度季调后GDP年率终值(%)",
+      "importance": 2,
+      "previous": "1.3",
+      "consensus": "1.3",
+      "actual": "nan"
+    },
+    {
+      "time": "19:00",
+      "country": "加拿大",
+      "event": "加拿大2月先行指标月率(%)",
+      "importance": 2,
+      "previous": "0.28",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "19:00",
+      "country": "巴西",
+      "event": "巴西2月IGP-DI通胀月率-智库FGV(%)",
+      "importance": 1,
+      "previous": "0.2",
+      "consensus": "-0.62",
+      "actual": "nan"
+    },
+    {
+      "time": "19:30",
+      "country": "印度",
+      "event": "印度截至2月23日当周外汇储备(亿美元)",
+      "importance": 1,
+      "previous": "7236.1",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "20:00",
+      "country": "巴西",
+      "event": "巴西1月季调后工业产值月率(%)",
+      "importance": 1,
+      "previous": "-1.2",
+      "consensus": "0.7",
+      "actual": "nan"
+    },
+    {
+      "time": "20:00",
+      "country": "巴西",
+      "event": "巴西1月未季调工业产值年率(%)",
+      "importance": 1,
+      "previous": "0.4",
+      "consensus": "-0.7",
+      "actual": "nan"
+    },
+    {
+      "time": "20:30",
+      "country": "美国",
+      "event": "美国1月批发库存月率初值(%)",
+      "importance": 2,
+      "previous": "0.2",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "20:30",
+      "country": "美国",
+      "event": "美国1月商品贸易帐初值(亿美元)",
+      "importance": 1,
+      "previous": "-985.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "21:00",
+      "country": "巴西",
+      "event": "巴西2月汽车产量月率(%)",
+      "importance": 1,
+      "previous": "-13.5",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "21:00",
+      "country": "巴西",
+      "event": "巴西2月汽车销售额月率(%)",
+      "importance": 1,
+      "previous": "-39.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月劳动参与率(%)",
+      "importance": 2,
+      "previous": "62.5",
+      "consensus": "62.5",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月平均每周工时(小时)",
+      "importance": 1,
+      "previous": "34.3",
+      "consensus": "34.3",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月零售销售(亿美元)",
+      "importance": 1,
+      "previous": "7349.67",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月非农就业人口变动季调后(万)",
+      "importance": 2,
+      "previous": "13.0",
+      "consensus": "5.9",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月平均每小时工资年率(%)",
+      "importance": 2,
+      "previous": "3.7",
+      "consensus": "3.7",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月平均每小时工资月率(%)",
+      "importance": 1,
+      "previous": "0.4",
+      "consensus": "0.3",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月私营企业非农就业人数变动(万)",
+      "importance": 2,
+      "previous": "17.2",
+      "consensus": "6.5",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月关联GDP的零售额控制组月率-季调后(%)",
+      "importance": 2,
+      "previous": "-0.1",
+      "consensus": "0.2",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月核心零售销售(亿美元)",
+      "importance": 1,
+      "previous": "5961.85",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月U6失业率(%)",
+      "importance": 1,
+      "previous": "8.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国第四季度企业获利年化季率初值(%)",
+      "importance": 1,
+      "previous": "4.7",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月剔除汽车及汽油零售额月率-季调后(%)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "0.1",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月零售销售年率(%)",
+      "importance": 2,
+      "previous": "2.43",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月核心零售销售月率(%)",
+      "importance": 2,
+      "previous": "0.0",
+      "consensus": "0.0",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月政府部门岗位变动(万人)",
+      "importance": 1,
+      "previous": "-4.2",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月失业率(%)",
+      "importance": 2,
+      "previous": "4.3",
+      "consensus": "4.3",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国1月零售销售月率(%)",
+      "importance": 2,
+      "previous": "0.0",
+      "consensus": "-0.3",
+      "actual": "nan"
+    },
+    {
+      "time": "21:30",
+      "country": "美国",
+      "event": "美国2月制造业就业人口变动季调后(万)",
+      "importance": 2,
+      "previous": "0.5",
+      "consensus": "0.3",
+      "actual": "nan"
+    },
+    {
+      "time": "23:00",
+      "country": "美国",
+      "event": "美国12月企业库存月率(%)",
+      "importance": 1,
+      "previous": "0.1",
+      "consensus": "0.1",
+      "actual": "nan"
+    },
+    {
+      "time": "23:00",
+      "country": "加拿大",
+      "event": "加拿大2月IVEY未季调PMI",
+      "importance": 2,
+      "previous": "47.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "23:00",
+      "country": "加拿大",
+      "event": "加拿大2月IVEY季调后PMI",
+      "importance": 2,
+      "previous": "50.9",
+      "consensus": "nan",
+      "actual": "nan"
+    }
+  ],
+  "2026-03-03": [
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月2日3个月期国债竞拍-中标利率(%)",
+      "importance": 1,
+      "previous": "3.59",
+      "consensus": "nan",
+      "actual": "3.61"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月2日6个月期国债竞拍-总金额(亿美元)",
+      "importance": 1,
+      "previous": "798.87",
+      "consensus": "nan",
+      "actual": "795.88"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月2日3个月期国债竞拍-总金额(亿美元)",
+      "importance": 1,
+      "previous": "923.37",
+      "consensus": "nan",
+      "actual": "919.91"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月2日3个月期国债竞拍-投标倍数(亿美元)",
+      "importance": 1,
+      "previous": "3.3",
+      "consensus": "nan",
+      "actual": "3.16"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月2日3个月期国债竞拍-高配置百分比(%)",
+      "importance": 1,
+      "previous": "60.91",
+      "consensus": "nan",
+      "actual": "35.78"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月2日6个月期国债竞拍-投标倍数(亿美元)",
+      "importance": 1,
+      "previous": "3.03",
+      "consensus": "nan",
+      "actual": "3.1"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月2日6个月期国债竞拍-中标利率(%)",
+      "importance": 1,
+      "previous": "3.53",
+      "consensus": "nan",
+      "actual": "3.54"
+    },
+    {
+      "time": "00:30",
+      "country": "美国",
+      "event": "美国3月2日6个月期国债竞拍-高配置百分比(%)",
+      "importance": 1,
+      "previous": "82.17",
+      "consensus": "nan",
+      "actual": "44.84"
+    },
+    {
+      "time": "03:00",
+      "country": "墨西哥",
+      "event": "墨西哥1月财政余额(亿比索)",
+      "importance": 1,
+      "previous": "-4144.4",
+      "consensus": "nan",
+      "actual": "-193.2"
+    },
+    {
+      "time": "05:45",
+      "country": "新西兰",
+      "event": "新西兰1月营建许可月率(%)",
+      "importance": 1,
+      "previous": "-4.6",
+      "consensus": "nan",
+      "actual": "1.9"
+    },
+    {
+      "time": "05:45",
+      "country": "新西兰",
+      "event": "新西兰1月营建许可年率(%)",
+      "importance": 1,
+      "previous": "26.2",
+      "consensus": "nan",
+      "actual": "19.3"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国2月27日NYMEX钯金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "159.12",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国2月27日NYMEX铂金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "103.3",
+      "consensus": "nan",
+      "actual": "-9.07"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国2月27日NYMEX钯金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "2021.81",
+      "consensus": "nan",
+      "actual": "2021.81"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日SPDR黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "3.43",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日iShares黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "499.32",
+      "consensus": "nan",
+      "actual": "499.61"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国2月27日COMEX黄金库存-每日更新(百盎司)",
+      "importance": 2,
+      "previous": "333211.35",
+      "consensus": "nan",
+      "actual": "331711.36"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日iShares白银持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "15992.4",
+      "consensus": "nan",
+      "actual": "15902.24"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国2月27日COMEX黄金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-1665.54",
+      "consensus": "nan",
+      "actual": "-1499.99"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日iShares白银持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-104.25",
+      "consensus": "nan",
+      "actual": "-90.16"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国2月27日NYMEX铂金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "5880.66",
+      "consensus": "nan",
+      "actual": "5871.59"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日iShares黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "0.29"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国2月27日COMEX白银库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "3603325.03",
+      "consensus": "nan",
+      "actual": "3575653.73"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月2日SPDR黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "1101.33",
+      "consensus": "nan",
+      "actual": "1101.33"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国2月27日COMEX白银库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-3064.32",
+      "consensus": "nan",
+      "actual": "-27671.3"
+    },
+    {
+      "time": "07:30",
+      "country": "日本",
+      "event": "日本1月失业率(%)",
+      "importance": 2,
+      "previous": "2.6",
+      "consensus": "2.6",
+      "actual": "2.7"
+    },
+    {
+      "time": "07:30",
+      "country": "日本",
+      "event": "日本1月求才求职比",
+      "importance": 1,
+      "previous": "1.19",
+      "consensus": "1.19",
+      "actual": "1.18"
+    },
+    {
+      "time": "07:50",
+      "country": "日本",
+      "event": "日本2月基础货币年率(%)",
+      "importance": 1,
+      "previous": "-9.28",
+      "consensus": "nan",
+      "actual": "-10.6"
+    },
+    {
+      "time": "07:50",
+      "country": "日本",
+      "event": "日本第四季度企业资本支出年率(%)",
+      "importance": 1,
+      "previous": "2.9",
+      "consensus": "nan",
+      "actual": "6.5"
+    },
+    {
+      "time": "07:50",
+      "country": "日本",
+      "event": "日本2月基础货币额(万亿日元)",
+      "importance": 1,
+      "previous": "590.12",
+      "consensus": "nan",
+      "actual": "582.65"
+    },
+    {
+      "time": "08:01",
+      "country": "英国",
+      "event": "英国2月BRC商店物价指数年率(%)",
+      "importance": 1,
+      "previous": "1.5",
+      "consensus": "nan",
+      "actual": "1.1"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度净出口对GDP的贡献(%)",
+      "importance": 1,
+      "previous": "-0.1",
+      "consensus": "-0.3",
+      "actual": "-0.1"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚1月季调后营建许可月率(%)",
+      "importance": 1,
+      "previous": "-14.9",
+      "consensus": "5.0",
+      "actual": "-7.2"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚1月季调后私营营建许可月率(%)",
+      "importance": 1,
+      "previous": "0.4",
+      "consensus": "nan",
+      "actual": "1.1"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚截至3月1日当周ANZ消费者对未来2年通胀预期",
+      "importance": 1,
+      "previous": "5.2",
+      "consensus": "nan",
+      "actual": "5.3"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度经常帐(亿澳元)",
+      "importance": 2,
+      "previous": "-166.0",
+      "consensus": "-165.0",
+      "actual": "-211.0"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚1月季调后营建许可年率(%)",
+      "importance": 1,
+      "previous": "0.4",
+      "consensus": "nan",
+      "actual": "-15.7"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚1月季调后私营营建许可年率(%)",
+      "importance": 1,
+      "previous": "5.7",
+      "consensus": "nan",
+      "actual": "7.1"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚截至3月1日当周ANZ消费者信心指数",
+      "importance": 2,
+      "previous": "80.2",
+      "consensus": "nan",
+      "actual": "77.1"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚截至3月1日当周ANZ消费者对当前财务较1年前评价",
+      "importance": 1,
+      "previous": "75.5",
+      "consensus": "nan",
+      "actual": "70.5"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚截至3月1日当周ANZ消费者对未来1年经济预期",
+      "importance": 1,
+      "previous": "78.7",
+      "consensus": "nan",
+      "actual": "77.8"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚截至3月1日当周ANZ消费者对未来1年财务状况预期",
+      "importance": 1,
+      "previous": "88.0",
+      "consensus": "nan",
+      "actual": "84.0"
+    },
+    {
+      "time": "08:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚截至3月1日当周ANZ消费者对未来5年经济预期",
+      "importance": 1,
+      "previous": "81.6",
+      "consensus": "nan",
+      "actual": "79.7"
+    },
+    {
+      "time": "09:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度石油勘探支出额-季调后(万澳元)",
+      "importance": 1,
+      "previous": "44600.0",
+      "consensus": "nan",
+      "actual": "48000.0"
+    },
+    {
+      "time": "09:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度黄金勘探支出额(万澳元)",
+      "importance": 2,
+      "previous": "43150.0",
+      "consensus": "nan",
+      "actual": "46930.0"
+    },
+    {
+      "time": "09:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度石油勘探支出年率-季调后(%)",
+      "importance": 2,
+      "previous": "34.6",
+      "consensus": "nan",
+      "actual": "22.0"
+    },
+    {
+      "time": "09:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度煤勘探支出额(万澳元)",
+      "importance": 1,
+      "previous": "6830.0",
+      "consensus": "nan",
+      "actual": "5940.0"
+    },
+    {
+      "time": "09:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度矿产勘探支出年率-季调后(%)",
+      "importance": 1,
+      "previous": "2.4",
+      "consensus": "nan",
+      "actual": "-1.5"
+    },
+    {
+      "time": "09:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度精选基本金属勘探支出额(万澳元)",
+      "importance": 1,
+      "previous": "18060.0",
+      "consensus": "nan",
+      "actual": "17890.0"
+    },
+    {
+      "time": "09:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度铁矿石勘探支出额(万澳元)",
+      "importance": 1,
+      "previous": "22230.0",
+      "consensus": "nan",
+      "actual": "18080.0"
+    },
+    {
+      "time": "09:30",
+      "country": "澳大利亚",
+      "event": "澳大利亚第四季度矿产勘探支出额-季调后(万澳元)",
+      "importance": 1,
+      "previous": "99800.0",
+      "consensus": "nan",
+      "actual": "105380.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月3日上期所每日仓单变动-原油(桶)",
+      "importance": 2,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月3日上期所每日仓单变动-铜(吨)",
+      "importance": 2,
+      "previous": "5287.0",
+      "consensus": "nan",
+      "actual": "4624.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月3日上期所每日仓单变动-白银(千克)",
+      "importance": 1,
+      "previous": "2840.0",
+      "consensus": "nan",
+      "actual": "-1952.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月3日上期所每日仓单变动-黄金(千克)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "15:10",
+      "country": "中国",
+      "event": "中国3月3日上期所每日仓单变动-燃料油(吨)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "-6000.0"
+    },
+    {
+      "time": "15:45",
+      "country": "法国",
+      "event": "法国1月政府预算-年初至今(亿欧元)",
+      "importance": 1,
+      "previous": "-1247.42",
+      "consensus": "nan",
+      "actual": "-97.2"
+    },
+    {
+      "time": "16:00",
+      "country": "西班牙",
+      "event": "西班牙2月失业人数变化(万)",
+      "importance": 1,
+      "previous": "3.04",
+      "consensus": "nan",
+      "actual": "0.36"
+    },
+    {
+      "time": "16:00",
+      "country": "西班牙",
+      "event": "西班牙2月失业人数变化月率(%)",
+      "importance": 1,
+      "previous": "1.26",
+      "consensus": "nan",
+      "actual": "0.15"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区2月扣除食品能源烟酒的调和CPI年率初值(%)",
+      "importance": 1,
+      "previous": "2.2",
+      "consensus": "2.2",
+      "actual": "2.4"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区2月调和CPI月率初值(%)",
+      "importance": 1,
+      "previous": "-0.5",
+      "consensus": "0.3",
+      "actual": "0.7"
+    },
+    {
+      "time": "18:00",
+      "country": "意大利",
+      "event": "意大利2月CPI月率初值(%)",
+      "importance": 1,
+      "previous": "0.4",
+      "consensus": "nan",
+      "actual": "0.8"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区2月核心调和CPI月率初值(%)",
+      "importance": 1,
+      "previous": "-0.8",
+      "consensus": "nan",
+      "actual": "0.7"
+    },
+    {
+      "time": "18:00",
+      "country": "意大利",
+      "event": "意大利2月调和CPI月率初值(%)",
+      "importance": 1,
+      "previous": "-1.0",
+      "consensus": "0.1",
+      "actual": "0.6"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区2月扣除食品能源烟酒的调和CPI月率初值(%)",
+      "importance": 1,
+      "previous": "-1.1",
+      "consensus": "nan",
+      "actual": "0.8"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区2月核心调和CPI年率-未季调初值(%)",
+      "importance": 2,
+      "previous": "2.1",
+      "consensus": "2.2",
+      "actual": "2.3"
+    },
+    {
+      "time": "18:00",
+      "country": "意大利",
+      "event": "意大利2月未季调CPI读数初值",
+      "importance": 1,
+      "previous": "100.4",
+      "consensus": "nan",
+      "actual": "101.2"
+    },
+    {
+      "time": "18:00",
+      "country": "意大利",
+      "event": "意大利2月调和CPI年率初值(%)",
+      "importance": 1,
+      "previous": "1.0",
+      "consensus": "1.1",
+      "actual": "1.6"
+    },
+    {
+      "time": "18:00",
+      "country": "希腊",
+      "event": "希腊1月单月失业率(%)",
+      "importance": 1,
+      "previous": "7.5",
+      "consensus": "nan",
+      "actual": "7.7"
+    },
+    {
+      "time": "18:00",
+      "country": "巴西",
+      "event": "巴西2月Fipe通胀月率(%)",
+      "importance": 1,
+      "previous": "0.21",
+      "consensus": "nan",
+      "actual": "0.25"
+    },
+    {
+      "time": "18:00",
+      "country": "意大利",
+      "event": "意大利2月CPI年率初值(%)",
+      "importance": 1,
+      "previous": "1.0",
+      "consensus": "1.1",
+      "actual": "1.6"
+    },
+    {
+      "time": "18:00",
+      "country": "欧元区",
+      "event": "欧元区2月未季调CPI读数初值",
+      "importance": 1,
+      "previous": "100.08",
+      "consensus": "nan",
+      "actual": "100.72"
+    },
+    {
+      "time": "19:00",
+      "country": "巴西",
+      "event": "巴西第四季度GDP季率(%)",
+      "importance": 1,
+      "previous": "0.1",
+      "consensus": "0.1",
+      "actual": "0.1"
+    },
+    {
+      "time": "19:00",
+      "country": "巴西",
+      "event": "巴西第四季度GDP年率(%)",
+      "importance": 1,
+      "previous": "1.8",
+      "consensus": "1.8",
+      "actual": "1.8"
+    },
+    {
+      "time": "21:55",
+      "country": "美国",
+      "event": "美国截至2月23日当周红皮书商业零售销售年率(%)",
+      "importance": 1,
+      "previous": "6.7",
+      "consensus": "nan",
+      "actual": "7.0"
+    },
+    {
+      "time": "22:20",
+      "country": "新西兰",
+      "event": "新西兰截至3月2日当周全球乳制品拍卖价格平均中标价(美元/公吨)",
+      "importance": 1,
+      "previous": "4028.0",
+      "consensus": "nan",
+      "actual": "4301.0"
+    },
+    {
+      "time": "22:20",
+      "country": "新西兰",
+      "event": "新西兰截至3月2日当周全球乳制品拍卖价格指数变化率(%)",
+      "importance": 1,
+      "previous": "3.6",
+      "consensus": "nan",
+      "actual": "5.7"
+    }
+  ],
+  "2026-03-07": [
+    {
+      "time": "02:00",
+      "country": "美国",
+      "event": "美国截至3月6日当周石油钻井总数(口)",
+      "importance": 2,
+      "previous": "407.0",
+      "consensus": "nan",
+      "actual": "411.0"
+    },
+    {
+      "time": "02:00",
+      "country": "北美洲",
+      "event": "北美洲截至3月6日当周总钻井总数(口)",
+      "importance": 1,
+      "previous": "764.0",
+      "consensus": "nan",
+      "actual": "756.0"
+    },
+    {
+      "time": "02:00",
+      "country": "美国",
+      "event": "美国截至3月6日当周全美钻井总数(口)",
+      "importance": 2,
+      "previous": "550.0",
+      "consensus": "nan",
+      "actual": "551.0"
+    },
+    {
+      "time": "02:00",
+      "country": "美国",
+      "event": "美国截至3月6日当周混杂钻井总数(口)",
+      "importance": 1,
+      "previous": "9.0",
+      "consensus": "nan",
+      "actual": "8.0"
+    },
+    {
+      "time": "02:00",
+      "country": "美国",
+      "event": "美国截至3月6日当周天然气钻井总数(口)",
+      "importance": 1,
+      "previous": "134.0",
+      "consensus": "nan",
+      "actual": "132.0"
+    },
+    {
+      "time": "02:00",
+      "country": "北美洲",
+      "event": "北美洲截至3月6日当周墨西哥湾总钻井总数(口)",
+      "importance": 1,
+      "previous": "8.0",
+      "consensus": "nan",
+      "actual": "9.0"
+    },
+    {
+      "time": "02:00",
+      "country": "加拿大",
+      "event": "加拿大截至3月6日当周总钻井数量(口)",
+      "importance": 1,
+      "previous": "214.0",
+      "consensus": "nan",
+      "actual": "205.0"
+    },
+    {
+      "time": "04:00",
+      "country": "美国",
+      "event": "美国1月消费信贷(亿美元)",
+      "importance": 1,
+      "previous": "240.5",
+      "consensus": "120.0",
+      "actual": "80.5"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日SPDR黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-5.15",
+      "consensus": "nan",
+      "actual": "-2.57"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日iShares白银持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "15809.52",
+      "consensus": "nan",
+      "actual": "15761.62"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日NYMEX铂金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-20.79",
+      "consensus": "nan",
+      "actual": "-10.11"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日COMEX黄金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "598.08",
+      "consensus": "nan",
+      "actual": "-184.15"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日NYMEX钯金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "29.17",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日COMEX黄金库存-每日更新(百盎司)",
+      "importance": 2,
+      "previous": "331002.94",
+      "consensus": "nan",
+      "actual": "330818.78"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日NYMEX钯金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "2050.98",
+      "consensus": "nan",
+      "actual": "2050.98"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日iShares黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "-4.24"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日COMEX白银库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "3513419.25",
+      "consensus": "nan",
+      "actual": "3491458.95"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日SPDR黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "1075.89",
+      "consensus": "nan",
+      "actual": "1073.32"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日iShares黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "498.46",
+      "consensus": "nan",
+      "actual": "494.22"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日iShares白银持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-138.05",
+      "consensus": "nan",
+      "actual": "-47.9"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日NYMEX铂金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "5834.52",
+      "consensus": "nan",
+      "actual": "5824.41"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日COMEX白银库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-8779.46",
+      "consensus": "nan",
+      "actual": "-21960.3"
+    },
+    {
+      "time": "16:00",
+      "country": "中国",
+      "event": "中国2月外汇储备(亿美元)",
+      "importance": 2,
+      "previous": "33990.78",
+      "consensus": "34000.0",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "中国",
+      "event": "中国2月黄金储备-美元计价(亿美元)",
+      "importance": 1,
+      "previous": "3695.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "中国",
+      "event": "中国2月黄金储备量(万盎司)",
+      "importance": 2,
+      "previous": "7419.0",
+      "consensus": "nan",
+      "actual": "nan"
+    }
+  ]
+}

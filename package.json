@@ -1,0 +1,14 @@
+{
+  "name": "message-analysis-root",
+  "version": "1.0.0",
+  "description": "Smart News Analysis & Series Tracking System",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"cd server_py && python3 -m uvicorn main:app --reload --port 3001\" \"cd client && pnpm dev\"",
+    "dev": "pnpm start",
+    "install:all": "pnpm install && cd client && pnpm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
