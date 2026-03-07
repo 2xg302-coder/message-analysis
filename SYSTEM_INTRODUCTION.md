@@ -24,8 +24,10 @@
 *   **价值评分**：基于新闻实质内容进行 1-5 分的重要性打分（Impact Score），高分新闻视觉高亮。
 
 ### 2.4 连续剧式主题追踪 (Series Tracking)
-*   **自动聚合**：利用 LLM 提取的 `event_tag`（事件标签），自动将相关联的新闻聚合在一起。
-*   **时间轴展示**：以时间轴形式展示特定事件（如“OpenAI人事变动”）的发展脉络。
+*   **Series 实体管理**：引入独立的 `Series`（连续剧）概念，对长期热点事件（如“美联储货币政策”、“俄乌冲突”）进行持久化追踪。
+*   **智能归类**：每日生成的主线（Storyline）会自动归类到对应的 Series 中，或由 LLM 提议创建新的 Series。
+*   **先验知识更新**：系统会自动总结每个 Series 的最新进展（Current Summary），作为“长期记忆”辅助后续的分析，确保事件脉络的连贯性。
+*   **时间轴展示**：以时间轴形式展示特定 Series 的发展脉络，并提供最新的事件摘要。
 
 ### 2.5 财经日历 (Economic Calendar)
 *   **多源采集**：自动采集 Baidu/Jin10/Sina 等来源的财经日历数据，具备自动降级容错机制（Baidu -> Jin10 -> Sina），确保数据高可用。
@@ -193,22 +195,23 @@ pnpm dev
 | 方法 | 路径 | 描述 |
 | :--- | :--- | :--- |
 | `GET` | `/api/news` | 获取新闻列表 (支持分页, type, min_impact, entity, tag 筛选) |
-| `POST` | `/api/news` | 接收单条新闻数据 |
-| `POST` | `/api/news/batch` | 批量接收新闻数据 |
 
-### 6.2 统计与分析
+### 6.2 统计与监控
 | 方法 | 路径 | 描述 |
 | :--- | :--- | :--- |
 | `GET` | `/api/stats` | 获取系统统计数据（总数、待分析数、活跃事件等） |
 | `GET` | `/api/entities` | 获取热门实体（股票/公司）列表及频次 |
 | `GET` | `/api/analysis/status` | 查看后台分析 Worker 状态 |
 | `POST` | `/api/analysis/control` | 启动/暂停分析任务 |
+| `GET` | `/api/monitor/stats` | 获取系统整体监控数据（分析器、采集器、主线） |
 
-### 6.3 专题与分类
+### 6.3 连续剧与主线
 | 方法 | 路径 | 描述 |
 | :--- | :--- | :--- |
-| `GET` | `/api/series` | 获取所有聚合的新闻专题列表 |
-| `GET` | `/api/series/{tag}` | 获取指定专题下的所有新闻 |
+| `GET` | `/api/storylines/active` | 获取当前活跃的主线 |
+| `GET` | `/api/storylines/series` | 获取所有 Series 列表 |
+| `GET` | `/api/storylines/series/{id}` | 获取特定 Series 的所有 Storylines |
+| `POST` | `/api/storylines/generate` | 触发今日主线生成 |
 
 ### 6.4 关注配置
 | 方法 | 路径 | 描述 |
@@ -238,7 +241,19 @@ pnpm dev
     *   `country`: 国家/地区
     *   `event`: 事件名称
     *   `importance`: 重要性 (0-3)
-    *   `previous`, `consensus`, `actual`: 前值/预期/公布值
+
+4.  **`series` 表**：长期连续剧事件。
+    *   `id`: 唯一标识 (Slug)
+    *   `title`, `description`: 标题与描述
+    *   `category`: 分类
+    *   `current_summary`: 最新进展摘要（先验知识）
+
+5.  **`storylines` 表**：每日市场主线。
+    *   `date`: 日期
+    *   `title`, `description`: 标题与描述
+    *   `series_id`: 关联的 Series ID
+    *   `related_event_ids`: 关联日历事件
+    *   `related_news_ids`: 关联新闻
 
 ## 8. 常见问题 (FAQ)
 

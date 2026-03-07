@@ -1,47 +1,84 @@
 import React, { useState, useEffect } from 'react';
-import { Tag } from 'antd';
-import { SyncOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { getAnalysisStatus } from '../services/api';
+import { Tag, Tooltip, Badge } from 'antd';
+import { SyncOutlined, CheckCircleOutlined, DashboardOutlined, WarningOutlined } from '@ant-design/icons';
+import { getMonitorStats } from '../services/api';
+import MonitorDrawer from './MonitorDrawer';
 
 const TaskStatus = () => {
-  const [task, setTask] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchStatus = async () => {
     try {
-      const response = await getAnalysisStatus();
-      if (response.data && response.data.currentTask) {
-        setTask(response.data.currentTask);
-      } else {
-        setTask(null);
+      const response = await getMonitorStats();
+      if (response.data) {
+        setStats(response.data);
       }
     } catch (error) {
-      console.error('Failed to fetch analysis status', error);
-      setTask(null);
+      console.error('Failed to fetch monitor stats', error);
     }
   };
 
   useEffect(() => {
     fetchStatus();
-    // 每 5 秒轮询一次
+    // Poll every 5 seconds
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  if (!task) {
+  const handleOpenDrawer = () => {
+    setDrawerOpen(true);
+  };
+
+  if (!stats) {
     return (
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px' }}>
-             <Tag icon={<CheckCircleOutlined />} color="success">系统空闲</Tag>
-        </div>
+       <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', cursor: 'pointer' }} onClick={handleOpenDrawer}>
+            <Tag icon={<SyncOutlined spin />} color="default">Loading...</Tag>
+       </div>
     );
   }
 
+  const { analyzer, collection } = stats;
+  const isProcessing = analyzer.processingCount > 0;
+  const hasBacklog = collection.backlog > 0;
+  const hasFailures = collection.failedToday > 0;
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px' }}>
-      <span style={{ marginRight: 8, fontSize: '14px', color: '#666' }}>正在处理:</span>
-      <Tag icon={<SyncOutlined spin />} color="processing">
-        {task.title ? (task.title.length > 20 ? task.title.substring(0, 20) + '...' : task.title) : '未知任务'}
-      </Tag>
-    </div>
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', cursor: 'pointer' }} onClick={handleOpenDrawer}>
+        <Tooltip title="点击查看系统监控面板">
+            <span style={{ display: 'flex', alignItems: 'center' }}>
+                {isProcessing ? (
+                    <Tag icon={<SyncOutlined spin />} color="processing">
+                        处理中: {analyzer.processingCount}
+                    </Tag>
+                ) : (
+                    <Tag icon={<CheckCircleOutlined />} color="success">
+                        系统空闲
+                    </Tag>
+                )}
+                
+                {hasBacklog && (
+                    <Tag icon={<DashboardOutlined />} color="warning">
+                        积压: {collection.backlog}
+                    </Tag>
+                )}
+
+                {hasFailures && (
+                    <Tag icon={<WarningOutlined />} color="error">
+                        失败: {collection.failedToday}
+                    </Tag>
+                )}
+                
+                <Badge dot={hasBacklog || hasFailures} offset={[-5, 5]}>
+                    <DashboardOutlined style={{ fontSize: '18px', marginLeft: 8, color: '#1890ff' }} />
+                </Badge>
+            </span>
+        </Tooltip>
+      </div>
+      
+      <MonitorDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    </>
   );
 };
 

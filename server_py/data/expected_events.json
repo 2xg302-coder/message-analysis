@@ -3771,5 +3771,115 @@
       "consensus": "nan",
       "actual": "5.7"
     }
+  ],
+  "2026-03-07": [
+    {
+      "time": "02:00",
+      "country": "美国",
+      "event": "美国截至3月6日当周石油钻井总数(口)",
+      "importance": 2,
+      "previous": "407.0",
+      "consensus": "nan",
+      "actual": "411.0"
+    },
+    {
+      "time": "02:00",
+      "country": "北美洲",
+      "event": "北美洲截至3月6日当周总钻井总数(口)",
+      "importance": 1,
+      "previous": "764.0",
+      "consensus": "nan",
+      "actual": "756.0"
+    },
+    {
+      "time": "02:00",
+      "country": "美国",
+      "event": "美国截至3月6日当周全美钻井总数(口)",
+      "importance": 2,
+      "previous": "550.0",
+      "consensus": "nan",
+      "actual": "551.0"
+    },
+    {
+      "time": "02:00",
+      "country": "美国",
+      "event": "美国截至3月6日当周混杂钻井总数(口)",
+      "importance": 1,
+      "previous": "9.0",
+      "consensus": "nan",
+      "actual": "8.0"
+    },
+    {
+      "time": "02:00",
+      "country": "美国",
+      "event": "美国截至3月6日当周天然气钻井总数(口)",
+      "importance": 1,
+      "previous": "134.0",
+      "consensus": "nan",
+      "actual": "132.0"
+    },
+    {
+      "time": "02:00",
+      "country": "北美洲",
+      "event": "北美洲截至3月6日当周墨西哥湾总钻井总数(口)",
+      "importance": 1,
+      "previous": "8.0",
+      "consensus": "nan",
+      "actual": "9.0"
+    },
+    {
+      "time": "02:00",
+      "country": "加拿大",
+      "event": "加拿大截至3月6日当周总钻井数量(口)",
+      "importance": 1,
+      "previous": "214.0",
+      "consensus": "nan",
+      "actual": "205.0"
+    },
+    {
+      "time": "04:00",
+      "country": "美国",
+      "event": "美国1月消费信贷(亿美元)",
+      "importance": 1,
+      "previous": "240.5",
+      "consensus": "120.0",
+      "actual": "80.5"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日NYMEX铂金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-20.79",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "中国",
+      "event": "中国2月外汇储备(亿美元)",
+      "importance": 2,
+      "previous": "33990.78",
+      "consensus": "34000.0",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "中国",
+      "event": "中国2月黄金储备-美元计价(亿美元)",
+      "importance": 1,
+      "previous": "3695.0",
+      "consensus": "nan",
+      "actual": "nan"
+    },
+    {
+      "time": "16:00",
+      "country": "中国",
+      "event": "中国2月黄金储备量(万盎司)",
+      "importance": 2,
+      "previous": "7419.0",
+      "consensus": "nan",
+      "actual": "nan"
+    }
   ]
 }

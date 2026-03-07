@@ -9,9 +9,34 @@ from models_orm import Storyline, Series
 from core.database_orm import engine
 from core.seed_data import INITIAL_SERIES
 
+from sqlalchemy import func
+
 class StorylineManager:
     def __init__(self, session: Optional[AsyncSession] = None):
         self.session = session
+
+    async def get_storyline_stats(self) -> Dict[str, int]:
+        session = await self._get_session()
+        try:
+            total_stmt = select(func.count(Storyline.id))
+            active_stmt = select(func.count(Storyline.id)).where(Storyline.status == 'active')
+            today_stmt = select(func.count(Storyline.id)).where(Storyline.created_at >= datetime.now().strftime("%Y-%m-%d"))
+            
+            total = (await session.execute(total_stmt)).scalar() or 0
+            active = (await session.execute(active_stmt)).scalar() or 0
+            today = (await session.execute(today_stmt)).scalar() or 0
+            
+            return {
+                "total": total,
+                "active": active,
+                "today": today
+            }
+        except Exception as e:
+            print(f"Error getting storyline stats: {e}")
+            return {"total": 0, "active": 0, "today": 0}
+        finally:
+            if not self.session:
+                await session.close()
 
     async def _get_session(self) -> AsyncSession:
         if self.session:

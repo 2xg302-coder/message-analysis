@@ -6,51 +6,74 @@ import { getStorylinesByDate, getHistoryStorylines, generateStorylines, archiveS
 
 const { Title, Paragraph, Text } = Typography;
 
+// Helper
+const getIcon = (category) => {
+    switch(category) {
+        case 'macro': return <BankOutlined style={{ color: '#1890ff', fontSize: 24 }} />;
+        case 'geopolitics': return <GlobalOutlined style={{ color: '#f5222d', fontSize: 24 }} />;
+        case 'industry': return <RocketOutlined style={{ color: '#722ed1', fontSize: 24 }} />;
+        default: return <FireOutlined style={{ color: '#fa8c16', fontSize: 24 }} />;
+    }
+};
+
 // --- Components ---
 
 const SeriesCard = ({ series, onClick }) => {
-    const getIcon = (category) => {
-        switch(category) {
-            case 'macro': return <BankOutlined style={{ color: '#1890ff' }} />;
-            case 'geopolitics': return <GlobalOutlined style={{ color: '#f5222d' }} />;
-            case 'industry': return <RocketOutlined style={{ color: '#722ed1' }} />;
-            default: return <FireOutlined style={{ color: '#fa8c16' }} />;
-        }
-    };
-
     const getStatusColor = (status) => status === 'active' ? 'processing' : 'default';
 
     return (
         <Card 
             hoverable 
             onClick={() => onClick(series)}
-            style={{ height: '100%' }}
+            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+            bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
             actions={[
-                <Space><ClockCircleOutlined /> 更新: {dayjs(series.updated_at).format('MM-DD')}</Space>
+                <Space style={{ fontSize: 12, color: '#8c8c8c' }}><ClockCircleOutlined /> 更新: {dayjs(series.updated_at).format('MM-DD HH:mm')}</Space>
             ]}
         >
-            <Card.Meta
-                avatar={getIcon(series.category)}
-                title={
-                    <Space>
-                        {series.title}
+            <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 16 }}>
+                <div style={{ marginRight: 12, paddingTop: 4 }}>
+                    {getIcon(series.category)}
+                </div>
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <Text strong style={{ fontSize: 16 }}>{series.title}</Text>
                         <Badge status={getStatusColor(series.status)} text={series.status === 'active' ? '活跃' : '归档'} />
-                    </Space>
-                }
-                description={
-                    <Paragraph ellipsis={{ rows: 3 }}>
+                    </div>
+                    <Paragraph ellipsis={{ rows: 2 }} type="secondary" style={{ fontSize: 13, marginBottom: 0 }}>
                         {series.description}
                     </Paragraph>
-                }
-            />
-            {series.current_summary && (
-                <div style={{ marginTop: 12, background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>最新动态: {series.current_summary}</Text>
+                </div>
+            </div>
+
+            {series.current_summary ? (
+                <div style={{ 
+                    marginTop: 'auto', 
+                    background: '#f0f5ff', 
+                    border: '1px solid #adc6ff',
+                    padding: '8px 12px', 
+                    borderRadius: 6 
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                        <ThunderboltOutlined style={{ color: '#1890ff', marginRight: 6 }} />
+                        <Text strong style={{ color: '#1d39c4', fontSize: 13 }}>最新进展</Text>
+                    </div>
+                    <Paragraph 
+                        ellipsis={{ rows: 4, expandable: true, symbol: '展开' }} 
+                        style={{ fontSize: 13, color: '#262626', marginBottom: 0 }}
+                    >
+                        {series.current_summary}
+                    </Paragraph>
+                </div>
+            ) : (
+                <div style={{ marginTop: 'auto', padding: '16px 0', textAlign: 'center' }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>暂无最新进展摘要</Text>
                 </div>
             )}
+            
             <div style={{ marginTop: 12 }}>
                 {series.keywords && series.keywords.slice(0, 3).map(k => (
-                    <Tag key={k}>{k}</Tag>
+                    <Tag key={k} style={{ fontSize: 12 }}>{k}</Tag>
                 ))}
             </div>
         </Card>
@@ -354,52 +377,141 @@ const StorylineView = () => {
       <Drawer
         title={
             currentSeries ? (
-                <Space direction="vertical" size={0}>
-                    <Text strong style={{ fontSize: 18 }}>{currentSeries.title}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>ID: {currentSeries.id}</Text>
-                </Space>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Space align="center">
+                        {getIcon(currentSeries.category)}
+                        <Space direction="vertical" size={0}>
+                            <Text strong style={{ fontSize: 18 }}>{currentSeries.title}</Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>ID: {currentSeries.id}</Text>
+                        </Space>
+                    </Space>
+                    <Badge 
+                        status={currentSeries.status === 'active' ? 'processing' : 'default'} 
+                        text={currentSeries.status === 'active' ? '活跃' : '归档'} 
+                    />
+                </div>
             ) : "主题详情"
         }
         placement="right"
-        width={700}
+        width={720}
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
+        bodyStyle={{ padding: '24px', background: '#fcfcfc' }}
       >
           {currentSeries && (
-              <div style={{ marginBottom: 24 }}>
-                  <Paragraph>{currentSeries.description}</Paragraph>
-                  <Space>
-                      {currentSeries.keywords.map(k => <Tag key={k}>{k}</Tag>)}
-                  </Space>
-                  <Divider />
-              </div>
+              <>
+                {currentSeries.current_summary ? (
+                    <div style={{ 
+                        marginBottom: 24, 
+                        padding: '16px 20px', 
+                        background: '#f0f5ff', 
+                        borderRadius: 8, 
+                        border: '1px solid #adc6ff',
+                        boxShadow: '0 2px 6px rgba(24, 144, 255, 0.08)'
+                    }}>
+                        <Space align="center" style={{ marginBottom: 12 }}>
+                            <ThunderboltOutlined style={{ color: '#1890ff', fontSize: 18 }} />
+                            <Text strong style={{ fontSize: 16, color: '#1d39c4' }}>最新进展 (Prior Knowledge)</Text>
+                        </Space>
+                        <Paragraph style={{ marginBottom: 0, fontSize: 14, lineHeight: '1.6', color: '#262626' }}>
+                            {currentSeries.current_summary}
+                        </Paragraph>
+                    </div>
+                ) : (
+                    <div style={{ marginBottom: 24, padding: '16px', background: '#fafafa', borderRadius: 8, textAlign: 'center', border: '1px dashed #d9d9d9' }}>
+                        <Text type="secondary">暂无最新进展摘要</Text>
+                    </div>
+                )}
+
+                <div style={{ marginBottom: 32, padding: '0 8px' }}>
+                    <Text strong style={{ fontSize: 14, color: '#595959' }}>背景描述</Text>
+                    <Paragraph style={{ marginTop: 8, color: '#595959', fontSize: 14 }}>
+                        {currentSeries.description}
+                    </Paragraph>
+                    <div style={{ marginTop: 12 }}>
+                        {currentSeries.keywords && currentSeries.keywords.map(k => (
+                            <Tag key={k} style={{ background: '#f5f5f5', border: '1px solid #d9d9d9' }}>{k}</Tag>
+                        ))}
+                    </div>
+                </div>
+
+                <Divider orientation="left" style={{ borderColor: '#e8e8e8' }}>
+                    <Space>
+                        <HistoryOutlined />
+                        <span style={{ fontSize: 15, fontWeight: 600 }}>演变时间线</span>
+                    </Space>
+                </Divider>
+              </>
           )}
 
           {loadingTimeline ? (
-              <Card loading={true} />
+              <Card loading={true} bordered={false} />
           ) : (
-            <Timeline mode="left">
+            <Timeline 
+                mode="left" 
+                style={{ marginTop: 24, paddingLeft: 0 }}
+            >
                 {seriesTimeline.length > 0 ? seriesTimeline.map(item => (
-                    <Timeline.Item label={item.date} key={item.id}>
-                        <Card 
-                            size="small" 
-                            title={item.title} 
-                            extra={<Rate disabled defaultValue={item.importance} count={5} style={{ fontSize: 12 }} />}
-                            style={{ borderColor: item.importance >= 4 ? '#ffccc7' : '#f0f0f0' }}
-                        >
-                            <Paragraph ellipsis={{ rows: 3, expandable: true, symbol: '展开' }}>
-                                {item.description}
-                            </Paragraph>
-                            {item.expected_impact && (
-                                <div style={{ marginTop: 8 }}>
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                        <ThunderboltOutlined /> 影响: {item.expected_impact}
-                                    </Text>
+                    <Timeline.Item 
+                        key={item.id} 
+                        label={
+                            <div style={{ width: 50, textAlign: 'right', paddingRight: 8 }}>
+                                <div style={{ fontWeight: 'bold', fontSize: 13, color: '#262626' }}>
+                                    {dayjs(item.date).format('MM-DD')}
                                 </div>
-                            )}
-                        </Card>
+                            </div>
+                        }
+                        color={item.importance >= 4 ? 'red' : 'blue'}
+                    >
+                       <div 
+                           style={{ 
+                               background: '#fff', 
+                               borderRadius: 8,
+                               boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                               border: '1px solid #f0f0f0',
+                               marginBottom: 12,
+                               padding: '16px'
+                           }}
+                       >
+                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                               <Text strong style={{ fontSize: 15, color: '#262626' }}>{item.title}</Text>
+                               <Rate disabled defaultValue={item.importance} count={5} style={{ fontSize: 12, flexShrink: 0, marginLeft: 8 }} />
+                           </div>
+                           
+                           <Paragraph style={{ marginBottom: 16, color: '#595959', fontSize: 14, lineHeight: '1.6' }}>
+                               {item.description}
+                           </Paragraph>
+
+                           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                               {item.expected_impact && (
+                                   <div style={{ 
+                                       padding: '10px 12px', 
+                                       background: '#f6ffed', 
+                                       border: '1px solid #b7eb8f', 
+                                       borderRadius: 6,
+                                       display: 'flex',
+                                       alignItems: 'flex-start'
+                                   }}>
+                                       <ThunderboltOutlined style={{ color: '#52c41a', marginTop: 3, marginRight: 8, fontSize: 14 }} />
+                                       <div style={{ flex: 1 }}>
+                                           <Text strong style={{ fontSize: 12, color: '#389e0d' }}>预期影响</Text>
+                                           <div style={{ fontSize: 13, color: '#262626', marginTop: 2 }}>{item.expected_impact}</div>
+                                       </div>
+                                   </div>
+                               )}
+                               
+                               {item.keywords && item.keywords.length > 0 && (
+                                   <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                       <Text type="secondary" style={{ fontSize: 12 }}>关键词:</Text>
+                                       {item.keywords.map(k => (
+                                           <Tag key={k} style={{ margin: 0, fontSize: 12, border: 'none', background: 'rgba(0,0,0,0.04)', color: '#595959' }}>#{k}</Tag>
+                                       ))}
+                                   </div>
+                               )}
+                           </div>
+                       </div>
                     </Timeline.Item>
-                )) : <Empty description="该主题暂无剧情推进" />}
+                )) : <Empty description="该主题暂无剧情推进" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
             </Timeline>
           )}
       </Drawer>

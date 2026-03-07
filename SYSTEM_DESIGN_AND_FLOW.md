@@ -77,6 +77,15 @@ graph TD
     - **右侧时间轴**: 选中事件后，右侧以时间轴形式展示该事件的所有相关报道，清晰呈现事件的发展脉络。
     - **路由联动**: 支持通过 URL 参数直接定位到特定事件。
 
+### 3.5 系统监控 (System Monitor)
+- **入口**: 顶部导航栏右侧的状态指示器。
+- **功能**:
+    - **实时状态**: 显示当前系统是否正在处理数据、是否有积压任务。
+    - **监控面板 (Drawer)**: 点击状态图标打开侧边栏，展示详细的运行指标：
+        - **采集器状态**: 今日采集量、失败数、待处理队列长度。
+        - **分析器状态**: 当前正在分析的任务数、总处理量。
+        - **主线统计**: 活跃主线数、今日生成数。
+
 ## 4. 后端逻辑与数据流 (Backend Logic & Data Flow)
 
 ### 4.1 数据采集 (Data Ingestion)
@@ -107,7 +116,8 @@ graph TD
 - **模型 (`models_orm.py`)**:
     - `News`: 存储新闻主体，包括 `content`, `source`, `tags` (JSON), `entities` (JSON), `impact_score` 等。
     - `CalendarEvent`: 存储财经日历数据。
-    - `Storyline`: 存储市场主线，包括 `date`, `title`, `keywords`, `description`, `importance`, `status`, `series_id`, `series_title`, `related_event_ids` (JSON)。
+    - `Series`: 存储长期事件系列，包括 `id` (slug), `title`, `description`, `category`, `keywords` (JSON), `status`, `current_summary` (最新进展摘要)。
+    - `Storyline`: 存储市场主线，包括 `date`, `title`, `keywords`, `description`, `importance`, `status`, `series_id`, `series_title`, `related_event_ids` (JSON), `related_news_ids` (JSON)。
 
 ### 4.4 API 接口 (API Layer)
 后端通过 FastAPI 提供服务，主要路由在 `server_py/routers/`：
@@ -117,12 +127,21 @@ graph TD
 - `GET /api/calendar/today`: 获取今日财经日历。
 - `GET /api/storylines/active`: 获取当前活跃的主线。
 - `GET /api/storylines/history`: 获取历史归档的主线。
+- `GET /api/storylines/series`: 获取所有 Series 列表（支持按状态筛选）。
+- `GET /api/storylines/series/{series_id}`: 获取特定 Series 的所有相关 Storyline（按时间倒序）。
+- `POST /api/storylines/generate`: 触发指定日期的主线生成（同步）。
+- `POST /api/storylines/batch-generate`: 触发批量主线生成（后台异步任务），返回 `task_id`。
 - `POST /api/storylines`: 手动创建主线。
 - `PUT /api/storylines/{id}/archive`: 归档指定主线。
+- `PUT /api/storylines/archive-all`: 归档所有指定日期前的主线。
 - `GET /api/stats`: 获取统计数据（用于 DataExplorer）。
 - `GET /api/entities`: 获取核心实体排行（用于 Trends 页面的词云）。
     - **参数**: `limit`, `start_date`, `end_date`。
-- `GET /api/series`: 获取连续剧事件列表。
+- `GET /api/analysis/entity-graph`: 返回共现网络图数据 (Nodes, Links)，用于前端可视化。
+- `GET /api/analysis/hot-clusters`: 返回识别出的高频实体簇。
+- `GET /api/analysis/status`: 获取分析器当前运行状态。
+- `POST /api/analysis/control`: 控制分析器的启动与停止。
+- `GET /api/monitor/stats`: 获取系统监控数据（分析器状态、采集统计、主线统计）。
 
 ### 4.5 标签系统 (Tagging System)
 系统的标签 (Tags) 采用**混合生成策略**，结合了规则匹配的即时性和 AI 分析的深度。
@@ -139,21 +158,30 @@ graph TD
 
 ### 4.6 主线生成 (Storyline Generation)
 - **模块**: `server_py/services/storyline_generator.py`
-- **功能**: 利用大模型基于每日财经日历数据，自动提取当日 3-5 个核心市场主线，并尝试将其与历史主线关联，形成连续剧。
+- **功能**: 利用大模型基于每日财经日历数据和高影响力新闻，自动提取当日核心市场主线，并将其归类到长期跟踪的 Series（连续剧）中。
 - **依赖**: `server_py/services/llm_service.py` (通用 LLM 服务封装)。
 - **流程**:
-    1.  **数据获取**: 从 `CalendarEvent` 表获取当日重要性 >= 2 的事件，同时获取最近 7 天的活跃主线作为上下文。
-    2.  **Prompt 构建**: 使用 `server_py/prompts/storyline_prompt.py` 中的模板，将日历数据和历史主线数据格式化。
-    3.  **LLM 推理**: 调用 LLM 生成 JSON 格式的主线列表。AI 需判断新主线是否为历史主线的延续，并返回 `parent_id`。
-    4.  **关联处理**: 若存在 `parent_id`，继承其 `series_id`；否则生成新的 `series_id`。同时记录 `related_event_ids`。
+    1.  **数据获取**:
+        - 从 `CalendarEvent` 表获取当日重要性 >= 2 的事件。
+        - 从 `News` 表获取当日高影响力新闻。
+        - 获取当前活跃的 `Series` 列表作为上下文（先验知识）。
+    2.  **Prompt 构建**: 使用 `server_py/prompts/storyline_prompt.py` 中的模板，将日历数据、新闻数据和现有 Series 数据格式化。
+    3.  **LLM 推理**: 调用 LLM 生成 JSON 格式的主线列表。AI 需判断新主线是否属于现有 Series，或者提议创建新的 Series。
+    4.  **关联处理**:
+        - 若匹配现有 Series，更新其 `updated_at` 时间。
+        - 若提议新 Series，创建新的 `Series` 记录。
+        - 记录 `related_event_ids` (关联日历事件) 和 `related_news_ids` (关联新闻)。
     5.  **存储**: 将结果存入 `Storyline` 表，状态为 `active`。
+    6.  **先验知识更新**: 调用 `update_series_summaries`，利用当天的 Storyline 内容，让 LLM 更新对应 Series 的 `current_summary`，确保长期追踪的摘要是最新的。
 
 ### 4.10 跨日连续剧追踪 (Cross-day Series Tracking)
-- **目标**: 解决每日生成的孤立主线无法串联的问题，提供基于时间轴的事件发展视图。
+- **目标**: 解决每日生成的孤立主线无法串联的问题，提供基于时间轴的事件发展视图，并维护事件的长期记忆。
 - **实现机制**:
-    - **Series ID**: 在 `Storyline` 表中引入 `series_id` (UUID)，同一叙事链条下的所有主线共享该 ID。
-    - **LLM 判别**: 生成新主线时，将历史主线作为上下文喂给 LLM，由 LLM 判断是否属于同一系列。
-    - **前端展示**: 在主线卡片上提供“追踪剧情”入口，点击后通过侧边栏 (Drawer) 展示该系列的时间轴 (Timeline)。
+    - **Series 实体**: 引入独立的 `Series` 表，存储长期事件的元数据（标题、描述、分类、关键词）。
+        - 系统初始化时会加载种子数据 (`server_py/core/seed_data.py`)，包含如“美联储货币政策”、“俄乌冲突”等预定义 Series。
+    - **动态归类**: 每日生成 Storyline 时，LLM 会根据内容将其动态归类到合适的 Series 中。
+    - **摘要更新 (Prior Knowledge)**: 每次生成新 Storyline 后，系统会自动更新 Series 的 `current_summary` 字段，通过 LLM 总结最新进展。这相当于系统的“长期记忆”，在下一次生成 Storyline 时作为上下文提供给 LLM，提高生成的准确性和连贯性。
+    - **前端展示**: 在主线卡片上提供“追踪剧情”入口，点击后通过侧边栏 (Drawer) 展示该 Series 的时间轴 (Timeline) 和最新摘要。
 
 ### 4.7 主线管理 (Storyline Manager)
 - **模块**: `server_py/services/storyline_manager.py`
@@ -185,6 +213,15 @@ graph TD
 - **接口**:
     - `GET /api/analysis/entity-graph`: 返回共现网络图数据 (Nodes, Links)，用于前端可视化。
     - `GET /api/analysis/hot-clusters`: 返回识别出的高频实体簇。
+
+### 4.11 系统监控 (System Monitoring)
+- **模块**: `server_py/routers/monitor.py`
+- **功能**: 提供系统运行状态的实时监控数据。
+- **接口**: `GET /api/monitor/stats`
+    - **返回数据**:
+        - **Analyzer**: 运行状态、任务队列、处理计数。
+        - **Collection**: 今日采集量、待处理积压、失败数。
+        - **Topics**: 主线总数、活跃数、今日生成数。
 
 ## 5. 核心模块详解 (Key Modules)
 

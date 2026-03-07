@@ -82,4 +82,6 @@ export const getAllSeries = (status = 'active') => api.get('/storylines/series',
 export const startBatchGeneration = (days = 7) => api.post('/storylines/batch-generate', null, { params: { days } });
 export const getTaskStatus = (taskId) => api.get(`/storylines/tasks/${taskId}`);
 
+export const getMonitorStats = () => api.get('/monitor/stats');
+
 export default api;

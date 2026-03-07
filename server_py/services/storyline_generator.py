@@ -12,7 +12,7 @@ try:
     from core.database_orm import engine
     from models_orm import CalendarEvent, Storyline, Series
     from services.llm_service import llm_service
-    from prompts.storyline_prompt import STORYLINE_SYSTEM_PROMPT, STORYLINE_USER_PROMPT_TEMPLATE
+    from prompts.storyline_prompt import STORYLINE_SYSTEM_PROMPT, STORYLINE_USER_PROMPT_TEMPLATE, SERIES_SUMMARY_UPDATE_PROMPT
     from services.news_service import news_service
     from services.storyline_manager import StorylineManager
 except ImportError:
@@ -22,7 +22,7 @@ except ImportError:
     from core.database_orm import engine
     from models_orm import CalendarEvent, Storyline, Series
     from services.llm_service import llm_service
-    from prompts.storyline_prompt import STORYLINE_SYSTEM_PROMPT, STORYLINE_USER_PROMPT_TEMPLATE
+    from prompts.storyline_prompt import STORYLINE_SYSTEM_PROMPT, STORYLINE_USER_PROMPT_TEMPLATE, SERIES_SUMMARY_UPDATE_PROMPT
     from services.news_service import news_service
     from services.storyline_manager import StorylineManager
 
@@ -192,6 +192,10 @@ class StorylineGenerator:
                 await session.refresh(s)
             
             logger.info(f"Successfully generated {len(storylines)} storylines for {date}")
+            
+            # 7. Update Series Summaries (Prior Knowledge)
+            await self.update_series_summaries(storylines)
+            
             return storylines
 
         except Exception as e:
@@ -200,6 +204,74 @@ class StorylineGenerator:
             traceback.print_exc()
             await session.rollback()
             return []
+        finally:
+            await session.close()
+
+    async def update_series_summaries(self, storylines: List[Storyline]):
+        """
+        Updates the current_summary of related series based on new storylines.
+        This is the core of "Prior Knowledge Management".
+        """
+        if not storylines:
+            return
+
+        # Group storylines by series_id
+        series_updates = {} 
+        for sl in storylines:
+            if sl.series_id:
+                if sl.series_id not in series_updates:
+                    series_updates[sl.series_id] = []
+                series_updates[sl.series_id].append(sl)
+        
+        if not series_updates:
+            return
+
+        logger.info(f"Updating summaries for {len(series_updates)} series...")
+        
+        session = await self._get_session()
+        try:
+            for series_id, sl_list in series_updates.items():
+                try:
+                    # Re-fetch series to ensure it's attached to this session
+                    series = await session.get(Series, series_id)
+                    if not series:
+                        continue
+                    
+                    # Combine descriptions if multiple storylines for one series
+                    sl_descriptions = [f"- {s.description}" for s in sl_list]
+                    combined_desc = "\n".join(sl_descriptions)
+                    
+                    current_summary = series.current_summary or "暂无摘要"
+                    date = sl_list[0].date
+                    
+                    prompt = SERIES_SUMMARY_UPDATE_PROMPT.format(
+                        series_title=series.title,
+                        current_summary=current_summary,
+                        new_storyline_description=combined_desc,
+                        date=date
+                    )
+                    
+                    # Call LLM
+                    new_summary = await llm_service.chat_completion(
+                        prompt=prompt,
+                        system_prompt="You are a concise financial editor.",
+                        json_mode=False
+                    )
+                    
+                    if new_summary and isinstance(new_summary, str):
+                        series.current_summary = new_summary.strip()
+                        series.updated_at = datetime.now().isoformat()
+                        session.add(series)
+                        logger.info(f"Updated summary for series: {series.title}")
+                except Exception as e:
+                    logger.error(f"Error processing series {series_id}: {e}")
+                    # Continue to next series even if one fails
+            
+            await session.commit()
+            
+        except Exception as e:
+            logger.error(f"Error updating series summaries transaction: {e}")
+            await session.rollback()
         finally:
             await session.close()
 
@@ -264,7 +336,13 @@ class StorylineGenerator:
         lines = []
         for s in series_list:
             desc = s.get('description', '')[:50]
-            lines.append(f"- ID: {s['id']} | 标题: {s['title']} | 类别: {s['category']} | 描述: {desc}...")
+            summary = s.get('current_summary', '')
+            if not summary:
+                summary = "暂无最新进展摘要。"
+            else:
+                summary = summary[:100] + "..." if len(summary) > 100 else summary
+                
+            lines.append(f"- ID: {s['id']} | 标题: {s['title']} | 类别: {s['category']} | 描述: {desc}... | 当前进展: {summary}")
         return "\n".join(lines)
 
 storyline_generator = StorylineGenerator()

@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 # Global state
 scheduler = AsyncIOScheduler()
 is_running = True
-current_task: Optional[Dict[str, Any]] = None
+current_tasks: Dict[str, Dict[str, Any]] = {}
+failed_tasks_count = 0
+processed_count = 0
+last_processed_time = datetime.now()
 
 # Concurrency control
 sem: Optional[asyncio.Semaphore] = None
@@ -96,8 +99,11 @@ def set_analysis_status(status: bool):
 def get_analysis_status():
     return {
         "isRunning": is_running,
-        "currentTask": current_task,
-        "schedulerRunning": scheduler.running
+        "currentTasks": list(current_tasks.values()),
+        "schedulerRunning": scheduler.running,
+        "failedCount": failed_tasks_count,
+        "processedCount": processed_count,
+        "lastProcessedTime": last_processed_time.isoformat() if last_processed_time else None
     }
 
 async def get_semaphore():
@@ -107,12 +113,14 @@ async def get_semaphore():
     return sem
 
 async def process_single_news(news: Dict[str, Any]):
-    global current_task
+    global current_tasks, failed_tasks_count, processed_count, last_processed_time
     s = await get_semaphore()
+    
+    news_id = str(news['id'])
     
     async with s:
         try:
-            current_task = {
+            current_tasks[news_id] = {
                 "id": news['id'],
                 "title": news.get('title') or (news.get('content')[:30] if news.get('content') else 'No Content'),
                 "status": "analyzing",
@@ -124,6 +132,7 @@ async def process_single_news(news: Dict[str, Any]):
                 logger.warning(f"News {news['id']} has no content/title. Marking as skipped.")
                 # Note: news_service.save_analysis will be async later
                 await news_service.save_analysis(news['id'], {'error': 'No content'})
+                failed_tasks_count += 1
                 return
 
             logger.info(f"Analyzing news {news['id']} (Fast Mode)...")
@@ -141,18 +150,23 @@ async def process_single_news(news: Dict[str, Any]):
                 logger.warning(f"LLM failed for {news['id']}: {analysis['error']}. Using fallback.")
                 analysis = fallback_sentiment_analysis(content)
                 analysis['note'] = 'Fallback used due to LLM error'
+                # failed_tasks_count += 1 # Optional: count fallback as failure or success? Let's count as partial success for now.
                 
             # Save result
             # Note: news_service.save_analysis will be async later
             await news_service.save_analysis(news['id'], analysis)
             logger.info(f"✅ Analyzed {news['id']}: Score={analysis.get('sentiment_score', 0)}")
+            processed_count += 1
+            last_processed_time = datetime.now()
             
         except Exception as e:
             logger.error(f"Error processing news {news.get('id')}: {e}")
             # Note: news_service.save_analysis will be async later
             await news_service.save_analysis(news.get('id'), {'error': str(e)})
+            failed_tasks_count += 1
         finally:
-            current_task = None
+            if news_id in current_tasks:
+                del current_tasks[news_id]
 
 async def analysis_job():
     if not is_running:

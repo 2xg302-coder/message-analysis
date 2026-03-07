@@ -627,6 +627,38 @@ class NewsService:
             traceback.print_exc()
             return []
 
+    async def get_monitor_stats(self) -> Dict[str, Any]:
+        try:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            
+            # Collected Today
+            collected_query = "SELECT COUNT(*) as count FROM news WHERE created_at >= ?"
+            collected_res = await self.db.execute_query(collected_query, (today_str,))
+            collected_today = collected_res[0]['count'] if collected_res else 0
+            
+            # Pending (Backlog)
+            pending_query = "SELECT COUNT(*) as count FROM news WHERE analysis IS NULL OR analysis = ''"
+            pending_res = await self.db.execute_query(pending_query)
+            pending_count = pending_res[0]['count'] if pending_res else 0
+            
+            # Failed Today
+            failed_query = "SELECT COUNT(*) as count FROM news WHERE analysis LIKE '%error%' AND created_at >= ?"
+            failed_res = await self.db.execute_query(failed_query, (today_str,))
+            failed_today = failed_res[0]['count'] if failed_res else 0
+            
+            return {
+                "collected_today": collected_today,
+                "pending_count": pending_count,
+                "failed_today": failed_today
+            }
+        except Exception as e:
+            logger.error(f"Error getting monitor stats: {e}")
+            return {
+                "collected_today": 0,
+                "pending_count": 0,
+                "failed_today": 0
+            }
+
     async def get_watchlist(self) -> List[str]:
         rows = await self.db.execute_query('SELECT keyword FROM watchlist ORDER BY created_at ASC')
         return [row['keyword'] for row in rows]
