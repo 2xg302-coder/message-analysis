@@ -181,13 +181,16 @@ const SeriesView = () => {
         {/* 左侧：事件列表 */}
         <Col span={6}>
           <Card 
-            title="热门事件" 
+            title="热门事件 (Top 20)" 
             style={{ height: 'calc(100vh - 100px)', overflowY: 'auto' }}
             styles={{ body: { padding: '0 12px' } }}
           >
             <Spin spinning={loadingList}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {seriesList.map(item => (
+                {seriesList
+                  .sort((a, b) => b.count - a.count) // 确保按热度排序
+                  .slice(0, 20) // 仅显示 Top 20
+                  .map((item, index) => (
                   <div
                     key={item.tag}
                     onClick={() => handleSelectSeries(item.tag)}
@@ -199,7 +202,8 @@ const SeriesView = () => {
                       transition: 'background 0.3s',
                       border: 'none',
                       display: 'flex',
-                      flexDirection: 'column'
+                      flexDirection: 'column',
+                      borderLeft: index < 3 ? '3px solid #ff4d4f' : '3px solid transparent' // 前三名高亮
                     }}
                   >
                     <Text strong style={{ fontSize: 14, marginBottom: 4 }}>{item.tag}</Text>

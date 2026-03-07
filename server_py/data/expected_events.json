@@ -3848,11 +3848,128 @@
     {
       "time": "06:30",
       "country": "美国",
+      "event": "美国3月6日SPDR黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-5.15",
+      "consensus": "nan",
+      "actual": "-2.57"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日iShares白银持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "15809.52",
+      "consensus": "nan",
+      "actual": "15761.62"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
       "event": "美国3月5日NYMEX铂金库存变动-每日(百盎司)",
       "importance": 1,
       "previous": "-20.79",
       "consensus": "nan",
-      "actual": "nan"
+      "actual": "-10.11"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日COMEX黄金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "598.08",
+      "consensus": "nan",
+      "actual": "-184.15"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日NYMEX钯金库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "29.17",
+      "consensus": "nan",
+      "actual": "0.0"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日COMEX黄金库存-每日更新(百盎司)",
+      "importance": 2,
+      "previous": "331002.94",
+      "consensus": "nan",
+      "actual": "330818.78"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日NYMEX钯金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "2050.98",
+      "consensus": "nan",
+      "actual": "2050.98"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日iShares黄金持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "0.0",
+      "consensus": "nan",
+      "actual": "-4.24"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日COMEX白银库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "3513419.25",
+      "consensus": "nan",
+      "actual": "3491458.95"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日SPDR黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "1075.89",
+      "consensus": "nan",
+      "actual": "1073.32"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日iShares黄金持仓-每日更新(吨)",
+      "importance": 2,
+      "previous": "498.46",
+      "consensus": "nan",
+      "actual": "494.22"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月6日iShares白银持仓变动-每日(吨)",
+      "importance": 1,
+      "previous": "-138.05",
+      "consensus": "nan",
+      "actual": "-47.9"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日NYMEX铂金库存-每日更新(百盎司)",
+      "importance": 1,
+      "previous": "5834.52",
+      "consensus": "nan",
+      "actual": "5824.41"
+    },
+    {
+      "time": "06:30",
+      "country": "美国",
+      "event": "美国3月5日COMEX白银库存变动-每日(百盎司)",
+      "importance": 1,
+      "previous": "-8779.46",
+      "consensus": "nan",
+      "actual": "-21960.3"
     },
     {
       "time": "16:00",
