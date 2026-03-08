@@ -38,7 +38,7 @@ const NewsFeed = () => {
 
       const [newsRes, statsRes, statusRes] = await Promise.all([
         getNews(queryParams),
-        getStats(),
+        getStats(null, null, 'ITHome'), // Exclude ITHome from global stats
         getAnalysisStatus()
       ]);
 

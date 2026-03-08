@@ -175,7 +175,7 @@ class NewsServiceORM:
             if not self.session:
                 await session.close()
 
-    async def get_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, Any]:
+    async def get_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None, exclude_source: Optional[str] = None) -> Dict[str, Any]:
         session = await self._get_session()
         try:
             # Base filters
@@ -183,6 +183,8 @@ class NewsServiceORM:
             if start_date and end_date:
                 filters.append(News.created_at >= start_date)
                 filters.append(News.created_at <= end_date)
+            if exclude_source:
+                filters.append(News.source != exclude_source)
 
             # Total count
             stmt_total = select(func.count(News.id))

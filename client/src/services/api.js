@@ -17,7 +17,7 @@ api.interceptors.request.use((config) => {
 });
 
 // 获取新闻列表
-// params: { limit, offset, type, min_impact, source }
+// params: { limit, offset, page, pageSize, type, min_impact, source, tag, sentiment, entity, keyword, startDate, endDate }
 export const getNews = (params = {}) => {
   const backendParams = {};
   if (params.type && params.type !== 'all') backendParams.type = params.type;
@@ -28,18 +28,23 @@ export const getNews = (params = {}) => {
   
   if (params.source) backendParams.source = params.source;
   if (params.tag) backendParams.tag = params.tag;
-  if (params.entity) backendParams.entity = params.entity;
+  const keyword = typeof params.keyword === 'string' ? params.keyword.trim() : '';
+  if (keyword) backendParams.entity = keyword;
+  else if (params.entity) backendParams.entity = params.entity;
   if (params.sentiment && params.sentiment !== 'all') backendParams.sentiment = params.sentiment;
   if (params.startDate) backendParams.start_date = params.startDate;
   if (params.endDate) backendParams.end_date = params.endDate;
   if (params.limit) backendParams.limit = params.limit;
-  if (params.offset) backendParams.offset = params.offset;
+  else if (params.pageSize) backendParams.limit = params.pageSize;
+
+  if (params.offset !== undefined && params.offset !== null) backendParams.offset = params.offset;
+  else if (params.page && backendParams.limit) backendParams.offset = (params.page - 1) * backendParams.limit;
   
   return api.get('/news', { params: backendParams });
 };
 
 // 获取统计数据
-export const getStats = (startDate, endDate) => api.get('/stats', { params: { start_date: startDate, end_date: endDate } });
+export const getStats = (startDate, endDate, excludeSource) => api.get('/stats', { params: { start_date: startDate, end_date: endDate, exclude_source: excludeSource } });
 
 // 获取标签统计
 export const getTagStats = (limit = 100, startDate, endDate) => api.get(`/stats/tags?limit=${limit}`, { params: { start_date: startDate, end_date: endDate } });

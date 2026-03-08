@@ -84,9 +84,14 @@ async def read_news(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/stats")
-async def read_stats(start_date: Optional[str] = None, end_date: Optional[str] = None, service: NewsService = Depends(get_news_service)):
+async def read_stats(
+    start_date: Optional[str] = None, 
+    end_date: Optional[str] = None, 
+    exclude_source: Optional[str] = None,
+    service: NewsService = Depends(get_news_service)
+):
     try:
-        stats = await service.get_stats(start_date=start_date, end_date=end_date)
+        stats = await service.get_stats(start_date=start_date, end_date=end_date, exclude_source=exclude_source)
         return {"success": True, "data": stats}
     except Exception as e:
         logger.error(f"Error reading stats: {e}")

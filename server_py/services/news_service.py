@@ -283,13 +283,18 @@ class NewsService:
             
         return [{"name": name, "value": count} for name, count in type_counts.items()]
 
-    async def get_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, Any]:
+    async def get_stats(self, start_date: Optional[str] = None, end_date: Optional[str] = None, exclude_source: Optional[str] = None) -> Dict[str, Any]:
         try:
             where_clause = ""
             params = []
             if start_date and end_date:
                 where_clause = " WHERE created_at >= ? AND created_at <= ?"
                 params.extend([start_date, end_date + "T23:59:59.999999"])
+            
+            if exclude_source:
+                prefix = " AND" if where_clause else " WHERE"
+                where_clause += f"{prefix} source != ?"
+                params.append(exclude_source)
 
             total_query = f'SELECT COUNT(*) as count FROM news{where_clause}'
             total_res = await self.db.execute_query(total_query, tuple(params))
@@ -307,11 +312,17 @@ class NewsService:
             if not start_date and not end_date:
                 # Default to last 24 hours if no range specified
                 cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
-                trend_where = " WHERE created_at >= ?"
-                trend_params = [cutoff]
+                
+                # Careful not to duplicate WHERE
+                if not trend_where:
+                     trend_where = " WHERE created_at >= ?"
+                     trend_params = [cutoff]
+                else:
+                     trend_where += " AND created_at >= ?"
+                     trend_params.append(cutoff)
             
             trends_query = f'''
-                SELECT substr(created_at, 12, 2) as hour, count(*) as count, substr(created_at, 1, 13) as date_hour
+                SELECT substr(created_at, 12, 2) || ':00' as hour, count(*) as count, substr(created_at, 1, 13) as date_hour
                 FROM news 
                 {trend_where}
                 GROUP BY date_hour 
