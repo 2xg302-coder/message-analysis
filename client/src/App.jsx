@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import NewsFeed from './pages/NewsFeed';
+import ITHomeView from './pages/ITHomeView';
 import Trends from './pages/Trends';
 import Watchlist from './pages/Watchlist';
 import SeriesView from './pages/SeriesView';
@@ -16,6 +17,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<NewsFeed />} />
+          <Route path="ithome" element={<ITHomeView />} />
           <Route path="storylines" element={<StorylineView />} />
           <Route path="explorer" element={<DataExplorer />} />
           <Route path="trends" element={<Trends />} />

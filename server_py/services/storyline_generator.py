@@ -298,6 +298,9 @@ class StorylineGenerator:
             
             news = await news_service.get_news(limit=50, start_date=date, end_date=date)
             
+            # Filter out non-finance sources (e.g., ITHome) to keep storylines focused
+            news = [n for n in news if n.get('source') != 'ITHome']
+            
             # Simple deduplication based on title similarity could be done here if needed
             # For now, just return
             return news

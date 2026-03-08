@@ -336,7 +336,8 @@ class NewsProcessor:
 
         # Semantic Match Storylines
         # Only perform semantic matching if content is sufficient length
-        if clean_content and len(clean_content) > 20:
+        # AND exclude specific sources (like ITHome) to keep storylines finance-focused
+        if clean_content and len(clean_content) > 20 and news_item.get('source') != 'ITHome':
             try:
                 # Use a slightly higher threshold to ensure quality (e.g. 0.45 cosine similarity)
                 matches = await vector_store.query_news_tags(clean_content, threshold=0.45)

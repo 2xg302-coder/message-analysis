@@ -9,6 +9,7 @@ import {
   DatabaseOutlined,
   CalendarOutlined,
   ThunderboltOutlined,
+  ReadOutlined,
 } from '@ant-design/icons';
 import TaskStatus from '../components/TaskStatus';
 
@@ -16,6 +17,7 @@ const { Header, Content, Footer, Sider } = Layout;
 
 const items = [
   { key: '/', icon: <DesktopOutlined />, label: '新闻流' },
+  { key: '/ithome', icon: <ReadOutlined />, label: 'IT之家' },
   { key: '/storylines', icon: <ThunderboltOutlined />, label: '每日主线' },
   { key: '/explorer', icon: <DatabaseOutlined />, label: '数据资产' },
   { key: '/series', icon: <AppstoreOutlined />, label: '连续剧追踪' },

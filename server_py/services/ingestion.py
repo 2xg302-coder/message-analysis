@@ -90,10 +90,12 @@ async def start_ingestion_scheduler():
         from collectors.sina_collector import SinaCollector
         from collectors.eastmoney_collector import EastMoneyCollector
         from collectors.calendar_collector import CalendarCollector
+        from collectors.ithome_collector import ITHomeCollector
         from services.processor import NewsProcessor
         
         sina_collector = SinaCollector()
         em_collector = EastMoneyCollector()
+        ithome_collector = ITHomeCollector()
         calendar_collector = CalendarCollector(data_dir="data")
         processor = NewsProcessor()
         # Initialize processor async state (cache)
@@ -103,6 +105,7 @@ async def start_ingestion_scheduler():
         # News Ingestion Jobs
         scheduler.add_job(run_ingestion, IntervalTrigger(seconds=30), args=[sina_collector, 'Sina', processor], id='sina_ingestion', replace_existing=True)
         scheduler.add_job(run_ingestion, IntervalTrigger(minutes=5), args=[em_collector, 'EastMoney', processor], id='em_ingestion', replace_existing=True)
+        scheduler.add_job(run_ingestion, IntervalTrigger(minutes=10), args=[ithome_collector, 'ITHome', processor], id='ithome_ingestion', replace_existing=True)
         
         # Calendar Collection Job (Daily at 08:00)
         scheduler.add_job(run_calendar_collection, CronTrigger(hour=8, minute=0), args=[calendar_collector, processor], id='calendar_collection', replace_existing=True)
@@ -115,6 +118,7 @@ async def start_ingestion_scheduler():
             await asyncio.sleep(5)  # Wait 5 seconds
             logger.info("Starting initial ingestion tasks...")
             await run_ingestion(sina_collector, 'Sina', processor)
+            await run_ingestion(ithome_collector, 'ITHome', processor)
             await run_calendar_collection(calendar_collector, processor)
 
         asyncio.create_task(delayed_start())
