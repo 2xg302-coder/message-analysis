@@ -133,6 +133,7 @@ class NewsService:
                  keyword: Optional[str] = None,
                  start_date: Optional[str] = None,
                  end_date: Optional[str] = None,
+                 source: Optional[str] = None,
                  return_total: bool = False) -> Any:
         
         where_clauses = ["1=1"]
@@ -145,6 +146,10 @@ class NewsService:
         if min_impact is not None:
             where_clauses.append("impact_score >= ?")
             params.append(min_impact)
+
+        if source:
+            where_clauses.append("source = ?")
+            params.append(source)
 
         if tag:
             escaped_tag = json.dumps(tag).strip('"')

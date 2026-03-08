@@ -5,10 +5,21 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from typing import List, Dict, Any
 
+import re
+
 class ITHomeCollector:
     def __init__(self):
         self.source = 'ITHome'
         self.rss_url = 'https://www.ithome.com/rss/'
+
+    def clean_html(self, raw_html: str) -> str:
+        """Remove HTML tags from string"""
+        if not raw_html:
+            return ""
+        # Remove script and style elements
+        cleanr = re.compile('<.*?>')
+        cleantext = re.sub(cleanr, '', raw_html)
+        return cleantext.strip()
 
     def generate_id(self, content: str, time_str: str) -> str:
         """Generate a unique ID based on content and time"""
@@ -51,7 +62,7 @@ class ITHomeCollector:
 
                 # ITHome content is usually in description (HTML).
                 # The processor might strip HTML, but we pass it as is for now.
-                content = description
+                content = self.clean_html(description)
                 if not content:
                     content = title
 

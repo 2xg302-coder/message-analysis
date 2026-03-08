@@ -102,7 +102,7 @@ function extractIthomeNews(node) {
         timestamp: timestamp,
         time: time,
         scrapedAt: new Date().toISOString(),
-        source: 'ithome'
+        source: 'ITHome'
     };
 
     console.log('📰 New ITHome News Detected:', newsItem);

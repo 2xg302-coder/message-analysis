@@ -4,26 +4,42 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
   DesktopOutlined,
   PieChartOutlined,
-  SettingOutlined,
-  AppstoreOutlined,
   DatabaseOutlined,
-  CalendarOutlined,
-  ThunderboltOutlined,
-  ReadOutlined,
 } from '@ant-design/icons';
 import TaskStatus from '../components/TaskStatus';
 
 const { Header, Content, Footer, Sider } = Layout;
 
 const items = [
-  { key: '/', icon: <DesktopOutlined />, label: '新闻流' },
-  { key: '/ithome', icon: <ReadOutlined />, label: 'IT之家' },
-  { key: '/storylines', icon: <ThunderboltOutlined />, label: '每日主线' },
-  { key: '/explorer', icon: <DatabaseOutlined />, label: '数据资产' },
-  { key: '/series', icon: <AppstoreOutlined />, label: '连续剧追踪' },
-  { key: '/trends', icon: <PieChartOutlined />, label: '趋势分析' },
-  { key: '/calendar', icon: <CalendarOutlined />, label: '财经日历' },
-  { key: '/watchlist', icon: <SettingOutlined />, label: '关注配置' },
+  {
+    key: 'monitor',
+    label: '市场监控',
+    icon: <DesktopOutlined />,
+    children: [
+      { key: '/', label: '新闻流' },
+      { key: '/ithome', label: 'IT之家' },
+      { key: '/calendar', label: '财经日历' },
+    ],
+  },
+  {
+    key: 'analysis',
+    label: '分析工具',
+    icon: <PieChartOutlined />,
+    children: [
+      { key: '/trends', label: '趋势分析' },
+      { key: '/storylines', label: '每日主线' },
+      { key: '/series', label: '连续剧追踪' },
+    ],
+  },
+  {
+    key: 'management',
+    label: '数据管理',
+    icon: <DatabaseOutlined />,
+    children: [
+      { key: '/explorer', label: '数据资产' },
+      { key: '/watchlist', label: '关注配置' },
+    ],
+  },
 ];
 
 const MainLayout = () => {
@@ -35,6 +51,26 @@ const MainLayout = () => {
   
   const selectedKey = location.pathname.startsWith('/series') ? '/series' : location.pathname;
 
+  // Determine the default open key based on the current path
+  const getOpenKey = (path) => {
+    if (path === '/' || path === '/ithome' || path === '/calendar') return 'monitor';
+    if (path === '/trends' || path === '/storylines' || path.startsWith('/series')) return 'analysis';
+    if (path === '/explorer' || path === '/watchlist') return 'management';
+    return 'monitor';
+  };
+
+  const [openKeys, setOpenKeys] = React.useState([getOpenKey(location.pathname)]);
+
+  const onOpenChange = (keys) => {
+    const rootSubmenuKeys = ['monitor', 'analysis', 'management'];
+    const latestOpenKey = keys.find((key) => openKeys.indexOf(key) === -1);
+    if (rootSubmenuKeys.indexOf(latestOpenKey) === -1) {
+      setOpenKeys(keys);
+    } else {
+      setOpenKeys(latestOpenKey ? [latestOpenKey] : []);
+    }
+  };
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider collapsible>
@@ -45,6 +81,8 @@ const MainLayout = () => {
           theme="dark"
           defaultSelectedKeys={['/']}
           selectedKeys={[selectedKey]}
+          openKeys={openKeys}
+          onOpenChange={onOpenChange}
           mode="inline"
           items={items}
           onClick={({ key }) => navigate(key)}

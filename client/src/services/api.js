@@ -26,6 +26,7 @@ export const getNews = (params = {}) => {
       backendParams.min_impact = params.min_impact;
   }
   
+  if (params.source) backendParams.source = params.source;
   if (params.tag) backendParams.tag = params.tag;
   if (params.entity) backendParams.entity = params.entity;
   if (params.sentiment && params.sentiment !== 'all') backendParams.sentiment = params.sentiment;

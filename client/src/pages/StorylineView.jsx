@@ -6,6 +6,82 @@ import { getStorylinesByDate, getHistoryStorylines, generateStorylines, archiveS
 
 const { Title, Paragraph, Text } = Typography;
 
+const unescapeHTML = (str) => {
+    if (!str) return '';
+    
+    // Simple replacement is not enough for complex or mixed entities
+    // Use browser's DOM parser to handle all entities correctly
+    const doc = new DOMParser().parseFromString(str, 'text/html');
+    return doc.documentElement.textContent || str;
+};
+
+const RichText = ({ content, style, ellipsis, type }) => {
+    const [expanded, setExpanded] = useState(false);
+    
+    if (!content) return null;
+
+    // Some contents are double escaped or have raw HTML tags that are escaped
+    // e.g. "&lt;p&gt;..."
+    let unescapedContent = unescapeHTML(content);
+    
+    // If it still looks like it has escaped tags (e.g. if it was double escaped), try once more
+    if (unescapedContent.includes('&lt;') || unescapedContent.includes('&gt;')) {
+        unescapedContent = unescapeHTML(unescapedContent);
+    }
+
+    const baseStyle = { 
+        fontSize: 14, 
+        lineHeight: '1.6', 
+        color: type === 'secondary' ? 'rgba(0, 0, 0, 0.45)' : '#262626',
+        wordWrap: 'break-word',
+        ...style 
+    };
+
+    // Add styles for images within content
+    const contentWithImageStyles = unescapedContent.replace(/<img/g, '<img style="max-width: 100%; height: auto;"');
+
+    if (ellipsis) {
+        const { rows = 3, expandable, symbol = '展开' } = ellipsis;
+        
+        // If expanded, show full content
+        if (expanded) {
+            return (
+                <div style={baseStyle}>
+                    <div dangerouslySetInnerHTML={{ __html: contentWithImageStyles }} />
+                    {expandable && (
+                        <div style={{ textAlign: 'right', marginTop: 4 }}>
+                           <a onClick={(e) => { e.stopPropagation(); setExpanded(false); }} style={{ fontSize: 12 }}>收起</a>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Collapsed state
+        return (
+            <div style={baseStyle}>
+                <div 
+                    style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: rows,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                    }}
+                    dangerouslySetInnerHTML={{ __html: contentWithImageStyles }} 
+                />
+                {expandable && (
+                    <div style={{ textAlign: 'right', marginTop: 4 }}>
+                       <a onClick={(e) => { e.stopPropagation(); setExpanded(true); }} style={{ fontSize: 12 }}>{symbol}</a>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    return <div style={baseStyle} dangerouslySetInnerHTML={{ __html: contentWithImageStyles }} />;
+};
+
 // Helper
 const getIcon = (category) => {
     switch(category) {
@@ -40,9 +116,12 @@ const SeriesCard = ({ series, onClick }) => {
                         <Text strong style={{ fontSize: 16 }}>{series.title}</Text>
                         <Badge status={getStatusColor(series.status)} text={series.status === 'active' ? '活跃' : '归档'} />
                     </div>
-                    <Paragraph ellipsis={{ rows: 2 }} type="secondary" style={{ fontSize: 13, marginBottom: 0 }}>
-                        {series.description}
-                    </Paragraph>
+                    <RichText 
+                        ellipsis={{ rows: 2 }} 
+                        type="secondary" 
+                        style={{ fontSize: 13, marginBottom: 0 }}
+                        content={series.description}
+                    />
                 </div>
             </div>
 
@@ -58,12 +137,11 @@ const SeriesCard = ({ series, onClick }) => {
                         <ThunderboltOutlined style={{ color: '#1890ff', marginRight: 6 }} />
                         <Text strong style={{ color: '#1d39c4', fontSize: 13 }}>最新进展</Text>
                     </div>
-                    <Paragraph 
+                    <RichText 
                         ellipsis={{ rows: 4, expandable: true, symbol: '展开' }} 
                         style={{ fontSize: 13, color: '#262626', marginBottom: 0 }}
-                    >
-                        {series.current_summary}
-                    </Paragraph>
+                        content={series.current_summary}
+                    />
                 </div>
             ) : (
                 <div style={{ marginTop: 'auto', padding: '16px 0', textAlign: 'center' }}>
@@ -102,7 +180,7 @@ const StorylineCard = ({ item, onArchive }) => {
       style={{ marginBottom: 16 }}
       type="inner"
     >
-      <Paragraph>{item.description}</Paragraph>
+      <RichText content={item.description} />
       <div style={{ marginBottom: 8 }}>
         <Text type="secondary">关键词: </Text>
         {item.keywords && item.keywords.map((kw, idx) => (
@@ -413,9 +491,10 @@ const StorylineView = () => {
                             <ThunderboltOutlined style={{ color: '#1890ff', fontSize: 18 }} />
                             <Text strong style={{ fontSize: 16, color: '#1d39c4' }}>最新进展 (Prior Knowledge)</Text>
                         </Space>
-                        <Paragraph style={{ marginBottom: 0, fontSize: 14, lineHeight: '1.6', color: '#262626' }}>
-                            {currentSeries.current_summary}
-                        </Paragraph>
+                        <RichText 
+                            style={{ marginBottom: 0, fontSize: 14, lineHeight: '1.6', color: '#262626' }}
+                            content={currentSeries.current_summary}
+                        />
                     </div>
                 ) : (
                     <div style={{ marginBottom: 24, padding: '16px', background: '#fafafa', borderRadius: 8, textAlign: 'center', border: '1px dashed #d9d9d9' }}>
@@ -425,9 +504,10 @@ const StorylineView = () => {
 
                 <div style={{ marginBottom: 32, padding: '0 8px' }}>
                     <Text strong style={{ fontSize: 14, color: '#595959' }}>背景描述</Text>
-                    <Paragraph style={{ marginTop: 8, color: '#595959', fontSize: 14 }}>
-                        {currentSeries.description}
-                    </Paragraph>
+                    <RichText 
+                        style={{ marginTop: 8, color: '#595959', fontSize: 14 }}
+                        content={currentSeries.description}
+                    />
                     <div style={{ marginTop: 12 }}>
                         {currentSeries.keywords && currentSeries.keywords.map(k => (
                             <Tag key={k} style={{ background: '#f5f5f5', border: '1px solid #d9d9d9' }}>{k}</Tag>
@@ -477,9 +557,10 @@ const StorylineView = () => {
                                    <Rate disabled defaultValue={item.importance} count={5} style={{ fontSize: 12, flexShrink: 0, marginLeft: 8 }} />
                                </div>
                                
-                               <Paragraph style={{ marginBottom: 16, color: '#595959', fontSize: 14, lineHeight: '1.6' }}>
-                                   {item.description}
-                               </Paragraph>
+                               <RichText 
+                                   style={{ marginBottom: 16, color: '#595959', fontSize: 14, lineHeight: '1.6' }}
+                                   content={item.description}
+                               />
     
                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                    {item.expected_impact && (

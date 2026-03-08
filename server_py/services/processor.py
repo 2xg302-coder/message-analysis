@@ -135,7 +135,7 @@ class NewsProcessor:
         except Exception as e:
             logger.error(f"Error loading keywords: {e}")
 
-    def clean_text(self, text: str) -> str:
+    def clean_text(self, text: str, source: str = None) -> str:
         if not text:
             return ""
         # Remove HTML tags
@@ -154,7 +154,42 @@ class NewsProcessor:
         # e.g. 【Title】Content...
         text = re.sub(r'^【.*?】', '', text)
         
+        if source == 'ITHome':
+            text = self.clean_ithome_text(text)
+            
         return text.strip()
+
+    def clean_ithome_text(self, text: str) -> str:
+        """Specific cleaning for ITHome content"""
+        if not text:
+            return ""
+        
+        # Common ITHome ad patterns
+        patterns = [
+            r'广告声明：.*',
+            r'IT之家.*?日消息，', # Remove header like "IT之家 3 月 8 日消息，"
+            r'京东.*?直达链接',
+            r'天猫.*?直达链接',
+            r'淘宝.*?直达链接',
+            r'\[.*?\]', # Remove [Product Name] etc
+            r'【.*?】',  # Remove 【Product Name】 etc
+        ]
+        
+        cleaned = text
+        for p in patterns:
+            cleaned = re.sub(p, '', cleaned, flags=re.IGNORECASE)
+            
+        # Remove specific promotional phrases
+        promo_phrases = [
+            "点击此处", "购买链接", "直达链接", "一键直达", 
+            "领券", "大额券", "折合", "到手价", "包邮", 
+            "晒单", "返现", "限量", "秒杀"
+        ]
+        
+        for phrase in promo_phrases:
+            cleaned = cleaned.replace(phrase, "")
+            
+        return cleaned.strip()
 
     def calculate_simhash(self, text: str) -> Simhash:
         return Simhash(text)
@@ -271,7 +306,7 @@ class NewsProcessor:
         if not raw_content:
             return None
             
-        clean_content = self.clean_text(raw_content)
+        clean_content = self.clean_text(raw_content, source=news_item.get('source'))
         news_item['clean_content'] = clean_content
         
         current_time = datetime.now()

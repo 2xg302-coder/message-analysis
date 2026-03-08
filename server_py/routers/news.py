@@ -74,13 +74,10 @@ async def read_news(
             keyword=entity,
             start_date=start_date,
             end_date=end_date,
+            source=source,
             return_total=True
         )
         
-        # Filter by source if needed (DB doesn't index source efficiently yet, do in memory or update service)
-        if source:
-             news = [n for n in news if n.get('source') == source]
-
         return {"total": total, "count": len(news), "data": news}
     except Exception as e:
         logger.error(f"Error reading news: {e}")

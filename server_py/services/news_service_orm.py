@@ -106,6 +106,7 @@ class NewsServiceORM:
                  keyword: Optional[str] = None,
                  start_date: Optional[str] = None,
                  end_date: Optional[str] = None,
+                 source: Optional[str] = None,
                  return_total: bool = False) -> Any:
         
         session = await self._get_session()
@@ -118,6 +119,9 @@ class NewsServiceORM:
             
             if min_impact is not None:
                 filters.append(News.impact_score >= min_impact)
+            
+            if source:
+                filters.append(News.source == source)
                 
             if tag:
                 # SQLite JSON specific search or string search
