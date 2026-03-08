@@ -373,11 +373,11 @@ const StorylineView = () => {
         ]}
       />
 
-      {/* Series Detail Drawer */}
-      <Drawer
+      {/* Series Detail Modal */}
+      <Modal
         title={
             currentSeries ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 32 }}>
                     <Space align="center">
                         {getIcon(currentSeries.category)}
                         <Space direction="vertical" size={0}>
@@ -392,11 +392,11 @@ const StorylineView = () => {
                 </div>
             ) : "主题详情"
         }
-        placement="right"
-        width={720}
-        onClose={() => setDrawerVisible(false)}
+        width={800}
+        onCancel={() => setDrawerVisible(false)}
         open={drawerVisible}
-        bodyStyle={{ padding: '24px', background: '#fcfcfc' }}
+        footer={null}
+        bodyStyle={{ padding: '24px', background: '#fcfcfc', maxHeight: '70vh', overflowY: 'auto' }}
       >
           {currentSeries && (
               <>
@@ -448,73 +448,73 @@ const StorylineView = () => {
               <Card loading={true} bordered={false} />
           ) : (
             <Timeline 
-                mode="left" 
-                style={{ marginTop: 24, paddingLeft: 0 }}
+                style={{ marginTop: 24 }}
             >
                 {seriesTimeline.length > 0 ? seriesTimeline.map(item => (
                     <Timeline.Item 
                         key={item.id} 
-                        label={
-                            <div style={{ width: 50, textAlign: 'right', paddingRight: 8 }}>
-                                <div style={{ fontWeight: 'bold', fontSize: 13, color: '#262626' }}>
-                                    {dayjs(item.date).format('MM-DD')}
-                                </div>
-                            </div>
-                        }
                         color={item.importance >= 4 ? 'red' : 'blue'}
                     >
-                       <div 
-                           style={{ 
-                               background: '#fff', 
-                               borderRadius: 8,
-                               boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                               border: '1px solid #f0f0f0',
-                               marginBottom: 12,
-                               padding: '16px'
-                           }}
-                       >
-                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                               <Text strong style={{ fontSize: 15, color: '#262626' }}>{item.title}</Text>
-                               <Rate disabled defaultValue={item.importance} count={5} style={{ fontSize: 12, flexShrink: 0, marginLeft: 8 }} />
+                       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                           <div style={{ width: 50, flexShrink: 0, marginRight: 16, paddingTop: 4 }}>
+                                <div style={{ fontWeight: 'bold', fontSize: 14, color: '#262626', textAlign: 'right' }}>
+                                    {dayjs(item.date).format('MM-DD')}
+                                </div>
                            </div>
-                           
-                           <Paragraph style={{ marginBottom: 16, color: '#595959', fontSize: 14, lineHeight: '1.6' }}>
-                               {item.description}
-                           </Paragraph>
-
-                           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                               {item.expected_impact && (
-                                   <div style={{ 
-                                       padding: '10px 12px', 
-                                       background: '#f6ffed', 
-                                       border: '1px solid #b7eb8f', 
-                                       borderRadius: 6,
-                                       display: 'flex',
-                                       alignItems: 'flex-start'
-                                   }}>
-                                       <ThunderboltOutlined style={{ color: '#52c41a', marginTop: 3, marginRight: 8, fontSize: 14 }} />
-                                       <div style={{ flex: 1 }}>
-                                           <Text strong style={{ fontSize: 12, color: '#389e0d' }}>预期影响</Text>
-                                           <div style={{ fontSize: 13, color: '#262626', marginTop: 2 }}>{item.expected_impact}</div>
-                                       </div>
-                                   </div>
-                               )}
+                           <div 
+                               style={{ 
+                                   flex: 1,
+                                   background: '#fff', 
+                                   borderRadius: 8,
+                                   boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                                   border: '1px solid #f0f0f0',
+                                   marginBottom: 12,
+                                   padding: '16px'
+                               }}
+                           >
+                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                   <Text strong style={{ fontSize: 15, color: '#262626' }}>{item.title}</Text>
+                                   <Rate disabled defaultValue={item.importance} count={5} style={{ fontSize: 12, flexShrink: 0, marginLeft: 8 }} />
+                               </div>
                                
-                               {item.keywords && item.keywords.length > 0 && (
-                                   <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                                       <Text type="secondary" style={{ fontSize: 12 }}>关键词:</Text>
-                                       {item.keywords.map(k => (
-                                           <Tag key={k} style={{ margin: 0, fontSize: 12, border: 'none', background: 'rgba(0,0,0,0.04)', color: '#595959' }}>#{k}</Tag>
-                                       ))}
-                                   </div>
-                               )}
+                               <Paragraph style={{ marginBottom: 16, color: '#595959', fontSize: 14, lineHeight: '1.6' }}>
+                                   {item.description}
+                               </Paragraph>
+    
+                               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                   {item.expected_impact && (
+                                       <div style={{ 
+                                           padding: '10px 12px', 
+                                           background: '#f6ffed', 
+                                           border: '1px solid #b7eb8f', 
+                                           borderRadius: 6,
+                                           display: 'flex',
+                                           alignItems: 'flex-start'
+                                       }}>
+                                           <ThunderboltOutlined style={{ color: '#52c41a', marginTop: 3, marginRight: 8, fontSize: 14 }} />
+                                           <div style={{ flex: 1 }}>
+                                               <Text strong style={{ fontSize: 12, color: '#389e0d' }}>预期影响</Text>
+                                               <div style={{ fontSize: 13, color: '#262626', marginTop: 2 }}>{item.expected_impact}</div>
+                                           </div>
+                                       </div>
+                                   )}
+                                   
+                                   {item.keywords && item.keywords.length > 0 && (
+                                       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                           <Text type="secondary" style={{ fontSize: 12 }}>关键词:</Text>
+                                           {item.keywords.map(k => (
+                                               <Tag key={k} style={{ margin: 0, fontSize: 12, border: 'none', background: 'rgba(0,0,0,0.04)', color: '#595959' }}>#{k}</Tag>
+                                           ))}
+                                       </div>
+                                   )}
+                               </div>
                            </div>
                        </div>
                     </Timeline.Item>
                 )) : <Empty description="该主题暂无剧情推进" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
             </Timeline>
           )}
-      </Drawer>
+      </Modal>
 
       {/* Batch Generation Modal */}
       <Modal

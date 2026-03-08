@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import difflib
 from core.database import db
@@ -295,16 +295,57 @@ class NewsService:
             analyzed_res = await self.db.execute_query(analyzed_query, tuple(params))
             analyzed = analyzed_res[0]['count'] if analyzed_res else 0
             
+            # Trend Query - Last 24 hours or specified range
+            trend_params = list(params)
+            trend_where = where_clause
+            
+            if not start_date and not end_date:
+                # Default to last 24 hours if no range specified
+                cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
+                trend_where = " WHERE created_at >= ?"
+                trend_params = [cutoff]
+            
             trends_query = f'''
-                SELECT substr(created_at, 12, 2) as hour, count(*) as count 
+                SELECT substr(created_at, 12, 2) as hour, count(*) as count, substr(created_at, 1, 13) as date_hour
                 FROM news 
-                {where_clause}
-                GROUP BY hour 
-                ORDER BY hour DESC 
-                LIMIT 12
+                {trend_where}
+                GROUP BY date_hour 
+                ORDER BY date_hour ASC 
             '''
-            trends = await self.db.execute_query(trends_query, tuple(params))
-            trends.reverse()
+            
+            # If no specific range, limit to 24 (though date filter should handle it mostly)
+            if not start_date and not end_date:
+                trends_query += " LIMIT 24"
+                
+            trends = await self.db.execute_query(trends_query, tuple(trend_params))
+            
+            # Post-process to ensure full 24h timeline if default range
+            if not start_date and not end_date:
+                now = datetime.now()
+                current_hour = now.replace(minute=0, second=0, microsecond=0)
+                
+                # Create map from DB results
+                # row['date_hour'] format from SQLite substr is "YYYY-MM-DDTHH"
+                data_map = {row['date_hour']: row['count'] for row in trends}
+                
+                full_trends = []
+                # Generate last 24 hours (including current hour)
+                for i in range(23, -1, -1):
+                    t = current_hour - timedelta(hours=i)
+                    key = t.strftime("%Y-%m-%dT%H")
+                    
+                    # Display label: "12:00" or "10-27 12:00" if cross day?
+                    # Let's use simple "HH:00" but if it's 00:00, maybe add date?
+                    # Or just return HH:00 and let frontend handle?
+                    # User asked for "24 hour trend", "HH:00" is standard.
+                    label = t.strftime("%H:00")
+                    
+                    full_trends.append({
+                        "hour": label,
+                        "count": data_map.get(key, 0),
+                        "date_hour": key
+                    })
+                trends = full_trends
             
             return {
                 'total': total,
