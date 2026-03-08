@@ -160,28 +160,19 @@ const Trends = () => {
         </Row>
 
         <Row gutter={[16, 16]}>
-          {/* 情感 vs 影响 散点图 (模拟热力图) */}
+          {/* 采集趋势 */}
           <Col span={16}>
-            <Card title="情感与影响力分布 (热力模拟)">
-              <div style={{ height: 400 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                    <CartesianGrid />
-                    <XAxis type="number" dataKey="sentiment" name="情感评分" unit="" domain={[-1, 1]} label={{ value: '情感倾向 (利空 -> 利好)', position: 'insideBottom', offset: -10 }} />
-                    <YAxis type="number" dataKey="impact" name="影响力" unit="" domain={[0, 5]} label={{ value: '影响力', angle: -90, position: 'insideLeft' }} />
-                    <ZAxis type="number" dataKey="count" range={[60, 400]} name="出现次数" />
-                    <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                    <Legend />
-                    <Scatter name="新闻分布" data={stats.impact_sentiment_data || [
-                      { sentiment: 0.8, impact: 4.5, count: 10 },
-                      { sentiment: -0.7, impact: 4.2, count: 8 },
-                      { sentiment: 0.1, impact: 2.0, count: 25 },
-                      { sentiment: 0.5, impact: 3.5, count: 15 },
-                      { sentiment: -0.2, impact: 1.5, count: 30 },
-                    ]} fill="#1890ff" />
-                  </ScatterChart>
-                </ResponsiveContainer>
-              </div>
+            <Card title="24小时舆情热度趋势">
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart data={stats.trends}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="hour" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="count" name="采集数量" stroke="#1890ff" activeDot={{ r: 8 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </Card>
           </Col>
 
@@ -223,23 +214,7 @@ const Trends = () => {
           </Col>
         </Row>
 
-        <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-           {/* 采集趋势 */}
-           <Col span={24}>
-            <Card title="24小时舆情热度趋势">
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={stats.trends}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="hour" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="count" name="采集数量" stroke="#1890ff" activeDot={{ r: 8 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-        </Row>
+
       </Spin>
       
       <Modal
