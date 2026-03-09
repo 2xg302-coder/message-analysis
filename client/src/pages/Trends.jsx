@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Card, Row, Col, Statistic, Spin, Progress, Switch, Alert, Steps, Tag, Space, Modal, List, Empty } from 'antd';
+import { Typography, Card, Row, Col, Statistic, Spin, Switch, Alert, Steps, Tag, Space, Modal, List, Empty } from 'antd';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
-import { getStats, getAnalysisStatus, setAnalysisControl, getNews, getTopEntities } from '../services/api';
+import { getStats, getAnalysisStatus, setAnalysisControl, getNews, getTopEntities, getMonitorStats } from '../services/api';
 import { RobotOutlined, PauseCircleOutlined, PlayCircleOutlined, FireOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -30,6 +30,11 @@ const Trends = () => {
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [entityNews, setEntityNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
+  const [monitorStats, setMonitorStats] = useState({
+    today: 0,
+    processedToday: 0,
+    backlog: 0
+  });
 
   const handleEntityClick = async (entityName) => {
     setSelectedEntity(entityName);
@@ -50,9 +55,10 @@ const Trends = () => {
 
   const fetchStats = async () => {
     try {
-      const [statsRes, entitiesRes] = await Promise.all([
+      const [statsRes, entitiesRes, monitorRes] = await Promise.all([
         getStats(),
-        getTopEntities(30)
+        getTopEntities(30),
+        getMonitorStats()
       ]);
       
       let newStats = {};
@@ -69,6 +75,14 @@ const Trends = () => {
           name: e.name,
           score: (e.count / maxCount) * 100 // Normalize to 0-100
         }));
+      }
+
+      if (monitorRes.data && monitorRes.data.collection) {
+        setMonitorStats({
+          today: monitorRes.data.collection.today || 0,
+          processedToday: monitorRes.data.collection.processedToday || 0,
+          backlog: monitorRes.data.collection.backlog || 0
+        });
       }
       
       setStats(prev => ({ ...prev, ...newStats }));
@@ -118,6 +132,13 @@ const Trends = () => {
     { name: '低价值 (<=3)', value: stats.low_score || 0 }
   ];
 
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const elapsedHours = Math.max((now.getTime() - todayStart.getTime()) / 3600000, 1 / 60);
+  const avgProcessSpeed = monitorStats.processedToday / elapsedHours;
+  const etaHours = avgProcessSpeed > 0 ? monitorStats.backlog / avgProcessSpeed : null;
+  const etaText = etaHours === null ? '暂无估算' : `${etaHours.toFixed(1)} 小时`;
+
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -138,23 +159,23 @@ const Trends = () => {
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col span={6}>
             <Card>
-              <Statistic title="新闻总量" value={stats.total} prefix="📚" />
+              <Statistic title="本日采集量" value={monitorStats.today} prefix="📥" />
             </Card>
           </Col>
           <Col span={6}>
             <Card>
-              <Statistic title="已分析" value={stats.analyzed} suffix={`/ ${stats.total}`} prefix="🤖" />
-              <Progress percent={Math.round((stats.analyzed / (stats.total || 1)) * 100)} size="small" />
+              <Statistic title="本日处理量" value={monitorStats.processedToday} prefix="🤖" />
             </Card>
           </Col>
           <Col span={6}>
             <Card>
-              <Statistic title="情感偏向 (今日)" value={0.2} precision={2} valueStyle={{ color: '#cf1322' }} prefix="📈" />
+              <Statistic title="积压量" value={monitorStats.backlog} prefix="📦" valueStyle={{ color: '#fa541c' }} />
             </Card>
           </Col>
           <Col span={6}>
             <Card>
-              <Statistic title="高影响因子" value={stats.high_score} prefix="💥" valueStyle={{ color: '#fa8c16' }} />
+              <Statistic title="预计剩余处理时间" value={etaText} prefix="⏳" />
+              <Text type="secondary">平均处理速度：{avgProcessSpeed.toFixed(1)} 条/小时</Text>
             </Card>
           </Col>
         </Row>

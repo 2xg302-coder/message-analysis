@@ -37,7 +37,11 @@ const DailyReport = () => {
     try {
       const dateStr = selectedDate.format('YYYY-MM-DD');
       const response = await getDailyReport(dateStr);
-      setData(response.data);
+      if (response.data && response.data.success) {
+        setData(response.data.data);
+      } else {
+        message.error('获取日报数据失败: ' + (response.data?.message || '未知错误'));
+      }
     } catch (error) {
       console.error('Failed to fetch daily report:', error);
       message.error('获取日报数据失败');

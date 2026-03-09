@@ -1,9 +1,9 @@
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from sqlmodel import select, col
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func
+from sqlalchemy import func, case
 
 from models_orm import News, Watchlist
 from core.database_orm import engine
@@ -198,26 +198,58 @@ class NewsServiceORM:
                 stmt_analyzed = stmt_analyzed.where(*filters)
             analyzed = await session.scalar(stmt_analyzed)
             
-            # Trends (last 12 hours distribution)
-            # Use raw expression for grouping/ordering to avoid alias resolution issues
-            
-            # Extract hour expression: substr(created_at, 12, 2)
+            date_hour_expression = func.substr(News.created_at, 1, 13)
             hour_expression = func.substr(News.created_at, 12, 2)
-            
+            analyzed_count_expression = func.sum(case((News.analysis.is_not(None), 1), else_=0))
+
+            trend_filters = list(filters)
+            if not start_date and not end_date:
+                current_hour = datetime.now().replace(minute=0, second=0, microsecond=0)
+                cutoff = (current_hour - timedelta(hours=23)).isoformat()
+                trend_filters.append(News.created_at >= cutoff)
+            else:
+                current_hour = None
+
             stmt_trends = select(
-                hour_expression.label("hour"), 
-                func.count(News.id).label("count")
+                date_hour_expression.label("date_hour"),
+                hour_expression.label("hour"),
+                func.count(News.id).label("count"),
+                analyzed_count_expression.label("analyzed_count")
             )
-            if filters:
-                stmt_trends = stmt_trends.where(*filters)
-                
-            # Group and order by the expression directly
-            stmt_trends = stmt_trends.group_by(hour_expression).order_by(hour_expression.desc()).limit(12)
-            
+
+            if trend_filters:
+                stmt_trends = stmt_trends.where(*trend_filters)
+
+            stmt_trends = stmt_trends.group_by(date_hour_expression, hour_expression).order_by(date_hour_expression.asc())
             trends_res = await session.execute(stmt_trends)
-            # Use row mappings or index to access result since we have labels
-            trends = [{"hour": row.hour, "count": row.count} for row in trends_res.all()]
-            trends.reverse()
+            trend_rows = trends_res.all()
+
+            if current_hour:
+                data_map = {
+                    row.date_hour: {
+                        "count": row.count or 0,
+                        "analyzed_count": row.analyzed_count or 0
+                    }
+                    for row in trend_rows
+                }
+                trends = []
+                for i in range(23, -1, -1):
+                    t = current_hour - timedelta(hours=i)
+                    key = t.strftime("%Y-%m-%dT%H")
+                    trends.append({
+                        "hour": t.strftime("%H:00"),
+                        "count": data_map.get(key, {}).get("count", 0),
+                        "analyzed_count": data_map.get(key, {}).get("analyzed_count", 0)
+                    })
+            else:
+                trends = [
+                    {
+                        "hour": f"{row.hour}:00",
+                        "count": row.count or 0,
+                        "analyzed_count": row.analyzed_count or 0
+                    }
+                    for row in trend_rows
+                ]
             
             return {
                 "total": total or 0,

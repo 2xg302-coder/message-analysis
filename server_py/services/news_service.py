@@ -705,6 +705,10 @@ class NewsService:
             collected_query = "SELECT COUNT(*) as count FROM news WHERE created_at >= ?"
             collected_res = await self.db.execute_query(collected_query, (today_str,))
             collected_today = collected_res[0]['count'] if collected_res else 0
+
+            processed_query = "SELECT COUNT(*) as count FROM news WHERE analyzed_at >= ? AND analysis IS NOT NULL AND analysis != ''"
+            processed_res = await self.db.execute_query(processed_query, (today_str,))
+            processed_today = processed_res[0]['count'] if processed_res else 0
             
             # Pending (Backlog)
             pending_query = "SELECT COUNT(*) as count FROM news WHERE analysis IS NULL OR analysis = ''"
@@ -718,6 +722,7 @@ class NewsService:
             
             return {
                 "collected_today": collected_today,
+                "processed_today": processed_today,
                 "pending_count": pending_count,
                 "failed_today": failed_today
             }
@@ -725,6 +730,7 @@ class NewsService:
             logger.error(f"Error getting monitor stats: {e}")
             return {
                 "collected_today": 0,
+                "processed_today": 0,
                 "pending_count": 0,
                 "failed_today": 0
             }

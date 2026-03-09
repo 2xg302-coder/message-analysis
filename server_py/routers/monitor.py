@@ -32,6 +32,7 @@ async def get_monitor_stats():
         },
         "collection": {
             "today": news_stats["collected_today"],
+            "processedToday": news_stats["processed_today"],
             "backlog": news_stats["pending_count"],
             "failedToday": news_stats["failed_today"]
         },
