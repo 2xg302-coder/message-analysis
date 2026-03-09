@@ -56,7 +56,7 @@ const MonitorDrawer = ({ open, onClose }) => {
         <Col span={12}>
           <Card bordered={false} style={{ background: '#fff7e6' }}>
             <Statistic 
-              title="今日生成主题" 
+              title="今日生成推演" 
               value={stats.topics.generatedToday} 
               suffix={`/ 总 ${stats.topics.total}`}
               prefix={<ProjectOutlined />} 

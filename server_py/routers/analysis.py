@@ -20,12 +20,13 @@ async def control_analysis(control: AnalysisControl):
 @router.get("/entity-graph")
 async def get_entity_graph(
     hours: int = Query(2, ge=1, le=48, description="Lookback hours"),
-    force: bool = Query(False, description="Force refresh cache")
+    force: bool = Query(False, description="Force refresh cache"),
+    type: str = Query("cooccurrence", description="Graph type: 'cooccurrence' or 'causal'")
 ):
     """
-    Get entity co-occurrence graph data for visualization.
+    Get entity graph data for visualization.
     """
-    graph_data, _ = await get_entity_miner_result(hours=hours, force_refresh=force)
+    graph_data, _ = await get_entity_miner_result(hours=hours, force_refresh=force, graph_type=type)
     return {"success": True, "data": graph_data}
 
 @router.get("/hot-clusters")

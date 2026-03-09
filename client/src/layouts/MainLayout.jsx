@@ -39,6 +39,7 @@ const items = [
     children: [
       { key: '/explorer', label: '数据资产' },
       { key: '/watchlist', label: '关注配置' },
+      { key: '/dedup', label: '去重扫描' },
     ],
   },
 ];
@@ -56,7 +57,7 @@ const MainLayout = () => {
   const getOpenKey = (path) => {
     if (path === '/' || path === '/ithome' || path === '/calendar') return 'monitor';
     if (path === '/trends' || path === '/reports' || path === '/storylines' || path.startsWith('/series')) return 'analysis';
-    if (path === '/explorer' || path === '/watchlist') return 'management';
+    if (path === '/explorer' || path === '/watchlist' || path === '/dedup') return 'management';
     return 'monitor';
   };
 

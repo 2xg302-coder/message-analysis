@@ -2,6 +2,8 @@ import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import difflib
+import re
+from simhash import Simhash
 from core.database import db
 from core.logging import get_logger
 
@@ -202,8 +204,21 @@ class NewsService:
         return news_list, total
 
     async def get_unanalyzed_news(self, limit: int = 10) -> List[Dict[str, Any]]:
-        query = 'SELECT * FROM news WHERE analysis IS NULL ORDER BY created_at ASC LIMIT ?'
-        rows = await self.db.execute_query(query, (limit,))
+        # 优先处理当日新闻（随机抽取），其余按随机顺序处理
+        # 逻辑：
+        # 1. 按照 "是否是今天" 进行分层，今天的新闻优先级高 (0)，往日新闻优先级低 (1)
+        # 2. 在同一层级内，使用 RANDOM() 进行随机抽取
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        
+        query = '''
+            SELECT * FROM news 
+            WHERE analysis IS NULL 
+            ORDER BY 
+                CASE WHEN created_at >= ? THEN 0 ELSE 1 END ASC,
+                RANDOM()
+            LIMIT ?
+        '''
+        rows = await self.db.execute_query(query, (today_start, limit))
         return [self._process_news_item(row) for row in rows]
 
     async def save_analysis(self, news_id: str, analysis_result: Dict[str, Any]) -> bool:
@@ -241,6 +256,193 @@ class NewsService:
         except Exception as e:
             logger.error(f"Error deleting news {news_id}: {e}")
             return False
+
+    def _normalize_for_simhash(self, text: str) -> str:
+        if not text:
+            return ""
+        text = str(text)
+        text = re.sub(r"<[^>]+>", "", text)
+        text = re.sub(r"【免责声明】.*", "", text)
+        text = re.sub(r"（记者\s+.*?）", "", text)
+        text = re.sub(r"\(记者\s+.*?\)", "", text)
+        text = re.sub(r"^.{2,6}\d{1,2}月\d{1,2}日[电讯][，,]", "", text)
+        text = re.sub(r"^【.*?】", "", text)
+        return " ".join(text.strip().split())
+
+    def _normalize_for_compare(self, text: str) -> str:
+        if not text:
+            return ""
+        text = self._normalize_for_simhash(text)
+        text = re.sub(r"\s+", "", text)
+        text = re.sub(r"[，。、“”‘’；：！？,.!?:;\"'（）()【】\[\]<>《》—\-·]", "", text)
+        return text
+
+    def _pick_keep_delete(self, item_a: Dict[str, Any], item_b: Dict[str, Any]) -> tuple:
+        """
+        返回 (keep_item, delete_item)
+        规则：
+        1) 优先保留内容更长者；
+        2) 长度相同保留更早 created_at；
+        3) 仍相同按 id 字典序稳定排序。
+        """
+        text_a = item_a.get("content") or item_a.get("title") or ""
+        text_b = item_b.get("content") or item_b.get("title") or ""
+        len_a, len_b = len(text_a), len(text_b)
+
+        if len_a > len_b:
+            return item_a, item_b
+        if len_b > len_a:
+            return item_b, item_a
+
+        created_a = item_a.get("created_at") or ""
+        created_b = item_b.get("created_at") or ""
+        if created_a < created_b:
+            return item_a, item_b
+        if created_b < created_a:
+            return item_b, item_a
+
+        if (item_a.get("id") or "") <= (item_b.get("id") or ""):
+            return item_a, item_b
+        return item_b, item_a
+
+    async def scan_cross_source_duplicates(
+        self,
+        lookback_hours: int = 24,
+        limit: int = 300,
+        distance_threshold: int = 6,
+        min_text_len: int = 20
+    ) -> Dict[str, Any]:
+        """
+        扫描跨 source 的相似新闻对，给出建议删除项。
+        """
+        since = (datetime.now() - timedelta(hours=max(1, lookback_hours))).isoformat()
+        capped_limit = max(10, min(limit, 1000))
+        query = """
+            SELECT id, source, title, content, created_at, simhash
+            FROM news
+            WHERE created_at >= ?
+            ORDER BY created_at DESC
+            LIMIT ?
+        """
+        rows = await self.db.execute_query(query, (since, capped_limit))
+        if not rows:
+            return {
+                "total_candidates": 0,
+                "pairs_count": 0,
+                "pairs": [],
+                "recommended_delete_ids": []
+            }
+
+        candidates: List[Dict[str, Any]] = []
+        for row in rows:
+            raw_text = row.get("content") or row.get("title") or ""
+            text = self._normalize_for_simhash(raw_text)
+            compare_text = self._normalize_for_compare(raw_text)
+            if len(compare_text) < min_text_len:
+                continue
+            sh = None
+            raw_sh = row.get("simhash")
+            if raw_sh is not None and str(raw_sh).strip() != "":
+                try:
+                    sh = Simhash(int(str(raw_sh)))
+                except Exception:
+                    sh = None
+            if sh is None:
+                try:
+                    sh = Simhash(text)
+                except Exception:
+                    continue
+
+            prepared = dict(row)
+            prepared["_clean_text"] = text
+            prepared["_compare_text"] = compare_text
+            prepared["_simhash_obj"] = sh
+            candidates.append(prepared)
+
+        pairs: List[Dict[str, Any]] = []
+        recommended_delete_ids = set()
+        seen_pair_keys = set()
+
+        for i in range(len(candidates)):
+            left = candidates[i]
+            for j in range(i + 1, len(candidates)):
+                right = candidates[j]
+                if left.get("source") == right.get("source"):
+                    continue
+
+                distance = left["_simhash_obj"].distance(right["_simhash_obj"])
+                similar = distance <= distance_threshold
+                reason = "simhash"
+
+                if not similar:
+                    lt = left["_compare_text"]
+                    rt = right["_compare_text"]
+                    shorter, longer = (lt, rt) if len(lt) <= len(rt) else (rt, lt)
+                    if shorter and len(shorter) >= min_text_len and shorter in longer:
+                        similar = True
+                        reason = "containment"
+
+                ratio = 0.0
+                if not similar:
+                    lt = left["_compare_text"]
+                    rt = right["_compare_text"]
+                    if lt and rt:
+                        ratio = difflib.SequenceMatcher(None, lt[:600], rt[:600]).ratio()
+                        if ratio >= 0.93:
+                            similar = True
+                            reason = "ratio"
+
+                if not similar:
+                    continue
+
+                keep_item, delete_item = self._pick_keep_delete(left, right)
+                pair_key = tuple(sorted([left["id"], right["id"]]))
+                if pair_key in seen_pair_keys:
+                    continue
+                seen_pair_keys.add(pair_key)
+
+                recommended_delete_ids.add(delete_item["id"])
+                pairs.append({
+                    "reason": reason,
+                    "distance": distance,
+                    "ratio": ratio,
+                    "left": {
+                        "id": left["id"],
+                        "source": left.get("source"),
+                        "title": left.get("title", ""),
+                        "created_at": left.get("created_at")
+                    },
+                    "right": {
+                        "id": right["id"],
+                        "source": right.get("source"),
+                        "title": right.get("title", ""),
+                        "created_at": right.get("created_at")
+                    },
+                    "keep_id": keep_item["id"],
+                    "delete_id": delete_item["id"]
+                })
+
+        return {
+            "total_candidates": len(candidates),
+            "pairs_count": len(pairs),
+            "pairs": pairs,
+            "recommended_delete_ids": sorted(recommended_delete_ids)
+        }
+
+    async def delete_news_batch(self, news_ids: List[str]) -> int:
+        clean_ids = [nid for nid in news_ids if nid]
+        if not clean_ids:
+            return 0
+        placeholders = ",".join(["?"] * len(clean_ids))
+        query = f"DELETE FROM news WHERE id IN ({placeholders})"
+        try:
+            async with self.db.get_connection() as conn:
+                cursor = await conn.execute(query, tuple(clean_ids))
+                await conn.commit()
+                return cursor.rowcount or 0
+        except Exception as e:
+            logger.error(f"Error deleting news batch: {e}")
+            return 0
 
     async def get_tag_stats(self, limit: int = 100, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         query = "SELECT tags FROM news WHERE tags IS NOT NULL AND tags != '[]'"

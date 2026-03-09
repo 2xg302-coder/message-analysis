@@ -65,7 +65,7 @@ def get_next_fast_client_config():
     return None
 
 @retry(
-    stop=stop_after_attempt(5),
+    stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=2, min=2, max=60),
     retry=retry_if_exception_type(Exception),
     reraise=True

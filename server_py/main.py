@@ -17,7 +17,7 @@ from services.ingestion import start_ingestion_scheduler, stop_ingestion_schedul
 from services.analyzer import start_scheduler as start_analysis_scheduler
 
 # Routers
-from routers import news, analysis, calendar, storyline, monitor, reports
+from routers import news, analysis, calendar, storyline, monitor, reports, ingestion
 
 logger = get_logger("main")
 
@@ -96,6 +96,7 @@ app.include_router(calendar.router)
 app.include_router(storyline.router)
 app.include_router(monitor.router)
 app.include_router(reports.router)
+app.include_router(ingestion.router)
 
 if __name__ == "__main__":
     import uvicorn

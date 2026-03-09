@@ -133,9 +133,13 @@ const Trends = () => {
   ];
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const elapsedHours = Math.max((now.getTime() - todayStart.getTime()) / 3600000, 1 / 60);
-  const avgProcessSpeed = monitorStats.processedToday / elapsedHours;
+  const elapsedHours = Math.max(
+    now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600,
+    1
+  );
+  const avgProcessSpeed = monitorStats.processedToday > 0
+    ? monitorStats.processedToday / elapsedHours
+    : 0;
   const etaHours = avgProcessSpeed > 0 ? monitorStats.backlog / avgProcessSpeed : null;
   const etaText = etaHours === null ? '暂无估算' : `${etaHours.toFixed(1)} 小时`;
 

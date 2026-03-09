@@ -55,6 +55,9 @@ export const getTypeStats = (startDate, endDate) => api.get('/stats/types', { pa
 // 获取实体排行
 export const getTopEntities = (limit = 50, startDate, endDate) => api.get(`/entities?limit=${limit}`, { params: { start_date: startDate, end_date: endDate } });
 
+// 获取实体关系图谱
+export const getEntityGraph = (hours = 24, force = false, type = 'cooccurrence') => api.get('/analysis/entity-graph', { params: { hours, force, type } });
+
 // 获取分析任务状态
 export const getAnalysisStatus = () => api.get('/analysis/status');
 
@@ -92,5 +95,9 @@ export const getTaskStatus = (taskId) => api.get(`/storylines/tasks/${taskId}`);
 export const getDailyReport = (date) => api.get('/reports/daily', { params: { date } });
 
 export const getMonitorStats = () => api.get('/monitor/stats');
+export const getIngestionSources = () => api.get('/ingestion/sources');
+export const setIngestionSourceEnabled = (source, enabled) => api.put(`/ingestion/sources/${encodeURIComponent(source)}`, { enabled });
+export const scanDedupNews = (params) => api.get('/news/dedup/scan', { params });
+export const deleteDedupNews = (ids) => api.post('/news/dedup/delete', { ids });
 
 export default api;

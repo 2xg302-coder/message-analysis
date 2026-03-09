@@ -64,6 +64,13 @@ class DatabaseManager:
                         UNIQUE(date, event, country)
                     )
                 ''')
+                await conn.execute('''
+                    CREATE TABLE IF NOT EXISTS ingestion_source_config (
+                        source TEXT PRIMARY KEY,
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        updated_at TEXT
+                    )
+                ''')
                 # Indexes
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_news_created_at ON news(created_at DESC)")
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_news_impact_score ON news(impact_score)")

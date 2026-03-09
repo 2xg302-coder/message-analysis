@@ -15,9 +15,16 @@ logger = get_logger("entity_miner")
 
 # Cache mechanism - simple in-memory cache
 _cache = {
-    "graph": None,
-    "clusters": None,
-    "timestamp": None
+    "cooccurrence": {
+        "graph": None,
+        "clusters": None,
+        "timestamp": None
+    },
+    "causal": {
+        "graph": None,
+        "clusters": None,
+        "timestamp": None
+    }
 }
 CACHE_TTL = 300  # 5 minutes
 
@@ -32,8 +39,6 @@ class EntityMiner:
         cutoff_time = datetime.now() - timedelta(hours=hours)
         cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
         
-        # 使用 ORM 查询，避免直接写 SQL 导致的时间格式兼容问题
-        # 假设 time 字段是 ISO 格式字符串，可以直接进行字符串比较
         stmt = select(News.entities).where(News.time >= cutoff_str)
         
         entity_lists = []
@@ -49,34 +54,24 @@ class EntityMiner:
                         continue
                     
                     try:
-                        # entities 字段存储为 JSON 字符串，例如 '{"Entity1": "Type1", "Entity2": "Type2"}'
-                        # 或者如果是单引号的字符串表示，可能需要处理
+                        # entities 字段存储为 JSON 字符串
                         if entities_json.startswith("'") or entities_json.startswith('"'):
-                             # 如果已经是 JSON 字符串，直接加载
                              pass
                         
-                        # 尝试解析
-                        # 注意：如果数据库里存的是 Python 的 dict 字符串表示 (例如 {'a': 1})，json.loads 会失败
-                        # 这里假设是标准的 JSON 格式。如果是 Python repr，可能需要 ast.literal_eval，但不安全。
-                        # 根据 models_orm.py，默认是 "{}"，应该是 JSON。
                         entities_dict = json.loads(entities_json)
                         
                         if isinstance(entities_dict, dict):
-                            # 我们只关心实体名称（键）
                             entity_lists.append(list(entities_dict.keys()))
                         elif isinstance(entities_dict, list):
-                            # 以前可能是 list
                             entity_lists.append(entities_dict)
                             
                     except json.JSONDecodeError:
-                        # 尝试处理 Python 字典字符串格式 (单引号)
                         try:
                             import ast
                             entities_dict = ast.literal_eval(entities_json)
                             if isinstance(entities_dict, dict):
                                 entity_lists.append(list(entities_dict.keys()))
                         except Exception:
-                            # logger.warning(f"Failed to decode entities JSON: {entities_json[:50]}...")
                             pass
                     except Exception as e:
                         logger.error(f"Error processing entities: {e}")
@@ -86,21 +81,53 @@ class EntityMiner:
             
         return entity_lists
 
+    async def fetch_recent_triples(self, hours: int = 2) -> List[Dict[str, str]]:
+        """
+        Fetch news from the last N hours and extract triples.
+        """
+        cutoff_time = datetime.now() - timedelta(hours=hours)
+        cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        stmt = select(News.triples).where(News.time >= cutoff_str)
+        
+        triples_list = []
+        
+        try:
+            async with engine.connect() as conn:
+                result = await conn.execute(stmt)
+                rows = result.fetchall()
+                
+                for row in rows:
+                    triples_json = row[0]
+                    if not triples_json:
+                        continue
+                    
+                    try:
+                        triples = json.loads(triples_json)
+                        if isinstance(triples, list):
+                            triples_list.extend(triples)
+                    except json.JSONDecodeError:
+                        pass
+                    except Exception as e:
+                        logger.error(f"Error processing triples: {e}")
+                        
+        except Exception as e:
+            logger.error(f"Error fetching recent triples: {e}")
+            
+        return triples_list
+
     def build_cooccurrence_matrix(self, entity_lists: List[List[str]], min_weight: int = 3):
         """
         Build a co-occurrence graph from lists of entities.
         """
         self.graph = nx.Graph()
         
-        # Count co-occurrences
         edge_weights = {}
         
         for entities in entity_lists:
-            # Filter out single entities or empty lists
             if len(entities) < 2:
                 continue
                 
-            # Sort to ensure consistent edge pairs (A, B) instead of (B, A)
             sorted_entities = sorted(entities)
             
             for i in range(len(sorted_entities)):
@@ -112,23 +139,69 @@ class EntityMiner:
                     edge = (u, v)
                     edge_weights[edge] = edge_weights.get(edge, 0) + 1
         
-        # Add edges to graph if weight >= min_weight
         for (u, v), weight in edge_weights.items():
             if weight >= min_weight:
                 self.graph.add_edge(u, v, weight=weight)
                 
-        logger.info(f"Built graph with {self.graph.number_of_nodes()} nodes and {self.graph.number_of_edges()} edges")
+        logger.info(f"Built co-occurrence graph with {self.graph.number_of_nodes()} nodes and {self.graph.number_of_edges()} edges")
+
+    def build_causal_graph(self, triples_list: List[Dict[str, str]], min_weight: int = 1):
+        """
+        Build a directed causal graph from triples.
+        """
+        self.graph = nx.DiGraph()
+        
+        # (u, v) -> {predicate: count}
+        edge_data = {}
+        
+        for triple in triples_list:
+            u = triple.get('subject')
+            p = triple.get('predicate')
+            v = triple.get('object')
+            
+            if not u or not v:
+                continue
+            
+            # Simple cleaning
+            u = u.strip()
+            v = v.strip()
+            if not p:
+                p = "relates_to"
+            else:
+                p = p.strip()
+                
+            if u == v:
+                continue
+                
+            key = (u, v)
+            if key not in edge_data:
+                edge_data[key] = {}
+            edge_data[key][p] = edge_data[key].get(p, 0) + 1
+            
+        for (u, v), preds in edge_data.items():
+            total_weight = sum(preds.values())
+            if total_weight >= min_weight:
+                # Find most common predicate
+                most_common_pred = max(preds.items(), key=lambda x: x[1])[0]
+                self.graph.add_edge(u, v, weight=total_weight, label=most_common_pred)
+                
+        logger.info(f"Built causal graph with {self.graph.number_of_nodes()} nodes and {self.graph.number_of_edges()} edges")
 
     def detect_communities(self) -> List[Dict[str, Any]]:
         """
         Detect communities using Louvain algorithm.
-        Returns a list of clusters, each containing a list of entities.
+        Note: Louvain works on undirected graphs. For DiGraph, we convert to undirected for community detection.
         """
         if self.graph.number_of_nodes() == 0:
             return []
             
         try:
-            partition = community_louvain.best_partition(self.graph)
+            # Convert to undirected for community detection if needed
+            g_for_comm = self.graph
+            if self.graph.is_directed():
+                g_for_comm = self.graph.to_undirected()
+            
+            partition = community_louvain.best_partition(g_for_comm)
             
             communities = {}
             for node, comm_id in partition.items():
@@ -136,11 +209,8 @@ class EntityMiner:
                     communities[comm_id] = []
                 communities[comm_id].append(node)
             
-            # Convert to list of dicts for API response
-            # Sort clusters by size (number of entities)
             sorted_clusters = sorted(communities.values(), key=len, reverse=True)
             
-            # Format result
             result = []
             for i, entities in enumerate(sorted_clusters):
                 result.append({
@@ -159,8 +229,11 @@ class EntityMiner:
         Return graph data in a format suitable for frontend visualization (e.g., ECharts).
         """
         nodes = []
+        # Calculate degree (in+out for directed)
+        degrees = dict(self.graph.degree(weight='weight'))
+        
         for node in self.graph.nodes():
-            degree = self.graph.degree(node, weight='weight')
+            degree = degrees.get(node, 0)
             nodes.append({
                 "id": node, 
                 "name": node, 
@@ -170,35 +243,51 @@ class EntityMiner:
             
         links = []
         for u, v, data in self.graph.edges(data=True):
-            links.append({
+            link = {
                 "source": u, 
                 "target": v, 
-                "value": data['weight']
-            })
+                "value": data.get('weight', 1)
+            }
+            if 'label' in data:
+                link["label"] = {"show": True, "formatter": data['label']}
+                link["lineStyle"] = {"curveness": 0.2}
+            
+            links.append(link)
                  
         return {
             "nodes": nodes,
-            "links": links
+            "links": links,
+            "type": "directed" if self.graph.is_directed() else "undirected"
         }
 
-async def get_entity_miner_result(hours: int = 2, force_refresh: bool = False):
+async def get_entity_miner_result(hours: int = 2, force_refresh: bool = False, graph_type: str = "cooccurrence"):
     global _cache
     now = datetime.now()
     
+    if graph_type not in ["cooccurrence", "causal"]:
+        graph_type = "cooccurrence"
+    
     # Check cache
-    if not force_refresh and _cache["timestamp"] and (now - _cache["timestamp"]).total_seconds() < CACHE_TTL:
-        if _cache["graph"] is not None:
-            return _cache["graph"], _cache["clusters"]
+    cache_entry = _cache[graph_type]
+    if not force_refresh and cache_entry["timestamp"] and (now - cache_entry["timestamp"]).total_seconds() < CACHE_TTL:
+        if cache_entry["graph"] is not None:
+            return cache_entry["graph"], cache_entry["clusters"]
         
     miner = EntityMiner()
-    entity_lists = await miner.fetch_recent_entities(hours=hours)
-    miner.build_cooccurrence_matrix(entity_lists)
+    
+    if graph_type == "cooccurrence":
+        entity_lists = await miner.fetch_recent_entities(hours=hours)
+        miner.build_cooccurrence_matrix(entity_lists)
+    else: # causal
+        triples_list = await miner.fetch_recent_triples(hours=hours)
+        miner.build_causal_graph(triples_list)
+        
     clusters = miner.detect_communities()
     graph_data = miner.get_graph_data()
     
     # Update cache
-    _cache["graph"] = graph_data
-    _cache["clusters"] = clusters
-    _cache["timestamp"] = now
+    _cache[graph_type]["graph"] = graph_data
+    _cache[graph_type]["clusters"] = clusters
+    _cache[graph_type]["timestamp"] = now
     
     return graph_data, clusters

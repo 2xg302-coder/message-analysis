@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Typography, Spin, Table, Tag, Statistic, Progress, Space, DatePicker, Radio, Button, Modal, List, Empty } from 'antd';
+import { Card, Row, Col, Typography, Spin, Table, Tag, Statistic, Progress, Space, DatePicker, Radio, Button, Modal, List, Empty, Switch, message } from 'antd';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { DatabaseOutlined, RocketOutlined, TagOutlined, DeploymentUnitOutlined, ReloadOutlined } from '@ant-design/icons';
-import { getStats, getTagStats, getTypeStats, getTopEntities, getAnalysisStatus, getNews, setAnalysisControl } from '../services/api';
+import { DatabaseOutlined, RocketOutlined, TagOutlined, DeploymentUnitOutlined, ReloadOutlined, ApartmentOutlined } from '@ant-design/icons';
+import { getStats, getTagStats, getTypeStats, getTopEntities, getAnalysisStatus, getNews, setAnalysisControl, getIngestionSources, setIngestionSourceEnabled, getEntityGraph } from '../services/api';
 import dayjs from 'dayjs';
 import NewsCard from '../components/NewsCard';
+import ReactECharts from 'echarts-for-react';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -19,6 +20,31 @@ const DataExplorer = () => {
   const [entities, setEntities] = useState([]);
   const [analysisStatus, setAnalysisStatus] = useState({ isRunning: false, currentTask: null });
   const [toggling, setToggling] = useState(false);
+  const [sourceConfigs, setSourceConfigs] = useState([]);
+  const [sourceToggling, setSourceToggling] = useState({});
+
+  // Graph state
+  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+  const [graphType, setGraphType] = useState('cooccurrence');
+  const [graphLoading, setGraphLoading] = useState(false);
+
+  const fetchGraphData = async () => {
+    setGraphLoading(true);
+    try {
+        const res = await getEntityGraph(48, false, graphType); // Default 48 hours
+        if (res.data && res.data.success) {
+            setGraphData(res.data.data);
+        }
+    } catch (error) {
+        console.error("Failed to fetch graph data", error);
+    } finally {
+        setGraphLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGraphData();
+  }, [graphType]);
   
   // Date filter state
   const [dateRange, setDateRange] = useState([dayjs().subtract(29, 'day'), dayjs()]);
@@ -45,12 +71,13 @@ const DataExplorer = () => {
     }
 
     try {
-      const [statsRes, tagsRes, typesRes, entitiesRes, statusRes] = await Promise.all([
+      const [statsRes, tagsRes, typesRes, entitiesRes, statusRes, sourceRes] = await Promise.all([
         getStats(startDate, endDate),
         getTagStats(100, startDate, endDate),
         getTypeStats(startDate, endDate),
         getTopEntities(50, startDate, endDate),
-        getAnalysisStatus()
+        getAnalysisStatus(),
+        getIngestionSources()
       ]);
 
       if (statsRes.data.success) setStats(statsRes.data.data);
@@ -58,6 +85,7 @@ const DataExplorer = () => {
       if (typesRes.data.success) setTypes(typesRes.data.data);
       if (entitiesRes.data.success) setEntities(entitiesRes.data.data);
       if (statusRes.data.success) setAnalysisStatus(statusRes.data.data);
+      if (sourceRes.data.success) setSourceConfigs(sourceRes.data.data);
 
     } catch (error) {
       console.error("Failed to fetch explorer data", error);
@@ -75,6 +103,63 @@ const DataExplorer = () => {
     }, 10000); 
     return () => clearInterval(interval);
   }, [dateRange, quickDate]); // Trigger when dateRange or quickDate changes
+
+  const getGraphOption = () => {
+    return {
+      title: {
+          text: graphType === 'cooccurrence' ? '实体共现网络' : '实体因果图谱',
+          subtext: '基于最近48小时新闻数据',
+          left: 'center',
+          textStyle: { fontSize: 14 }
+      },
+      tooltip: {
+        trigger: 'item',
+        formatter: (params) => {
+            if (params.dataType === 'edge') {
+                const label = params.data.label && params.data.label.formatter ? params.data.label.formatter : '';
+                return `${params.data.source} ${label ? '→ ' + label + ' →' : '-'} ${params.data.target} (权重: ${params.data.value})`;
+            }
+            return `${params.name}: ${params.value} (热度)`;
+        }
+      },
+      series: [
+        {
+          type: 'graph',
+          layout: 'force',
+          data: graphData.nodes,
+          links: graphData.links,
+          roam: true,
+          label: {
+            show: true,
+            position: 'right',
+            formatter: '{b}'
+          },
+          force: {
+            repulsion: 200,
+            edgeLength: [50, 200],
+            gravity: 0.1
+          },
+          edgeSymbol: graphType === 'causal' ? ['none', 'arrow'] : ['none', 'none'],
+          edgeSymbolSize: 8,
+          edgeLabel: {
+            fontSize: 10
+          },
+          lineStyle: {
+            color: 'source',
+            curveness: 0.2,
+            opacity: 0.6
+          },
+          draggable: true,
+          emphasis: {
+            focus: 'adjacency',
+            lineStyle: {
+              width: 4
+            }
+          }
+        }
+      ]
+    };
+  };
 
   const handleQuickDateChange = (e) => {
     const value = e.target.value;
@@ -152,6 +237,21 @@ const DataExplorer = () => {
             setToggling(false);
         }
     };
+
+  const handleToggleSource = async (source, enabled) => {
+    setSourceToggling(prev => ({ ...prev, [source]: true }));
+    try {
+      const res = await setIngestionSourceEnabled(source, enabled);
+      if (res.data.success) {
+        setSourceConfigs(prev => prev.map(item => item.source === source ? { ...item, enabled } : item));
+        message.success(`${source} 拉取已${enabled ? '开启' : '关闭'}`);
+      }
+    } catch (error) {
+      message.error(`${source} 开关更新失败`);
+    } finally {
+      setSourceToggling(prev => ({ ...prev, [source]: false }));
+    }
+  };
 
   return (
     <div style={{ padding: '24px' }}>
@@ -236,6 +336,26 @@ const DataExplorer = () => {
             </Card>
           </Col>
         </Row>
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col span={24}>
+            <Card title="消息源拉取开关">
+              <Space size={[24, 16]} wrap>
+                {sourceConfigs.map(item => (
+                  <Space key={item.source}>
+                    <Text>{item.source}</Text>
+                    <Switch
+                      checked={item.enabled}
+                      loading={sourceToggling[item.source]}
+                      checkedChildren="开启"
+                      unCheckedChildren="关闭"
+                      onChange={(checked) => handleToggleSource(item.source, checked)}
+                    />
+                  </Space>
+                ))}
+              </Space>
+            </Card>
+          </Col>
+        </Row>
 
         <Row gutter={[16, 16]}>
           {/* 事件类型分布 */}
@@ -296,6 +416,34 @@ const DataExplorer = () => {
                   );
                 })}
               </div>
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          {/* 实体关系图谱 */}
+          <Col span={24}>
+            <Card 
+                title={<Space><ApartmentOutlined /> 实体关系图谱 (Entity Graph)</Space>}
+                extra={
+                    <Space>
+                        <Switch 
+                            checkedChildren="因果图 (Causal)" 
+                            unCheckedChildren="共现图 (Co-occurrence)" 
+                            checked={graphType === 'causal'}
+                            onChange={(checked) => setGraphType(checked ? 'causal' : 'cooccurrence')}
+                        />
+                        <Button icon={<ReloadOutlined />} onClick={fetchGraphData} loading={graphLoading} size="small" />
+                    </Space>
+                }
+            >
+                <Spin spinning={graphLoading}>
+                    {graphData.nodes.length > 0 ? (
+                        <ReactECharts option={getGraphOption()} style={{ height: 500 }} />
+                    ) : (
+                         <Empty description="暂无图谱数据" style={{ height: 500, display: 'flex', flexDirection: 'column', justifyContent: 'center' }} />
+                    )}
+                </Spin>
             </Card>
           </Col>
         </Row>

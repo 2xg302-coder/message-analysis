@@ -1,6 +1,9 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import json
+import difflib
+import re
+from simhash import Simhash
 from sqlmodel import select, col
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func
@@ -52,6 +55,47 @@ class NewsServiceORM:
         except: item['analysis'] = None
             
         return item
+
+    def _normalize_for_simhash(self, text: str) -> str:
+        if not text:
+            return ""
+        text = str(text)
+        text = re.sub(r"<[^>]+>", "", text)
+        text = re.sub(r"【免责声明】.*", "", text)
+        text = re.sub(r"（记者\s+.*?）", "", text)
+        text = re.sub(r"\(记者\s+.*?\)", "", text)
+        text = re.sub(r"^.{2,6}\d{1,2}月\d{1,2}日[电讯][，,]", "", text)
+        text = re.sub(r"^【.*?】", "", text)
+        return " ".join(text.strip().split())
+
+    def _normalize_for_compare(self, text: str) -> str:
+        if not text:
+            return ""
+        text = self._normalize_for_simhash(text)
+        text = re.sub(r"\s+", "", text)
+        text = re.sub(r"[，。、“”‘’；：！？,.!?:;\"'（）()【】\[\]<>《》—\-·]", "", text)
+        return text
+
+    def _pick_keep_delete(self, item_a: Dict[str, Any], item_b: Dict[str, Any]) -> tuple:
+        text_a = item_a.get("content") or item_a.get("title") or ""
+        text_b = item_b.get("content") or item_b.get("title") or ""
+        len_a, len_b = len(text_a), len(text_b)
+
+        if len_a > len_b:
+            return item_a, item_b
+        if len_b > len_a:
+            return item_b, item_a
+
+        created_a = item_a.get("created_at") or ""
+        created_b = item_b.get("created_at") or ""
+        if created_a < created_b:
+            return item_a, item_b
+        if created_b < created_a:
+            return item_b, item_a
+
+        if (item_a.get("id") or "") <= (item_b.get("id") or ""):
+            return item_a, item_b
+        return item_b, item_a
 
     async def add_news(self, news_item: Dict[str, Any]) -> bool:
         session = await self._get_session()
@@ -416,6 +460,158 @@ class NewsServiceORM:
                 if item.get('analysis', {}).get('event_tag') == tag:
                     final_list.append(item)
             return final_list
+        finally:
+            if not self.session:
+                await session.close()
+
+    async def scan_cross_source_duplicates(
+        self,
+        lookback_hours: int = 24,
+        limit: int = 300,
+        distance_threshold: int = 6,
+        min_text_len: int = 20
+    ) -> Dict[str, Any]:
+        session = await self._get_session()
+        try:
+            since = (datetime.now() - timedelta(hours=max(1, lookback_hours))).isoformat()
+            capped_limit = max(10, min(limit, 1000))
+            stmt = (
+                select(News.id, News.source, News.title, News.content, News.created_at, News.simhash)
+                .where(News.created_at >= since)
+                .order_by(News.created_at.desc())
+                .limit(capped_limit)
+            )
+            result = await session.execute(stmt)
+            rows = result.all()
+
+            if not rows:
+                return {
+                    "total_candidates": 0,
+                    "pairs_count": 0,
+                    "pairs": [],
+                    "recommended_delete_ids": []
+                }
+
+            candidates: List[Dict[str, Any]] = []
+            for row in rows:
+                item = {
+                    "id": row.id,
+                    "source": row.source,
+                    "title": row.title,
+                    "content": row.content,
+                    "created_at": row.created_at,
+                    "simhash": row.simhash
+                }
+                raw_text = item.get("content") or item.get("title") or ""
+                text = self._normalize_for_simhash(raw_text)
+                compare_text = self._normalize_for_compare(raw_text)
+                if len(compare_text) < min_text_len:
+                    continue
+
+                sh = None
+                if item.get("simhash") not in (None, ""):
+                    try:
+                        sh = Simhash(int(str(item["simhash"])))
+                    except Exception:
+                        sh = None
+                if sh is None:
+                    try:
+                        sh = Simhash(text)
+                    except Exception:
+                        continue
+
+                item["_clean_text"] = text
+                item["_compare_text"] = compare_text
+                item["_simhash_obj"] = sh
+                candidates.append(item)
+
+            pairs: List[Dict[str, Any]] = []
+            recommended_delete_ids = set()
+            seen_pair_keys = set()
+
+            for i in range(len(candidates)):
+                left = candidates[i]
+                for j in range(i + 1, len(candidates)):
+                    right = candidates[j]
+                    if left.get("source") == right.get("source"):
+                        continue
+
+                    distance = left["_simhash_obj"].distance(right["_simhash_obj"])
+                    similar = distance <= distance_threshold
+                    reason = "simhash"
+
+                    if not similar:
+                        lt = left["_compare_text"]
+                        rt = right["_compare_text"]
+                        shorter, longer = (lt, rt) if len(lt) <= len(rt) else (rt, lt)
+                        if shorter and len(shorter) >= min_text_len and shorter in longer:
+                            similar = True
+                            reason = "containment"
+
+                    ratio = 0.0
+                    if not similar:
+                        lt = left["_compare_text"]
+                        rt = right["_compare_text"]
+                        if lt and rt:
+                            ratio = difflib.SequenceMatcher(None, lt[:600], rt[:600]).ratio()
+                            if ratio >= 0.93:
+                                similar = True
+                                reason = "ratio"
+
+                    if not similar:
+                        continue
+
+                    keep_item, delete_item = self._pick_keep_delete(left, right)
+                    pair_key = tuple(sorted([left["id"], right["id"]]))
+                    if pair_key in seen_pair_keys:
+                        continue
+                    seen_pair_keys.add(pair_key)
+
+                    recommended_delete_ids.add(delete_item["id"])
+                    pairs.append({
+                        "reason": reason,
+                        "distance": distance,
+                        "ratio": ratio,
+                        "left": {
+                            "id": left["id"],
+                            "source": left.get("source"),
+                            "title": left.get("title", ""),
+                            "created_at": left.get("created_at")
+                        },
+                        "right": {
+                            "id": right["id"],
+                            "source": right.get("source"),
+                            "title": right.get("title", ""),
+                            "created_at": right.get("created_at")
+                        },
+                        "keep_id": keep_item["id"],
+                        "delete_id": delete_item["id"]
+                    })
+
+            return {
+                "total_candidates": len(candidates),
+                "pairs_count": len(pairs),
+                "pairs": pairs,
+                "recommended_delete_ids": sorted(recommended_delete_ids)
+            }
+        finally:
+            if not self.session:
+                await session.close()
+
+    async def delete_news_batch(self, news_ids: List[str]) -> int:
+        clean_ids = [nid for nid in news_ids if nid]
+        if not clean_ids:
+            return 0
+        session = await self._get_session()
+        try:
+            from sqlalchemy import delete
+            stmt = delete(News).where(News.id.in_(clean_ids))
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.rowcount or 0
+        except Exception:
+            await session.rollback()
+            return 0
         finally:
             if not self.session:
                 await session.close()

@@ -26,6 +26,9 @@ router = APIRouter(prefix="/api")
 class WatchlistUpdate(BaseModel):
     keywords: List[str]
 
+class DedupDeleteRequest(BaseModel):
+    ids: List[str]
+
 @router.post("/news")
 async def create_news(news_item: NewsItem, service: NewsService = Depends(get_news_service)):
     try:
@@ -167,3 +170,34 @@ async def update_watchlist_endpoint(watchlist: WatchlistUpdate, service: NewsSer
     if not success:
          raise HTTPException(status_code=500, detail="Failed to update watchlist")
     return {"success": True}
+
+@router.get("/news/dedup/scan")
+async def scan_cross_source_duplicates(
+    lookback_hours: int = Query(default=24, ge=1, le=240),
+    limit: int = Query(default=300, ge=10, le=1000),
+    distance_threshold: int = Query(default=6, ge=0, le=10),
+    min_text_len: int = Query(default=20, ge=5, le=200),
+    service: NewsService = Depends(get_news_service)
+):
+    try:
+        result = await service.scan_cross_source_duplicates(
+            lookback_hours=lookback_hours,
+            limit=limit,
+            distance_threshold=distance_threshold,
+            min_text_len=min_text_len
+        )
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Error scanning cross-source duplicates: {e}")
+        raise HTTPException(status_code=500, detail="Failed to scan duplicates")
+
+@router.post("/news/dedup/delete")
+async def delete_duplicates(payload: DedupDeleteRequest, service: NewsService = Depends(get_news_service)):
+    if not payload.ids:
+        raise HTTPException(status_code=400, detail="ids is required")
+    try:
+        deleted = await service.delete_news_batch(payload.ids)
+        return {"success": True, "requested": len(payload.ids), "deleted": deleted}
+    except Exception as e:
+        logger.error(f"Error deleting duplicate items: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete duplicates")
