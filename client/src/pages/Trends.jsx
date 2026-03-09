@@ -183,7 +183,7 @@ const Trends = () => {
         <Row gutter={[16, 16]}>
           {/* 采集趋势 */}
           <Col span={16}>
-            <Card title="24小时舆情热度趋势">
+            <Card title="24小时采集与处理趋势">
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart data={stats.trends}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -192,7 +192,7 @@ const Trends = () => {
                   <Tooltip />
                   <Legend />
                   <Line type="monotone" dataKey="count" name="采集数量" stroke="#1890ff" activeDot={{ r: 8 }} />
-                  <Line type="monotone" dataKey="analyzed_count" name="已分析量" stroke="#52c41a" strokeDasharray="5 5" />
+                  <Line type="monotone" dataKey="analyzed_count" name="处理量（按处理时间）" stroke="#52c41a" strokeDasharray="5 5" />
                 </LineChart>
               </ResponsiveContainer>
             </Card>

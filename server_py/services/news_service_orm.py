@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import json
 from sqlmodel import select, col
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func, case
+from sqlalchemy import func
 
 from models_orm import News, Watchlist
 from core.database_orm import engine
@@ -180,11 +180,13 @@ class NewsServiceORM:
         try:
             # Base filters
             filters = []
+            source_filters = []
             if start_date and end_date:
                 filters.append(News.created_at >= start_date)
                 filters.append(News.created_at <= end_date)
             if exclude_source:
                 filters.append(News.source != exclude_source)
+                source_filters.append(News.source != exclude_source)
 
             # Total count
             stmt_total = select(func.count(News.id))
@@ -198,58 +200,77 @@ class NewsServiceORM:
                 stmt_analyzed = stmt_analyzed.where(*filters)
             analyzed = await session.scalar(stmt_analyzed)
             
-            date_hour_expression = func.substr(News.created_at, 1, 13)
-            hour_expression = func.substr(News.created_at, 12, 2)
-            analyzed_count_expression = func.sum(case((News.analysis.is_not(None), 1), else_=0))
+            created_date_hour_expression = func.substr(News.created_at, 1, 13)
+            created_hour_expression = func.substr(News.created_at, 12, 2)
+            analyzed_date_hour_expression = func.substr(News.analyzed_at, 1, 13)
+            analyzed_hour_expression = func.substr(News.analyzed_at, 12, 2)
 
-            trend_filters = list(filters)
+            collection_trend_filters = list(source_filters)
+            analyzed_trend_filters = [*source_filters, News.analyzed_at.is_not(None), News.analysis.is_not(None), News.analysis != ""]
             if not start_date and not end_date:
                 current_hour = datetime.now().replace(minute=0, second=0, microsecond=0)
                 cutoff = (current_hour - timedelta(hours=23)).isoformat()
-                trend_filters.append(News.created_at >= cutoff)
+                collection_trend_filters.append(News.created_at >= cutoff)
+                analyzed_trend_filters.append(News.analyzed_at >= cutoff)
             else:
                 current_hour = None
+                collection_trend_filters.append(News.created_at >= start_date)
+                collection_trend_filters.append(News.created_at <= end_date)
+                analyzed_trend_filters.append(News.analyzed_at >= start_date)
+                analyzed_trend_filters.append(News.analyzed_at <= end_date + "T23:59:59.999999")
 
-            stmt_trends = select(
-                date_hour_expression.label("date_hour"),
-                hour_expression.label("hour"),
-                func.count(News.id).label("count"),
-                analyzed_count_expression.label("analyzed_count")
+            stmt_collection_trends = select(
+                created_date_hour_expression.label("date_hour"),
+                created_hour_expression.label("hour"),
+                func.count(News.id).label("count")
             )
+            if collection_trend_filters:
+                stmt_collection_trends = stmt_collection_trends.where(*collection_trend_filters)
+            stmt_collection_trends = stmt_collection_trends.group_by(created_date_hour_expression, created_hour_expression).order_by(created_date_hour_expression.asc())
+            collection_trends_res = await session.execute(stmt_collection_trends)
+            collection_rows = collection_trends_res.all()
 
-            if trend_filters:
-                stmt_trends = stmt_trends.where(*trend_filters)
-
-            stmt_trends = stmt_trends.group_by(date_hour_expression, hour_expression).order_by(date_hour_expression.asc())
-            trends_res = await session.execute(stmt_trends)
-            trend_rows = trends_res.all()
+            stmt_analyzed_trends = select(
+                analyzed_date_hour_expression.label("date_hour"),
+                analyzed_hour_expression.label("hour"),
+                func.count(News.id).label("analyzed_count")
+            )
+            if analyzed_trend_filters:
+                stmt_analyzed_trends = stmt_analyzed_trends.where(*analyzed_trend_filters)
+            stmt_analyzed_trends = stmt_analyzed_trends.group_by(analyzed_date_hour_expression, analyzed_hour_expression).order_by(analyzed_date_hour_expression.asc())
+            analyzed_trends_res = await session.execute(stmt_analyzed_trends)
+            analyzed_rows = analyzed_trends_res.all()
 
             if current_hour:
-                data_map = {
-                    row.date_hour: {
-                        "count": row.count or 0,
-                        "analyzed_count": row.analyzed_count or 0
-                    }
-                    for row in trend_rows
-                }
+                collection_map = {row.date_hour: row.count or 0 for row in collection_rows}
+                analyzed_map = {row.date_hour: row.analyzed_count or 0 for row in analyzed_rows}
                 trends = []
                 for i in range(23, -1, -1):
                     t = current_hour - timedelta(hours=i)
                     key = t.strftime("%Y-%m-%dT%H")
                     trends.append({
                         "hour": t.strftime("%H:00"),
-                        "count": data_map.get(key, {}).get("count", 0),
-                        "analyzed_count": data_map.get(key, {}).get("analyzed_count", 0)
+                        "count": collection_map.get(key, 0),
+                        "analyzed_count": analyzed_map.get(key, 0)
                     })
             else:
-                trends = [
-                    {
+                merged_map = {}
+                for row in collection_rows:
+                    merged_map[row.date_hour] = {
                         "hour": f"{row.hour}:00",
                         "count": row.count or 0,
-                        "analyzed_count": row.analyzed_count or 0
+                        "analyzed_count": 0
                     }
-                    for row in trend_rows
-                ]
+                for row in analyzed_rows:
+                    if row.date_hour not in merged_map:
+                        merged_map[row.date_hour] = {
+                            "hour": f"{row.hour}:00",
+                            "count": 0,
+                            "analyzed_count": row.analyzed_count or 0
+                        }
+                    else:
+                        merged_map[row.date_hour]["analyzed_count"] = row.analyzed_count or 0
+                trends = [merged_map[k] for k in sorted(merged_map.keys())]
             
             return {
                 "total": total or 0,

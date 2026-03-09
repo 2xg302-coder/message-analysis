@@ -23,7 +23,8 @@ processed_count = 0
 last_processed_time = datetime.now()
 
 # Concurrency control
-sem: Optional[asyncio.Semaphore] = None
+fast_sem: Optional[asyncio.Semaphore] = None
+standard_sem: Optional[asyncio.Semaphore] = None
 
 # Sentiment dictionaries
 positive_words = set()
@@ -97,10 +98,15 @@ def set_analysis_status(status: bool):
         logger.info("Analysis Scheduler PAUSED")
 
 def get_analysis_status():
-    if settings.LLM_CONFIGS:
-        max_concurrency = sum(config.get("concurrency", 8) for config in settings.LLM_CONFIGS)
+    if settings.FAST_LLM_CONFIGS:
+        fast_max_concurrency = sum(config.get("concurrency", 4) for config in settings.FAST_LLM_CONFIGS)
     else:
-        max_concurrency = 8
+        fast_max_concurrency = 4
+
+    if settings.LLM_CONFIGS:
+        standard_max_concurrency = sum(config.get("concurrency", 8) for config in settings.LLM_CONFIGS)
+    else:
+        standard_max_concurrency = 8
     
     return {
         "isRunning": is_running,
@@ -109,27 +115,40 @@ def get_analysis_status():
         "failedCount": failed_tasks_count,
         "processedCount": processed_count,
         "lastProcessedTime": last_processed_time.isoformat() if last_processed_time else None,
-        "maxConcurrency": max_concurrency
+        "maxConcurrency": fast_max_concurrency,
+        "fastMaxConcurrency": fast_max_concurrency,
+        "standardMaxConcurrency": standard_max_concurrency
     }
 
-async def get_semaphore():
-    global sem
-    if sem is None:
-        # Dynamic concurrency based on number of configured LLM Clients
+async def get_semaphore(mode: str = "fast"):
+    global fast_sem, standard_sem
+
+    if mode == "fast":
+        if fast_sem is None:
+            if settings.FAST_LLM_CONFIGS:
+                total_concurrency = sum(config.get("concurrency", 4) for config in settings.FAST_LLM_CONFIGS)
+                client_count = len(settings.FAST_LLM_CONFIGS)
+            else:
+                total_concurrency = 4
+                client_count = 1
+            logger.info(f"Initializing Fast Semaphore with {total_concurrency} slots (Sum of {client_count} clients)")
+            fast_sem = asyncio.Semaphore(total_concurrency)
+        return fast_sem
+
+    if standard_sem is None:
         if settings.LLM_CONFIGS:
             total_concurrency = sum(config.get("concurrency", 8) for config in settings.LLM_CONFIGS)
             client_count = len(settings.LLM_CONFIGS)
         else:
             total_concurrency = 8
             client_count = 1
-            
-        logger.info(f"Initializing Semaphore with {total_concurrency} slots (Sum of {client_count} clients)")
-        sem = asyncio.Semaphore(total_concurrency) 
-    return sem
+        logger.info(f"Initializing Standard Semaphore with {total_concurrency} slots (Sum of {client_count} clients)")
+        standard_sem = asyncio.Semaphore(total_concurrency)
+    return standard_sem
 
-async def process_single_news(news: Dict[str, Any]):
+async def process_single_news(news: Dict[str, Any], mode: str = "fast"):
     global current_tasks, failed_tasks_count, processed_count, last_processed_time
-    s = await get_semaphore()
+    s = await get_semaphore(mode)
     
     news_id = str(news['id'])
     
@@ -139,6 +158,7 @@ async def process_single_news(news: Dict[str, Any]):
                 "id": news['id'],
                 "title": news.get('title') or (news.get('content')[:30] if news.get('content') else 'No Content'),
                 "status": "analyzing",
+                "mode": mode,
                 "startTime": datetime.now().isoformat()
             }
             
@@ -150,15 +170,12 @@ async def process_single_news(news: Dict[str, Any]):
                 failed_tasks_count += 1
                 return
 
-            logger.info(f"Analyzing news {news['id']} (Fast Mode)...")
+            logger.info(f"Analyzing news {news['id']} ({mode} mode)...")
             
             # Get current watchlist
             watchlist = await news_service.get_watchlist()
             
-            # LLM Analysis (Fast Mode)
-            # Since FAST_LLM_* is disabled in .env, this will fallback to Main Client using the new configuration
-            # The 'mode="fast"' parameter will still be passed, but llm_service will route it correctly
-            analysis = await analyze_news(content, watchlist=watchlist, mode="standard")
+            analysis = await analyze_news(content, watchlist=watchlist, mode=mode)
             
             # Fallback if LLM fails or returns error
             if 'error' in analysis:
@@ -195,22 +212,19 @@ async def analysis_job():
         # This means if 1 task takes 30s and 19 tasks take 1s, we wait 30s before fetching next batch.
         # Solution: Don't await gather. Fire and forget (with semaphore control).
         
-        # Calculate how many slots are free
-        sem = await get_semaphore()
-        # Note: sem._value is internal, but effective for estimation. 
-        # Better to track current_tasks length.
-        
-        # Dynamic max concurrency
-        if settings.LLM_CONFIGS:
-            max_concurrency = sum(config.get("concurrency", 8) for config in settings.LLM_CONFIGS)
+        processing_mode = "fast"
+        await get_semaphore(processing_mode)
+
+        if settings.FAST_LLM_CONFIGS:
+            max_concurrency = sum(config.get("concurrency", 4) for config in settings.FAST_LLM_CONFIGS)
         else:
-            max_concurrency = 8
-        
-        current_count = len(current_tasks)
+            max_concurrency = 4
+
+        current_count = sum(1 for task in current_tasks.values() if task.get("mode") == processing_mode)
         free_slots = max_concurrency - current_count
         
         if free_slots <= 0:
-            logger.info(f"Task pool full ({current_count}/{max_concurrency}). Waiting...")
+            logger.info(f"Task pool full ({current_count}/{max_concurrency}) for {processing_mode}. Waiting...")
             return
 
         # Fetch only what we can process
@@ -221,12 +235,12 @@ async def analysis_job():
         if not news_list:
             return
 
-        logger.info(f"Found {len(news_list)} unanalyzed news items. Starting background tasks... (Pool: {current_count}/{max_concurrency})")
+        logger.info(f"Found {len(news_list)} unanalyzed news items. Starting background tasks... (Mode: {processing_mode}, Pool: {current_count}/{max_concurrency})")
         
         # Create background tasks for each news item
         for news in news_list:
             # We must create task to run in background
-            asyncio.create_task(process_single_news(news))
+            asyncio.create_task(process_single_news(news, mode=processing_mode))
             # Slight delay to avoid burst rate limits (429)
             await asyncio.sleep(0.5)
             

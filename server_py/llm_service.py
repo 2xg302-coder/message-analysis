@@ -9,7 +9,8 @@ from prompts import ANALYSIS_SYSTEM_PROMPT, ANALYSIS_USER_PROMPT_TEMPLATE, FAST_
 clients = []
 client_iterator = None
 
-fast_client = None
+fast_clients = []
+fast_client_iterator = None
 
 # Initialize Main Clients (Multiple Keys Support)
 llm_configs = settings.LLM_CONFIGS
@@ -35,17 +36,32 @@ if llm_configs:
 else:
     print('Warning: LLM API Key not configured. Main Analysis will be skipped.')
 
-# Initialize Fast Client (Small Model)
-# If FAST_LLM_* is not configured, fallback to Main Client configuration logic (handled in call_llm wrapper or here)
-if settings.FAST_LLM_API_KEY:
-    fast_client = AsyncOpenAI(
-        api_key=settings.FAST_LLM_API_KEY,
-        base_url=settings.FAST_LLM_BASE_URL
-    )
+fast_llm_configs = settings.FAST_LLM_CONFIGS
+if fast_llm_configs:
+    print(f"Initializing Fast LLM Service with {len(fast_llm_configs)} configurations...")
+    for config in fast_llm_configs:
+        key = config["api_key"]
+        if key and key != 'sk-your-key-here':
+            client = AsyncOpenAI(
+                api_key=key,
+                base_url=config["base_url"]
+            )
+            fast_clients.append({
+                "client": client,
+                "model": config["model"]
+            })
+
+    if fast_clients:
+        fast_client_iterator = itertools.cycle(fast_clients)
 
 def get_next_client_config():
     if client_iterator:
         return next(client_iterator)
+    return None
+
+def get_next_fast_client_config():
+    if fast_client_iterator:
+        return next(fast_client_iterator)
     return None
 
 @retry(
@@ -58,9 +74,11 @@ async def call_llm(messages: List[Dict[str, str]], timeout: float = 30.0, use_fa
     current_client = None
     model_name = None
 
-    if use_fast_model and fast_client:
-        current_client = fast_client
-        model_name = settings.FAST_LLM_MODEL or settings.LLM_MODEL
+    if use_fast_model:
+        fast_config = get_next_fast_client_config()
+        if fast_config:
+            current_client = fast_config["client"]
+            model_name = fast_config["model"] or settings.FAST_LLM_MODEL or settings.LLM_MODEL
     else:
         config = get_next_client_config()
         if config:
@@ -101,7 +119,7 @@ async def call_llm(messages: List[Dict[str, str]], timeout: float = 30.0, use_fa
         return json.loads(content)
 
 async def analyze_news(news_content: str, watchlist: List[str] = [], mode: str = "standard") -> Dict[str, Any]:
-    if not clients and not fast_client:
+    if not clients and not fast_clients:
         return {'error': 'No API Key'}
 
     watchlist_str = ", ".join(watchlist) if watchlist else "无"

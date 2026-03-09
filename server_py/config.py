@@ -18,6 +18,7 @@ class Settings:
     FAST_LLM_API_KEY = os.getenv("FAST_LLM_API_KEY")
     FAST_LLM_BASE_URL = os.getenv("FAST_LLM_BASE_URL")
     FAST_LLM_MODEL = os.getenv("FAST_LLM_MODEL")
+    FAST_LLM_CONCURRENCY = os.getenv("FAST_LLM_CONCURRENCY", "4")
 
     @property
     def LLM_CONFIGS(self):
@@ -63,6 +64,52 @@ class Settings:
             # Handle 'none' or 'local' key for local LLM (no auth header needed ideally, but client requires one)
             real_key = key
             if key.lower() in ['none', 'local', 'empty']:
+                real_key = 'sk-no-key-required'
+
+            configs.append({
+                "api_key": real_key,
+                "base_url": url,
+                "model": model,
+                "concurrency": concurrency
+            })
+        return configs
+
+    @property
+    def FAST_LLM_CONFIGS(self):
+        if not self.FAST_LLM_API_KEY:
+            return []
+
+        raw_keys = self.FAST_LLM_API_KEY.split(',')
+        keys = [k.strip() for k in raw_keys if k.strip()]
+        if not keys:
+            return []
+
+        if self.FAST_LLM_BASE_URL and ',' in self.FAST_LLM_BASE_URL:
+            urls = [u.strip() for u in self.FAST_LLM_BASE_URL.split(',') if u.strip()]
+        else:
+            urls = [self.FAST_LLM_BASE_URL] * len(keys)
+
+        if self.FAST_LLM_MODEL and ',' in self.FAST_LLM_MODEL:
+            models = [m.strip() for m in self.FAST_LLM_MODEL.split(',') if m.strip()]
+        else:
+            models = [self.FAST_LLM_MODEL] * len(keys)
+
+        if self.FAST_LLM_CONCURRENCY and ',' in self.FAST_LLM_CONCURRENCY:
+            concurrencies = [int(c.strip()) for c in self.FAST_LLM_CONCURRENCY.split(',') if c.strip()]
+        else:
+            try:
+                default_conc = int(self.FAST_LLM_CONCURRENCY)
+            except:
+                default_conc = 4
+            concurrencies = [default_conc] * len(keys)
+
+        configs = []
+        for i, key in enumerate(keys):
+            url = urls[i] if i < len(urls) else urls[-1]
+            model = models[i] if i < len(models) else models[-1]
+            concurrency = concurrencies[i] if i < len(concurrencies) else concurrencies[-1]
+            real_key = key
+            if key.lower() in ['none', 'local', 'empty', 'ollama']:
                 real_key = 'sk-no-key-required'
 
             configs.append({
