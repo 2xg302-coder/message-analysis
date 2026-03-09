@@ -157,10 +157,8 @@ class NewsService:
             params.append(source)
 
         if tag:
-            escaped_tag = json.dumps(tag).strip('"')
-            where_clauses.append("(tags LIKE ? OR tags LIKE ?)")
-            params.append(f'%{tag}%')
-            params.append(f'%{escaped_tag}%')
+            where_clauses.append("EXISTS (SELECT 1 FROM json_each(news.tags) WHERE json_each.value = ?)")
+            params.append(tag)
 
         if sentiment:
             if sentiment == 'positive':

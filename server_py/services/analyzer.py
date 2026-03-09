@@ -262,6 +262,8 @@ async def start_scheduler():
     
     scheduler.start()
     logger.info("Analysis Scheduler started with 5 second interval.")
-    
-    # Schedule an immediate run
-    # asyncio.create_task(analysis_job())
+
+def stop_scheduler():
+    if scheduler.running:
+        scheduler.shutdown()
+        logger.info("Analysis Scheduler stopped.")
