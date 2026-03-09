@@ -1,19 +1,37 @@
 from openai import AsyncOpenAI
 import json
+import itertools
 from config import settings
 from typing import List, Dict, Any, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from prompts import ANALYSIS_SYSTEM_PROMPT, ANALYSIS_USER_PROMPT_TEMPLATE, FAST_ANALYSIS_SYSTEM_PROMPT, FAST_ANALYSIS_USER_PROMPT_TEMPLATE
 
-client = None
+clients = []
+client_iterator = None
+
 fast_client = None
 
-# Initialize Main Client (Large Model)
-if settings.LLM_API_KEY and settings.LLM_API_KEY != 'sk-your-key-here':
-    client = AsyncOpenAI(
-        api_key=settings.LLM_API_KEY,
-        base_url=settings.LLM_BASE_URL
-    )
+# Initialize Main Clients (Multiple Keys Support)
+llm_configs = settings.LLM_CONFIGS
+if llm_configs:
+    print(f"Initializing LLM Service with {len(llm_configs)} configurations...")
+    for config in llm_configs:
+        key = config["api_key"]
+        if key and key != 'sk-your-key-here':
+            client = AsyncOpenAI(
+                api_key=key,
+                base_url=config["base_url"]
+            )
+            # Store tuple of (client, model_name)
+            clients.append({
+                "client": client,
+                "model": config["model"]
+            })
+    
+    if clients:
+        client_iterator = itertools.cycle(clients)
+    else:
+        print('Warning: No valid LLM API Keys found.')
 else:
     print('Warning: LLM API Key not configured. Main Analysis will be skipped.')
 
@@ -24,24 +42,39 @@ if settings.FAST_LLM_API_KEY:
         api_key=settings.FAST_LLM_API_KEY,
         base_url=settings.FAST_LLM_BASE_URL
     )
-else:
-    fast_client = client # Fallback to main client
+
+def get_next_client_config():
+    if client_iterator:
+        return next(client_iterator)
+    return None
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=1, max=4),
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=2, max=60),
     retry=retry_if_exception_type(Exception),
     reraise=True
 )
 async def call_llm(messages: List[Dict[str, str]], timeout: float = 30.0, use_fast_model: bool = False) -> Dict[str, Any]:
-    current_client = fast_client if use_fast_model and fast_client else client
-    
-    # Determine model name
-    if use_fast_model and settings.FAST_LLM_MODEL:
-        model_name = settings.FAST_LLM_MODEL
-    else:
-        model_name = settings.LLM_MODEL
+    current_client = None
+    model_name = None
 
+    if use_fast_model and fast_client:
+        current_client = fast_client
+        model_name = settings.FAST_LLM_MODEL or settings.LLM_MODEL
+    else:
+        config = get_next_client_config()
+        if config:
+            current_client = config["client"]
+            model_name = config["model"]
+    
+    if not current_client:
+        # If fast client requested but not configured, try main client fallback
+        if use_fast_model:
+            config = get_next_client_config()
+            if config:
+                current_client = config["client"]
+                model_name = config["model"] # Fallback to main model
+            
     if not current_client:
         raise Exception("No API Key configured for the requested model type")
         
@@ -68,7 +101,7 @@ async def call_llm(messages: List[Dict[str, str]], timeout: float = 30.0, use_fa
         return json.loads(content)
 
 async def analyze_news(news_content: str, watchlist: List[str] = [], mode: str = "standard") -> Dict[str, Any]:
-    if not client and not fast_client:
+    if not clients and not fast_client:
         return {'error': 'No API Key'}
 
     watchlist_str = ", ".join(watchlist) if watchlist else "无"

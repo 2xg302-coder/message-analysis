@@ -171,6 +171,7 @@ const Trends = () => {
                   <Tooltip />
                   <Legend />
                   <Line type="monotone" dataKey="count" name="采集数量" stroke="#1890ff" activeDot={{ r: 8 }} />
+                  <Line type="monotone" dataKey="analyzed_count" name="已分析量" stroke="#52c41a" strokeDasharray="5 5" />
                 </LineChart>
               </ResponsiveContainer>
             </Card>

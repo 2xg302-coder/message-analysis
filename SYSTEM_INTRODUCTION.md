@@ -20,7 +20,7 @@
 ### 2.2 智能分析与评级
 *   **混合情感分析**：
     *   **规则引擎**：基于金融情感词典和关键词（如“立案调查”、“业绩预增”）进行快速初筛和评分。
-    *   **LLM 深度分析**：调用 DeepSeek 等大模型对重要新闻进行深度理解，提取结构化数据（摘要、影响评分、事件类型）。
+    *   **LLM 深度分析**：调用 DeepSeek/OpenRouter 等大模型对重要新闻进行深度理解，提取结构化数据（摘要、影响评分、事件类型）及实体关系三元组。
 *   **价值评分**：基于新闻实质内容进行 1-5 分的重要性打分（Impact Score），高分新闻视觉高亮。
 
 ### 2.4 连续剧式主题追踪 (Series Tracking)
@@ -160,9 +160,10 @@ python main.py
 ```bash
 # === 主模型配置 (Main LLM) ===
 # 示例：使用 OpenRouter 接入 Gemini 1.5 Pro
-LLM_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxx
+LLM_API_KEY=sk-key1,sk-key2
 LLM_BASE_URL=https://openrouter.ai/api/v1
 LLM_MODEL=google/gemini-2.0-pro-exp-02-05
+# 支持多 Key 轮询，逗号分隔
 
 # === 快速模型配置 (Fast LLM) ===
 # 示例：使用本地 Ollama 运行 Llama 3
@@ -229,7 +230,7 @@ pnpm dev
     *   `title`, `content`: 标题和内容
     *   `impact_score`: 影响力评分 (1-5)
     *   `sentiment_score`: 情感评分 (-1.0 ~ 1.0)
-    *   `tags`, `entities`: JSON 格式的标签和实体
+    *   `tags`, `entities`, `triples`: JSON 格式的标签、实体和三元组
     *   `analysis`: LLM 分析结果
     *   `simhash`: 用于去重的哈希值
 

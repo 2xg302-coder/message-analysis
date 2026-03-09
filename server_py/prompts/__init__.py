@@ -28,6 +28,9 @@ ANALYSIS_USER_PROMPT_TEMPLATE = """
     "XAU": "黄金", // 大宗商品
     "FED": "美联储" // 机构
   }},
+  "triples": [
+     {{"subject": "实体A", "predicate": "关系/动作", "object": "实体B"}}
+   ], // 提取关键实体关系三元组
   "tags": ["标签1", "标签2"], // 包含宏观标签（如：加息、地缘政治）
   "event_tag": "事件标签", // 将此新闻归类到一个持续性事件名称（如：俄乌冲突、美联储加息、OpenAI内斗）。请尽量使用通用、简短的 2-4 字词组（例如用“中东局势”统一代表“美伊关系与中东局势”等细分描述），确保相似事件能聚合在一起。如果是独立事件则为 null
   "impact_score": 3, // 1-5 (1:微弱影响, 5:重大影响)
@@ -48,6 +51,7 @@ FAST_ANALYSIS_USER_PROMPT_TEMPLATE = """
   "summary": "简短摘要",
   "tags": ["关键标签"], // 如果命中关注词，请包含 "关注" 标签
   "entities": {{"代码": "名称"}},
+  "triples": [{{"subject": "A", "predicate": "B", "object": "C"}}], // 三元组
   "event_tag": "事件标签", // 归类到持续性事件名称，无则null
   "event_type": "类型(宏观/公司/地缘/传闻/其他)",
   "impact_score": 3, // 1-5

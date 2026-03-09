@@ -97,19 +97,34 @@ def set_analysis_status(status: bool):
         logger.info("Analysis Scheduler PAUSED")
 
 def get_analysis_status():
+    if settings.LLM_CONFIGS:
+        max_concurrency = sum(config.get("concurrency", 8) for config in settings.LLM_CONFIGS)
+    else:
+        max_concurrency = 8
+    
     return {
         "isRunning": is_running,
         "currentTasks": list(current_tasks.values()),
         "schedulerRunning": scheduler.running,
         "failedCount": failed_tasks_count,
         "processedCount": processed_count,
-        "lastProcessedTime": last_processed_time.isoformat() if last_processed_time else None
+        "lastProcessedTime": last_processed_time.isoformat() if last_processed_time else None,
+        "maxConcurrency": max_concurrency
     }
 
 async def get_semaphore():
     global sem
     if sem is None:
-        sem = asyncio.Semaphore(5) # Limit to 5 concurrent LLM calls
+        # Dynamic concurrency based on number of configured LLM Clients
+        if settings.LLM_CONFIGS:
+            total_concurrency = sum(config.get("concurrency", 8) for config in settings.LLM_CONFIGS)
+            client_count = len(settings.LLM_CONFIGS)
+        else:
+            total_concurrency = 8
+            client_count = 1
+            
+        logger.info(f"Initializing Semaphore with {total_concurrency} slots (Sum of {client_count} clients)")
+        sem = asyncio.Semaphore(total_concurrency) 
     return sem
 
 async def process_single_news(news: Dict[str, Any]):
@@ -173,18 +188,47 @@ async def analysis_job():
         return
 
     try:
-        # Get batch of unanalyzed news
+        # Check current processing count
+        # If we have enough tasks running, skip this cycle to let them finish
+        # But we want to fill the pool.
+        # Problem: `await asyncio.gather(*tasks)` blocks until ALL tasks in this batch finish.
+        # This means if 1 task takes 30s and 19 tasks take 1s, we wait 30s before fetching next batch.
+        # Solution: Don't await gather. Fire and forget (with semaphore control).
+        
+        # Calculate how many slots are free
+        sem = await get_semaphore()
+        # Note: sem._value is internal, but effective for estimation. 
+        # Better to track current_tasks length.
+        
+        # Dynamic max concurrency
+        if settings.LLM_CONFIGS:
+            max_concurrency = sum(config.get("concurrency", 8) for config in settings.LLM_CONFIGS)
+        else:
+            max_concurrency = 8
+        
+        current_count = len(current_tasks)
+        free_slots = max_concurrency - current_count
+        
+        if free_slots <= 0:
+            logger.info(f"Task pool full ({current_count}/{max_concurrency}). Waiting...")
+            return
+
+        # Fetch only what we can process
+        # limit = free_slots + buffer? Let's just fetch free_slots
         # Note: news_service.get_unanalyzed_news will be async later
-        news_list = await news_service.get_unanalyzed_news(limit=5)
+        news_list = await news_service.get_unanalyzed_news(limit=free_slots)
         
         if not news_list:
             return
 
-        logger.info(f"Found {len(news_list)} unanalyzed news items. Processing batch...")
+        logger.info(f"Found {len(news_list)} unanalyzed news items. Starting background tasks... (Pool: {current_count}/{max_concurrency})")
         
-        # Concurrent processing with semaphore
-        tasks = [process_single_news(news) for news in news_list]
-        await asyncio.gather(*tasks)
+        # Create background tasks for each news item
+        for news in news_list:
+            # We must create task to run in background
+            asyncio.create_task(process_single_news(news))
+            # Slight delay to avoid burst rate limits (429)
+            await asyncio.sleep(0.5)
             
     except Exception as e:
         logger.error(f"Analysis job error: {e}")
@@ -192,10 +236,10 @@ async def analysis_job():
 async def start_scheduler():
     await load_sentiment_dicts()
     
-    # Add job: run every 30 seconds (Normal Frequency) to avoid overlap warnings
+    # Add job: run every 5 seconds (High Frequency) to avoid backlog
     scheduler.add_job(
         analysis_job, 
-        IntervalTrigger(seconds=30), 
+        IntervalTrigger(seconds=5), 
         id='analysis_job', 
         replace_existing=True,
         max_instances=1,
@@ -203,7 +247,7 @@ async def start_scheduler():
     )
     
     scheduler.start()
-    logger.info("Analysis Scheduler started with 30 second interval.")
+    logger.info("Analysis Scheduler started with 5 second interval.")
     
     # Schedule an immediate run
     # asyncio.create_task(analysis_job())

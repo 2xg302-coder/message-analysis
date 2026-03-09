@@ -68,8 +68,19 @@ const NewsCard = ({ item }) => {
               <Tag key={idx} color="cyan">{e.name || e}</Tag>
             ))}
 
+            {item.triples && Array.isArray(item.triples) && item.triples.length > 0 && (
+              <div style={{ marginTop: 8, padding: '8px', background: '#f0f5ff', borderRadius: '4px', fontSize: '12px' }}>
+                <Text strong type="secondary" style={{ marginRight: 8 }}>🕸️ 关系图谱:</Text>
+                {item.triples.map((t, idx) => (
+                   <Tag key={idx} color="geekblue" style={{ marginBottom: 4 }}>
+                     {t.subject} <span style={{ color: '#999' }}>→</span> {t.predicate} <span style={{ color: '#999' }}>→</span> {t.object}
+                   </Tag>
+                ))}
+              </div>
+            )}
+
             {hasAnalysis && analysis.event_tag && (
-              <Tag color="purple" style={{ cursor: 'pointer' }} onClick={() => navigate(`/series/${encodeURIComponent(analysis.event_tag)}`)}>
+              <Tag color="purple" style={{ cursor: 'pointer', marginTop: 8 }} onClick={() => navigate(`/series/${encodeURIComponent(analysis.event_tag)}`)}>
                 🎬 {analysis.event_tag}
               </Tag>
             )}

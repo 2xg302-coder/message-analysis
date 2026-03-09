@@ -81,7 +81,7 @@ const MonitorDrawer = ({ open, onClose }) => {
           <Badge status={stats.analyzer.isRunning ? "processing" : "default"} text={stats.analyzer.isRunning ? "运行中" : "已暂停"} />
         </Descriptions.Item>
         <Descriptions.Item label="当前并发任务">
-          {stats.analyzer.processingCount} / 5 (Max)
+          {stats.analyzer.processingCount} / {stats.analyzer.maxConcurrency || 8} (Max)
         </Descriptions.Item>
         <Descriptions.Item label="上次处理时间">
             {stats.analyzer.lastProcessedTime ? dayjs(stats.analyzer.lastProcessedTime).format('HH:mm:ss') : '-'}

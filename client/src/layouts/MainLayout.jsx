@@ -26,6 +26,7 @@ const items = [
     label: '分析工具',
     icon: <PieChartOutlined />,
     children: [
+      { key: '/reports', label: '每日报告' },
       { key: '/trends', label: '趋势分析' },
       { key: '/storylines', label: '每日主线' },
       { key: '/series', label: '连续剧追踪' },
@@ -54,7 +55,7 @@ const MainLayout = () => {
   // Determine the default open key based on the current path
   const getOpenKey = (path) => {
     if (path === '/' || path === '/ithome' || path === '/calendar') return 'monitor';
-    if (path === '/trends' || path === '/storylines' || path.startsWith('/series')) return 'analysis';
+    if (path === '/trends' || path === '/reports' || path === '/storylines' || path.startsWith('/series')) return 'analysis';
     if (path === '/explorer' || path === '/watchlist') return 'management';
     return 'monitor';
   };

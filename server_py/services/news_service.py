@@ -38,6 +38,7 @@ class NewsService:
             # Parse complex fields
             processed['tags'] = self._parse_json_field(processed.get('tags'), [])
             processed['entities'] = self._parse_json_field(processed.get('entities'), {})
+            processed['triples'] = self._parse_json_field(processed.get('triples'), [])
             processed['analysis'] = self._parse_json_field(processed.get('analysis'), None)
             
             return processed
@@ -53,6 +54,7 @@ class NewsService:
         # Serialize JSON fields with ensure_ascii=False to save Chinese characters directly
         tags = json.dumps(record.get('tags', []), ensure_ascii=False) if isinstance(record.get('tags'), list) else record.get('tags')
         entities = json.dumps(record.get('entities', {}), ensure_ascii=False) if isinstance(record.get('entities'), dict) else record.get('entities')
+        triples = json.dumps(record.get('triples', []), ensure_ascii=False) if isinstance(record.get('triples'), list) else record.get('triples')
         simhash_val = str(record.get('simhash')) if record.get('simhash') is not None else None
 
         return (
@@ -69,6 +71,7 @@ class NewsService:
             record.get('type', 'article'),
             tags,
             entities,
+            triples,
             record.get('impact_score', 0),
             record.get('sentiment_score', 0.0),
             simhash_val
@@ -89,9 +92,9 @@ class NewsService:
             query = '''
                 INSERT OR IGNORE INTO news (
                     id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data,
-                    type, tags, entities, impact_score, sentiment_score, simhash
+                    type, tags, entities, triples, impact_score, sentiment_score, simhash
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
             
             return await self.db.execute_update(query, params)
@@ -115,9 +118,9 @@ class NewsService:
             query = '''
                 INSERT OR IGNORE INTO news (
                     id, title, link, content, time, timestamp, scraped_at, created_at, source, raw_data,
-                    type, tags, entities, impact_score, sentiment_score, simhash
+                    type, tags, entities, triples, impact_score, sentiment_score, simhash
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
             
             return await self.db.execute_many(query, params_list)
@@ -218,6 +221,8 @@ class NewsService:
                 updates['tags'] = json.dumps(analysis_result['tags'], ensure_ascii=False)
             if 'entities' in analysis_result:
                 updates['entities'] = json.dumps(analysis_result['entities'], ensure_ascii=False)
+            if 'triples' in analysis_result:
+                updates['triples'] = json.dumps(analysis_result['triples'], ensure_ascii=False)
 
             set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
             values = list(updates.values())
@@ -311,7 +316,9 @@ class NewsService:
             
             if not start_date and not end_date:
                 # Default to last 24 hours if no range specified
-                cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
+                now = datetime.now()
+                current_hour = now.replace(minute=0, second=0, microsecond=0)
+                cutoff = (current_hour - timedelta(hours=23)).isoformat()
                 
                 # Careful not to duplicate WHERE
                 if not trend_where:
@@ -322,7 +329,11 @@ class NewsService:
                      trend_params.append(cutoff)
             
             trends_query = f'''
-                SELECT substr(created_at, 12, 2) || ':00' as hour, count(*) as count, substr(created_at, 1, 13) as date_hour
+                SELECT 
+                    substr(created_at, 12, 2) || ':00' as hour, 
+                    count(*) as count, 
+                    sum(case when analysis is not null then 1 else 0 end) as analyzed_count,
+                    substr(created_at, 1, 13) as date_hour
                 FROM news 
                 {trend_where}
                 GROUP BY date_hour 
@@ -331,7 +342,9 @@ class NewsService:
             
             # If no specific range, limit to 24 (though date filter should handle it mostly)
             if not start_date and not end_date:
-                trends_query += " LIMIT 24"
+                # We need enough rows to cover 24 hours, but GROUP BY reduces rows.
+                # Removing LIMIT on source query to ensure aggregation is correct.
+                pass
                 
             trends = await self.db.execute_query(trends_query, tuple(trend_params))
             
@@ -342,23 +355,23 @@ class NewsService:
                 
                 # Create map from DB results
                 # row['date_hour'] format from SQLite substr is "YYYY-MM-DDTHH"
-                data_map = {row['date_hour']: row['count'] for row in trends}
+                data_map = {row['date_hour']: {'count': row['count'], 'analyzed_count': row['analyzed_count']} for row in trends}
                 
                 full_trends = []
                 # Generate last 24 hours (including current hour)
+                # 0 to 23 hours ago
                 for i in range(23, -1, -1):
                     t = current_hour - timedelta(hours=i)
                     key = t.strftime("%Y-%m-%dT%H")
                     
-                    # Display label: "12:00" or "10-27 12:00" if cross day?
-                    # Let's use simple "HH:00" but if it's 00:00, maybe add date?
-                    # Or just return HH:00 and let frontend handle?
-                    # User asked for "24 hour trend", "HH:00" is standard.
                     label = t.strftime("%H:00")
+                    
+                    entry = data_map.get(key, {'count': 0, 'analyzed_count': 0})
                     
                     full_trends.append({
                         "hour": label,
-                        "count": data_map.get(key, 0),
+                        "count": entry['count'],
+                        "analyzed_count": entry['analyzed_count'],
                         "date_hour": key
                     })
                 trends = full_trends

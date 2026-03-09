@@ -101,7 +101,10 @@ graph TD
     - **Simhash**: 计算文本指纹，进行海明距离比较，去除高度相似的内容。
     - **时间窗口**: 仅在最近 24 小时的数据中进行比对，提高效率。
 3.  **实体识别 (NER)**: 使用 `FlashText` 算法，基于预定义的词库高效提取股票、公司、人物等实体。
-4.  **关注匹配 (Watchlist Matching)**:
+4.  **三元组抽取 (Triples Extraction)**:
+    - **来源**: `server_py/prompts/__init__.py`
+    - **机制**: 在 LLM 分析阶段，要求模型输出 `(Subject, Predicate, Object)` 格式的实体关系三元组（如 `特斯拉 → 扩产 → Model Y`）。这些结构化数据存储在 `triples` 字段中，用于构建微型知识图谱和增强语义理解。
+5.  **关注匹配 (Watchlist Matching)**:
     - **来源**: `server_py/services/processor.py`
     - **机制**: 实时加载用户配置的关键词，若新闻内容匹配，自动打上 `关注` 标签，并提升 `impact_score` (+2)，确保重要信息不被遗漏。
 5.  **语义匹配 (Semantic Matching)**:
@@ -114,7 +117,7 @@ graph TD
 ### 4.3 数据存储 (Storage)
 - **技术**: SQLite + SQLModel。
 - **模型 (`models_orm.py`)**:
-    - `News`: 存储新闻主体，包括 `content`, `source`, `tags` (JSON), `entities` (JSON), `impact_score` 等。
+    - `News`: 存储新闻主体，包括 `content`, `source`, `tags` (JSON), `entities` (JSON), `triples` (JSON), `impact_score` 等。
     - `CalendarEvent`: 存储财经日历数据。
     - `Series`: 存储长期事件系列，包括 `id` (slug), `title`, `description`, `category`, `keywords` (JSON), `status`, `current_summary` (最新进展摘要)。
     - `Storyline`: 存储市场主线，包括 `date`, `title`, `keywords`, `description`, `importance`, `status`, `series_id`, `series_title`, `related_event_ids` (JSON), `related_news_ids` (JSON)。
@@ -149,7 +152,10 @@ graph TD
 1.  **规则匹配 (Rule-based)**:
     - **来源**: `server_py/services/processor.py`
     - **机制**: 在新闻入库时即时生成。系统内置关键词库，如检测到“立案调查”自动打上 `监管` 标签，检测到“加息”打上 `宏观` 标签。
-2.  **财经日历关联 (Calendar Association)**:
+2.  **三元组抽取 (Structured Knowledge)**:
+    - **来源**: `server_py/services/analyzer.py`
+    - **机制**: 提取实体间的结构化关系（主体-动作-客体），比传统标签更能反映事件本质。
+3.  **财经日历关联 (Calendar Association)**:
     - **来源**: `server_py/services/processor.py`
     - **机制**: 自动将新闻内容与当天的财经日历事件比对，若匹配则生成格式为 `预期:国家事件` 的标签。
 3.  **AI 深度分析 (LLM Analysis)**:
@@ -239,6 +245,19 @@ graph TD
 - **异步资源加载**: 将情感词典加载 (`server_py/services/analyzer.py`) 改为异步执行，减少启动时的 I/O 阻塞。
 - **延迟任务执行**: 在 `server_py/services/ingestion.py` 中，将启动后的立即抓取任务延迟 5 秒执行，优先保证 HTTP 服务端口的快速就绪。
 
+### 5.4 性能优化 (Performance Optimization)
+- **高频调度**: 分析任务调度间隔缩短至 5 秒，大幅提升吞吐量。
+- **智能并发控制 (Smart Concurrency)**: 
+    - 采用动态信号量机制，实时计算空闲槽位并自动填满，确保并发数始终维持在设定上限（默认 8，可配置）。
+    - 避免了传统批处理模式下的“短板效应”（即等待最慢的任务完成）。
+- **多 Key 负载均衡 (Load Balancing)**:
+    - 支持配置多个 `LLM_API_KEY`（逗号分隔）。
+    - 系统采用 Round-Robin 策略轮询使用 Key，突破单一 Key 的速率限制 (Rate Limit)。
+- **指数退避重试 (Exponential Backoff)**:
+    - 针对 API 429/500 错误，采用指数级增长的等待时间（2s -> 4s -> ... -> 60s），避免在服务不稳定时加重负载。
+- **速率限制 (Rate Limiting)**:
+    - 在任务发射间隙增加微小延迟 (0.5s)，平滑流量峰值，减少触发 429 的概率。
+
 ## 6. 部署与运行 (Deployment & Running)
 
 ### 6.1 环境要求
@@ -267,7 +286,15 @@ graph TD
 ### 6.3 配置文件
 - 后端配置位于 `server_py/.env` (可参考 `.env.example`)，包含数据库路径、API 密钥等敏感信息。
 
-### 6.4 Docker 部署 (Docker Deployment)
+### 6.5 运维工具 (Operational Tools)
+- **retry_analysis.py**: 
+    - 位于 `server_py/` 目录。
+    - **用途**: 手动重置失败的分析任务，或触发旧数据的三元组抽取。
+    - **命令**:
+        ```bash
+        # 重置最近 100 条未提取三元组的数据
+        python retry_analysis.py --triples --limit=100
+        ```
 为了解决环境依赖一致性问题（特别是 Python 的 fastembed/onnxruntime 库在不同系统下的兼容性），项目提供了 Docker 支持。
 
 - **适用场景**: 生产环境部署、非 Windows/WSL 开发环境、或者需要纯净隔离环境时。

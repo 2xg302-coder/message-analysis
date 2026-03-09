@@ -91,11 +91,15 @@ async def start_ingestion_scheduler():
         from collectors.eastmoney_collector import EastMoneyCollector
         from collectors.calendar_collector import CalendarCollector
         from collectors.ithome_collector import ITHomeCollector
+        from collectors.cctv_collector import CCTVCollector
+        from collectors.people_daily_collector import PeopleDailyCollector
         from services.processor import NewsProcessor
         
         sina_collector = SinaCollector()
         em_collector = EastMoneyCollector()
         ithome_collector = ITHomeCollector()
+        cctv_collector = CCTVCollector()
+        people_daily_collector = PeopleDailyCollector()
         calendar_collector = CalendarCollector(data_dir="data")
         processor = NewsProcessor()
         # Initialize processor async state (cache)
@@ -106,6 +110,8 @@ async def start_ingestion_scheduler():
         scheduler.add_job(run_ingestion, IntervalTrigger(seconds=30), args=[sina_collector, 'Sina', processor], id='sina_ingestion', replace_existing=True)
         scheduler.add_job(run_ingestion, IntervalTrigger(minutes=5), args=[em_collector, 'EastMoney', processor], id='em_ingestion', replace_existing=True)
         scheduler.add_job(run_ingestion, IntervalTrigger(minutes=10), args=[ithome_collector, 'ITHome', processor], id='ithome_ingestion', replace_existing=True)
+        scheduler.add_job(run_ingestion, IntervalTrigger(minutes=60), args=[cctv_collector, 'CCTV', processor], id='cctv_ingestion', replace_existing=True)
+        scheduler.add_job(run_ingestion, IntervalTrigger(minutes=30), args=[people_daily_collector, 'PeopleDaily', processor], id='peopledaily_ingestion', replace_existing=True)
         
         # Calendar Collection Job (Daily at 08:00)
         scheduler.add_job(run_calendar_collection, CronTrigger(hour=8, minute=0), args=[calendar_collector, processor], id='calendar_collection', replace_existing=True)
@@ -117,8 +123,37 @@ async def start_ingestion_scheduler():
         async def delayed_start():
             await asyncio.sleep(5)  # Wait 5 seconds
             logger.info("Starting initial ingestion tasks...")
+            
+            # 1. High frequency sources - Always run
             await run_ingestion(sina_collector, 'Sina', processor)
             await run_ingestion(ithome_collector, 'ITHome', processor)
+            
+            # 2. Daily/Low frequency sources - Check if needed
+            from core.database import db
+            from datetime import datetime
+            
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            
+            # Check CCTV
+            try:
+                # CCTV data usually has time around 19:00:00
+                cctv_query = "SELECT COUNT(*) as count FROM news WHERE source = 'CCTV' AND time LIKE ?"
+                cctv_res = await db.execute_query(cctv_query, (f'{today_str}%',))
+                cctv_count = cctv_res[0]['count'] if cctv_res else 0
+                
+                if cctv_count > 0:
+                    logger.info(f"CCTV news for {today_str} already exists ({cctv_count} items). Skipping startup collection.")
+                else:
+                    await run_ingestion(cctv_collector, 'CCTV', processor)
+            except Exception as e:
+                logger.error(f"Error checking CCTV status: {e}")
+                # Fallback to run if check fails
+                await run_ingestion(cctv_collector, 'CCTV', processor)
+
+            # People's Daily (RSS) - Run anyway as it updates throughout the day
+            await run_ingestion(people_daily_collector, 'PeopleDaily', processor)
+            
+            # Calendar - Already has check inside run_calendar_collection
             await run_calendar_collection(calendar_collector, processor)
 
         asyncio.create_task(delayed_start())

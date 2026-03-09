@@ -27,6 +27,7 @@ class NewsBase(SQLModel):
     
     tags: str = Field(default="[]") 
     entities: str = Field(default="{}")
+    triples: str = Field(default="[]")
     impact_score: int = Field(default=0)
     sentiment_score: float = Field(default=0.0)
     simhash: Optional[str] = None

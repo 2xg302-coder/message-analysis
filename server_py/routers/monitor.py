@@ -25,6 +25,7 @@ async def get_monitor_stats():
             "schedulerRunning": analyzer_status["schedulerRunning"],
             "currentTasks": analyzer_status["currentTasks"],
             "processingCount": len(analyzer_status["currentTasks"]),
+            "maxConcurrency": analyzer_status.get("maxConcurrency", 8),
             "processedTotal": analyzer_status["processedCount"],
             "failedTotal": analyzer_status["failedCount"],
             "lastProcessedTime": analyzer_status["lastProcessedTime"]

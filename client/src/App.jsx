@@ -9,6 +9,7 @@ import SeriesView from './pages/SeriesView';
 import DataExplorer from './pages/DataExplorer';
 import CalendarView from './pages/CalendarView';
 import StorylineView from './pages/StorylineView';
+import DailyReport from './pages/DailyReport';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const App = () => {
@@ -18,6 +19,7 @@ const App = () => {
         <Route path="/" element={<MainLayout />}>
           <Route index element={<NewsFeed />} />
           <Route path="ithome" element={<ITHomeView />} />
+          <Route path="reports" element={<DailyReport />} />
           <Route path="storylines" element={<StorylineView />} />
           <Route path="explorer" element={<DataExplorer />} />
           <Route path="trends" element={<Trends />} />
