@@ -36,14 +36,14 @@ class EntityMiner:
         """
         Fetch news from the last N hours and extract entities.
         """
-        cutoff_time = datetime.now() - timedelta(hours=hours)
-        cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
-        
-        stmt = select(News.entities).where(News.time >= cutoff_str)
-        
-        entity_lists = []
-        
         try:
+            cutoff_time = datetime.now() - timedelta(hours=hours)
+            cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
+            
+            stmt = select(News.entities).where(News.time >= cutoff_str)
+            
+            entity_lists = []
+            
             async with engine.connect() as conn:
                 result = await conn.execute(stmt)
                 rows = result.fetchall()
@@ -55,15 +55,20 @@ class EntityMiner:
                     
                     try:
                         # entities 字段存储为 JSON 字符串
-                        if entities_json.startswith("'") or entities_json.startswith('"'):
-                             pass
-                        
-                        entities_dict = json.loads(entities_json)
-                        
-                        if isinstance(entities_dict, dict):
-                            entity_lists.append(list(entities_dict.keys()))
-                        elif isinstance(entities_dict, list):
-                            entity_lists.append(entities_dict)
+                        if isinstance(entities_json, str):
+                            if entities_json.startswith("'") or entities_json.startswith('"'):
+                                pass
+                            
+                            entities_dict = json.loads(entities_json)
+                            
+                            if isinstance(entities_dict, dict):
+                                entity_lists.append(list(entities_dict.keys()))
+                            elif isinstance(entities_dict, list):
+                                entity_lists.append(entities_dict)
+                        elif isinstance(entities_json, dict):
+                             entity_lists.append(list(entities_json.keys()))
+                        elif isinstance(entities_json, list):
+                             entity_lists.append(entities_json)
                             
                     except json.JSONDecodeError:
                         try:
@@ -74,12 +79,12 @@ class EntityMiner:
                         except Exception:
                             pass
                     except Exception as e:
-                        logger.error(f"Error processing entities: {e}")
+                        logger.error(f"Error processing entities row: {e}")
                         
+            return entity_lists
         except Exception as e:
             logger.error(f"Error fetching recent entities: {e}")
-            
-        return entity_lists
+            return []
 
     async def fetch_recent_triples(self, hours: int = 2) -> List[Dict[str, str]]:
         """
@@ -201,13 +206,19 @@ class EntityMiner:
             if self.graph.is_directed():
                 g_for_comm = self.graph.to_undirected()
             
-            partition = community_louvain.best_partition(g_for_comm)
-            
-            communities = {}
-            for node, comm_id in partition.items():
-                if comm_id not in communities:
-                    communities[comm_id] = []
-                communities[comm_id].append(node)
+            # Check if there are edges, louvain needs edges
+            if g_for_comm.number_of_edges() == 0:
+                # If no edges, each node is its own community
+                communities = {}
+                for i, node in enumerate(g_for_comm.nodes()):
+                    communities[i] = [node]
+            else:
+                partition = community_louvain.best_partition(g_for_comm)
+                communities = {}
+                for node, comm_id in partition.items():
+                    if comm_id not in communities:
+                        communities[comm_id] = []
+                    communities[comm_id].append(node)
             
             sorted_clusters = sorted(communities.values(), key=len, reverse=True)
             

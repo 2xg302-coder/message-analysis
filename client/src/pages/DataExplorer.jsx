@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Typography, Spin, Table, Tag, Statistic, Progress, Space, DatePicker, Radio, Button, Modal, List, Empty, Switch, message } from 'antd';
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { DatabaseOutlined, RocketOutlined, TagOutlined, DeploymentUnitOutlined, ReloadOutlined, ApartmentOutlined } from '@ant-design/icons';
-import { getStats, getTagStats, getTypeStats, getTopEntities, getAnalysisStatus, getNews, setAnalysisControl, getIngestionSources, setIngestionSourceEnabled, getEntityGraph } from '../services/api';
+import { Card, Row, Col, Typography, Spin, Table, Tag, Statistic, Progress, Space, DatePicker, Radio, Button, Modal, List, Empty, Switch, message, Popconfirm, Form, InputNumber, Alert } from 'antd';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
+import { DatabaseOutlined, RocketOutlined, TagOutlined, DeploymentUnitOutlined, ReloadOutlined, ApartmentOutlined, DeleteOutlined, ClearOutlined } from '@ant-design/icons';
+import { getStats, getTagStats, getTypeStats, getTopEntities, getAnalysisStatus, getNews, setAnalysisControl, getIngestionSources, setIngestionSourceEnabled, getEntityGraph, getMaintenanceStats, cleanupNews, deleteSourceNews, vacuumDatabase } from '../services/api';
 import dayjs from 'dayjs';
 import NewsCard from '../components/NewsCard';
 import ReactECharts from 'echarts-for-react';
@@ -15,6 +15,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'
 const DataExplorer = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, analyzed: 0, pending: 0 });
+  const [dbStats, setDbStats] = useState({});
   const [tags, setTags] = useState([]);
   const [types, setTypes] = useState([]);
   const [entities, setEntities] = useState([]);
@@ -22,6 +23,12 @@ const DataExplorer = () => {
   const [toggling, setToggling] = useState(false);
   const [sourceConfigs, setSourceConfigs] = useState([]);
   const [sourceToggling, setSourceToggling] = useState({});
+
+  // Cleanup state
+  const [cleanupModalVisible, setCleanupModalVisible] = useState(false);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [cleanupForm] = Form.useForm();
+  const [cleanupPreview, setCleanupPreview] = useState(null);
 
   // Graph state
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
@@ -71,13 +78,14 @@ const DataExplorer = () => {
     }
 
     try {
-      const [statsRes, tagsRes, typesRes, entitiesRes, statusRes, sourceRes] = await Promise.all([
+      const [statsRes, tagsRes, typesRes, entitiesRes, statusRes, sourceRes, dbStatsRes] = await Promise.all([
         getStats(startDate, endDate),
         getTagStats(100, startDate, endDate),
         getTypeStats(startDate, endDate),
         getTopEntities(50, startDate, endDate),
         getAnalysisStatus(),
-        getIngestionSources()
+        getIngestionSources(),
+        getMaintenanceStats()
       ]);
 
       if (statsRes.data.success) setStats(statsRes.data.data);
@@ -86,6 +94,7 @@ const DataExplorer = () => {
       if (entitiesRes.data.success) setEntities(entitiesRes.data.data);
       if (statusRes.data.success) setAnalysisStatus(statusRes.data.data);
       if (sourceRes.data.success) setSourceConfigs(sourceRes.data.data);
+      if (dbStatsRes.data) setDbStats(dbStatsRes.data);
 
     } catch (error) {
       console.error("Failed to fetch explorer data", error);
@@ -103,6 +112,27 @@ const DataExplorer = () => {
     }, 10000); 
     return () => clearInterval(interval);
   }, [dateRange, quickDate]); // Trigger when dateRange or quickDate changes
+
+  // Merge sources from config and DB stats
+  const getAllSources = () => {
+      const configSources = new Set(sourceConfigs.map(s => s.source));
+      const dbSources = Object.keys(dbStats.by_source || {});
+      
+      // Combine all unique source names
+      const allSourceNames = Array.from(new Set([...configSources, ...dbSources]));
+      
+      return allSourceNames.map(name => {
+          const config = sourceConfigs.find(s => s.source === name);
+          return {
+              source: name,
+              enabled: config ? config.enabled : false, // Default to false if not in config (likely unknown/legacy)
+              is_unknown: !config, // Flag to indicate if it's not in official config
+              count: dbStats.by_source?.[name] || 0
+          };
+      }).sort((a, b) => b.count - a.count); // Sort by count DESC
+  };
+
+  const displayedSources = getAllSources();
 
   const getGraphOption = () => {
     return {
@@ -253,6 +283,68 @@ const DataExplorer = () => {
     }
   };
 
+  // Maintenance Handlers
+  const handlePreviewCleanup = async () => {
+      try {
+          const values = await cleanupForm.validateFields();
+          setCleanupLoading(true);
+          const res = await cleanupNews({ ...values, dry_run: true });
+          if (res.data) {
+              setCleanupPreview(res.data);
+          }
+      } catch (error) {
+          message.error("预览失败");
+      } finally {
+          setCleanupLoading(false);
+      }
+  };
+
+  const handleExecuteCleanup = async () => {
+      try {
+          const values = await cleanupForm.validateFields();
+          setCleanupLoading(true);
+          const res = await cleanupNews({ ...values, dry_run: false });
+          if (res.data) {
+              message.success(`清理完成，删除了 ${res.data.deleted_count} 条数据`);
+              setCleanupModalVisible(false);
+              setCleanupPreview(null);
+              // 强制刷新所有数据，包括统计信息
+              await fetchData();
+          }
+      } catch (error) {
+          message.error("清理失败");
+      } finally {
+          setCleanupLoading(false);
+      }
+  };
+
+  const handleDeleteSource = async (source) => {
+      try {
+          setLoading(true);
+          const res = await deleteSourceNews(source);
+          if (res.data) {
+              message.success(`已删除来源 ${source} 的 ${res.data.deleted_count} 条数据`);
+              // 强制刷新所有数据，包括统计信息
+              await fetchData();
+          }
+      } catch (error) {
+          message.error("删除失败");
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const handleVacuum = async () => {
+      try {
+          const res = await vacuumDatabase();
+          if (res.data) {
+              message.success("已触发数据库 VACUUM (后台执行)");
+          }
+      } catch (error) {
+          message.error("操作失败");
+      }
+  };
+
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -336,23 +428,94 @@ const DataExplorer = () => {
             </Card>
           </Col>
         </Row>
+        
+        {/* 数据源管理与维护 */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col span={24}>
-            <Card title="消息源拉取开关">
-              <Space size={[24, 16]} wrap>
-                {sourceConfigs.map(item => (
-                  <Space key={item.source}>
-                    <Text>{item.source}</Text>
-                    <Switch
-                      checked={item.enabled}
-                      loading={sourceToggling[item.source]}
-                      checkedChildren="开启"
-                      unCheckedChildren="关闭"
-                      onChange={(checked) => handleToggleSource(item.source, checked)}
+          <Col span={16}>
+            <Card title="消息源管理">
+              <Table 
+                dataSource={displayedSources} 
+                rowKey="source" 
+                pagination={false}
+                size="small"
+                columns={[
+                    { 
+                        title: '来源名称', 
+                        dataIndex: 'source', 
+                        key: 'source', 
+                        render: (text, record) => (
+                            <Space>
+                                <Text strong>{text}</Text>
+                                {record.is_unknown && <Tag color="warning">未配置</Tag>}
+                            </Space>
+                        ) 
+                    },
+                    { 
+                        title: '当前数据量', 
+                        key: 'count', 
+                        render: (_, record) => (
+                            <Text>{record.count}</Text>
+                        ) 
+                    },
+                    { 
+                        title: '状态', 
+                        key: 'enabled', 
+                        render: (_, record) => (
+                            <Switch
+                                checked={record.enabled}
+                                loading={sourceToggling[record.source]}
+                                checkedChildren="开启"
+                                unCheckedChildren="关闭"
+                                disabled={record.is_unknown} // Disable switch for unknown sources
+                                onChange={(checked) => handleToggleSource(record.source, checked)}
+                            />
+                        ) 
+                    },
+                    {
+                        title: '操作',
+                        key: 'action',
+                        render: (_, record) => (
+                            <Popconfirm
+                                title={`确定要清空 ${record.source} 的所有数据吗？`}
+                                description="此操作不可恢复！"
+                                onConfirm={() => handleDeleteSource(record.source)}
+                                okText="确定删除"
+                                cancelText="取消"
+                                okButtonProps={{ danger: true }}
+                            >
+                                <Button type="text" danger icon={<DeleteOutlined />}>清空数据</Button>
+                            </Popconfirm>
+                        )
+                    }
+                ]}
+              />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card title="数据库维护" extra={<Tag color="blue">Size: {dbStats.db_size_mb || 0} MB</Tag>}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                    <Alert 
+                        message="低价值数据占比" 
+                        description={
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Low Value (Score &lt; 4):</span>
+                                <Text strong>{dbStats.by_score?.low || 0}</Text>
+                            </div>
+                        }
+                        type="info" 
+                        showIcon 
                     />
-                  </Space>
-                ))}
-              </Space>
+                    <Button block icon={<ClearOutlined />} onClick={() => setCleanupModalVisible(true)}>
+                        清理过期/低价值数据
+                    </Button>
+                    <Popconfirm
+                        title="确定执行 VACUUM？"
+                        description="这将重建数据库文件以释放空间，可能会暂时阻塞写入。"
+                        onConfirm={handleVacuum}
+                    >
+                        <Button block>释放磁盘空间 (VACUUM)</Button>
+                    </Popconfirm>
+                </Space>
             </Card>
           </Col>
         </Row>
@@ -441,7 +604,7 @@ const DataExplorer = () => {
                     {graphData.nodes.length > 0 ? (
                         <ReactECharts option={getGraphOption()} style={{ height: 500 }} />
                     ) : (
-                         <Empty description="暂无图谱数据" style={{ height: 500, display: 'flex', flexDirection: 'column', justifyContent: 'center' }} />
+                        <Empty description="暂无图谱数据" style={{ height: 500, display: 'flex', flexDirection: 'column', justifyContent: 'center' }} />
                     )}
                 </Spin>
             </Card>
@@ -488,6 +651,49 @@ const DataExplorer = () => {
             <Empty description="暂无相关新闻" />
           )}
         </Spin>
+      </Modal>
+
+      {/* 清理数据弹框 */}
+      <Modal
+          title="清理过期/低价值数据"
+          open={cleanupModalVisible}
+          onCancel={() => {
+              setCleanupModalVisible(false);
+              setCleanupPreview(null);
+              cleanupForm.resetFields();
+          }}
+          footer={[
+              <Button key="cancel" onClick={() => setCleanupModalVisible(false)}>取消</Button>,
+              <Button key="preview" onClick={handlePreviewCleanup} loading={cleanupLoading}>预览删除量</Button>,
+              <Button 
+                  key="submit" 
+                  type="primary" 
+                  danger 
+                  onClick={handleExecuteCleanup} 
+                  loading={cleanupLoading}
+                  disabled={!cleanupPreview}
+              >
+                  确认删除
+              </Button>
+          ]}
+      >
+          <Form form={cleanupForm} layout="vertical" initialValues={{ days: 30, min_score: 3 }}>
+              <Form.Item name="days" label="保留最近多少天 (Days Retention)" tooltip="早于此时段的数据将被删除">
+                  <InputNumber min={1} max={365} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item name="min_score" label="最低分数阈值 (Min Impact Score)" tooltip="分数低于此值的数据将被删除 (0-10)">
+                  <InputNumber min={0} max={10} style={{ width: '100%' }} />
+              </Form.Item>
+              <Alert message="提示：高价值数据 (Score >= 7) 将始终被保留，不受此规则影响。" type="info" showIcon style={{ marginBottom: 16 }} />
+              
+              {cleanupPreview && (
+                  <Alert 
+                      message={`预计将删除 ${cleanupPreview.estimated_count} 条数据`}
+                      type="warning"
+                      showIcon
+                  />
+              )}
+          </Form>
       </Modal>
     </div>
   );

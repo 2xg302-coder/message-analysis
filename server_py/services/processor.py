@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from simhash import Simhash
 from flashtext import KeywordProcessor
+from difflib import SequenceMatcher
 import akshare as ak
 from services.news_service import news_service
 from services.vector_store import vector_store
@@ -22,22 +23,53 @@ class NewsProcessor:
         self.expected_events: Dict[str, List[Dict[str, Any]]] = {}
         self.load_expected_events()
         self.rules = {
+            # 高分项 (5分): 重大政策、监管、宏观
             "立案调查": {"score": 5, "sentiment": -0.8, "tags": ["监管", "立案"]},
-            "业绩预增": {"score": 4, "sentiment": 0.6, "tags": ["业绩"]},
-            "涨停": {"score": 3, "sentiment": 0.5, "tags": ["行情"]},
-            "跌停": {"score": 3, "sentiment": -0.5, "tags": ["行情"]},
-            "收购": {"score": 4, "sentiment": 0.2, "tags": ["并购"]},
-            "减持": {"score": 3, "sentiment": -0.3, "tags": ["人事"]},
-            "增持": {"score": 3, "sentiment": 0.3, "tags": ["人事"]},
             "加息": {"score": 5, "sentiment": -0.3, "tags": ["宏观", "货币政策"]},
             "降息": {"score": 5, "sentiment": 0.4, "tags": ["宏观", "货币政策"]},
-            "黄金": {"score": 3, "sentiment": 0.1, "tags": ["大宗商品"]},
             "战争": {"score": 5, "sentiment": -0.5, "tags": ["地缘政治"]},
+            "降准": {"score": 5, "sentiment": 0.4, "tags": ["宏观", "货币政策"]},
+            "印花税": {"score": 5, "sentiment": 0.3, "tags": ["政策", "股市"]},
+            "暂停IPO": {"score": 5, "sentiment": 0.6, "tags": ["政策", "IPO"]},
+            "退市": {"score": 5, "sentiment": -0.6, "tags": ["监管", "退市"]},
+            
+            # 中高分项 (4分): 行业大事、公司大事
+            "业绩预增": {"score": 4, "sentiment": 0.6, "tags": ["业绩"]},
+            "收购": {"score": 4, "sentiment": 0.2, "tags": ["并购"]},
             "冲突": {"score": 4, "sentiment": -0.4, "tags": ["地缘政治"]},
+            "首发": {"score": 4, "sentiment": 0.3, "tags": ["新品"]},
+            "突破": {"score": 4, "sentiment": 0.5, "tags": ["技术"]},
+            "获批": {"score": 4, "sentiment": 0.5, "tags": ["政策", "利好"]},
+            "中标": {"score": 4, "sentiment": 0.4, "tags": ["合同"]},
+            "回购": {"score": 4, "sentiment": 0.5, "tags": ["回购"]},
+            "举牌": {"score": 4, "sentiment": 0.4, "tags": ["股权"]},
+            "违约": {"score": 4, "sentiment": -0.7, "tags": ["风险"]},
+            "暴雷": {"score": 4, "sentiment": -0.8, "tags": ["风险"]},
+            "制裁": {"score": 4, "sentiment": -0.6, "tags": ["贸易"]},
+            "关税": {"score": 4, "sentiment": -0.4, "tags": ["贸易"]},
+            
+            # 普通项 (3分): 市场波动、常规动态
+            "涨停": {"score": 3, "sentiment": 0.5, "tags": ["行情"]},
+            "跌停": {"score": 3, "sentiment": -0.5, "tags": ["行情"]},
+            "减持": {"score": 3, "sentiment": -0.3, "tags": ["人事"]},
+            "增持": {"score": 3, "sentiment": 0.3, "tags": ["人事"]},
+            "黄金": {"score": 3, "sentiment": 0.1, "tags": ["大宗商品"]},
+            "原油": {"score": 3, "sentiment": 0.1, "tags": ["大宗商品"]},
+            "大涨": {"score": 3, "sentiment": 0.4, "tags": ["行情"]},
+            "大跌": {"score": 3, "sentiment": -0.4, "tags": ["行情"]},
+            "新高": {"score": 3, "sentiment": 0.4, "tags": ["行情"]},
+            "新低": {"score": 3, "sentiment": -0.4, "tags": ["行情"]},
+            "发布": {"score": 3, "sentiment": 0.1, "tags": ["动态"]},
+            "合作": {"score": 3, "sentiment": 0.2, "tags": ["合作"]},
+            "签署": {"score": 3, "sentiment": 0.2, "tags": ["合作"]},
+            
+            # 低分项 (2分): 传闻、噪音
             "传闻": {"score": 2, "sentiment": 0.0, "tags": ["市场传闻"]},
             "小作文": {"score": 2, "sentiment": 0.0, "tags": ["市场传闻"]},
+            "回应": {"score": 2, "sentiment": 0.0, "tags": ["回应"]},
+            "澄清": {"score": 2, "sentiment": 0.1, "tags": ["回应"]},
         }
-        self.load_keywords()
+        # self.load_keywords() # Moved to init_async to avoid blocking startup
         # self.load_recent_hashes() # Moved to init_async
 
     def load_expected_events(self):
@@ -60,6 +92,14 @@ class NewsProcessor:
         pass
             
     async def init_async(self):
+        logger.info("Initializing processor (Async)...")
+        
+        # Load keywords in background thread to avoid blocking loop
+        try:
+            await asyncio.to_thread(self.load_keywords)
+        except Exception as e:
+            logger.error(f"Error loading keywords async: {e}")
+
         logger.info("Loading recent news for deduplication (Async)...")
         try:
             # Load Watchlist
@@ -79,6 +119,7 @@ class NewsProcessor:
                 # Compute clean text for containment check
                 raw_content = item.get('content', '') or item.get('title', '')
                 clean_content = self.clean_text(raw_content)
+                clean_title = self.clean_title(item.get('title', ''))
                 
                 # Use existing simhash or recompute
                 sh = None
@@ -100,7 +141,9 @@ class NewsProcessor:
                                 'hash': sh, 
                                 'time': t,
                                 'id': item['id'],
-                                'text': clean_content
+                                'text': clean_content,
+                                'title': clean_title,
+                                'source': item.get('source')
                             })
                             count += 1
                         except:
@@ -112,15 +155,54 @@ class NewsProcessor:
 
     def load_keywords(self):
         # logger.info("Loading keywords for NER...")
+        cache_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'stock_keywords_cache.json'))
+        loaded = False
+        
         try:
+            # 1. Try loading from cache
+            if os.path.exists(cache_path):
+                try:
+                    with open(cache_path, 'r', encoding='utf-8') as f:
+                        cache_data = json.load(f)
+                        updated_at = datetime.fromisoformat(cache_data.get('updated_at', '2000-01-01'))
+                        
+                        # Cache valid for 24 hours
+                        if (datetime.now() - updated_at).total_seconds() < 86400:
+                            keywords_list = cache_data.get('data', [])
+                            for item in keywords_list:
+                                self.keyword_processor.add_keyword(item['name'], item)
+                                self.keyword_processor.add_keyword(item['code'], item)
+                            logger.info(f"Loaded {len(keywords_list)} keywords from local cache.")
+                            loaded = True
+                except Exception as e:
+                    logger.warning(f"Failed to load keywords cache: {e}")
+
+            if loaded:
+                return
+
             try:
                 stock_zh_a_spot_em_df = ak.stock_zh_a_spot_em()
+                cache_list = []
                 for _, row in stock_zh_a_spot_em_df.iterrows():
                     name = row['名称']
                     code = row['代码']
-                    self.keyword_processor.add_keyword(name, {"name": name, "code": code, "type": "A_SHARE"})
-                    self.keyword_processor.add_keyword(code, {"name": name, "code": code, "type": "A_SHARE"})
+                    meta = {"name": name, "code": code, "type": "A_SHARE"}
+                    self.keyword_processor.add_keyword(name, meta)
+                    self.keyword_processor.add_keyword(code, meta)
+                    cache_list.append(meta)
                 logger.info(f"Loaded {len(self.keyword_processor)} keywords from EastMoney.")
+                
+                # Save to cache
+                try:
+                    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+                    with open(cache_path, 'w', encoding='utf-8') as f:
+                        json.dump({
+                            "updated_at": datetime.now().isoformat(),
+                            "data": cache_list
+                        }, f, ensure_ascii=False)
+                except Exception as e:
+                    logger.warning(f"Failed to save keywords cache: {e}")
+
             except Exception as e:
                 logger.warning(f"Failed to load real-time stock list: {e}")
                 common_entities = [
@@ -191,10 +273,28 @@ class NewsProcessor:
             
         return cleaned.strip()
 
+    def clean_title(self, text: str) -> str:
+        """Specific cleaning for Titles"""
+        if not text:
+            return ""
+        # Remove HTML tags
+        text = re.sub(r'<[^>]+>', '', text)
+        # Remove source prefixes like "财联社3月6日电，" or "财联社3月6日讯，"
+        # Pattern: 2-6 chars (source) + date + 电/讯 + comma/space/colon
+        text = re.sub(r'^.{2,6}\d{1,2}月\d{1,2}日[电讯][，,:：\s]', '', text)
+        
+        # Remove brackets but keep content
+        text = re.sub(r'[【】\[\]]', ' ', text)
+        
+        # Remove extra spaces
+        text = re.sub(r'\s+', ' ', text)
+        
+        return text.strip()
+
     def calculate_simhash(self, text: str) -> Simhash:
         return Simhash(text)
 
-    def is_duplicate(self, current_simhash: Simhash, current_text: str, current_time: datetime) -> Tuple[bool, List[str]]:
+    def is_duplicate(self, current_simhash: Simhash, current_text: str, current_title: str, current_time: datetime, current_source: str = None) -> Tuple[bool, List[str]]:
         """
         Check if duplicate.
         Returns: (is_duplicate_new, ids_to_delete)
@@ -202,38 +302,68 @@ class NewsProcessor:
         cutoff = current_time - timedelta(hours=24)
         self.simhash_cache = [x for x in self.simhash_cache if x['time'] > cutoff]
         
-        ids_to_delete = []
+        ids_to_delete = set()
         is_dupe = False
         
         for item in self.simhash_cache:
-            # 1. SimHash Distance Check
+            # Check source and time for stricter/relaxed logic
+            same_source = current_source and item.get('source') == current_source
+            # If item['time'] is timezone aware and current_time is naive (or vice versa), this might fail.
+            # Assuming both are either naive or aware.
+            try:
+                time_diff = abs((current_time - item['time']).total_seconds())
+            except:
+                time_diff = 999999
+
+            # 1. SimHash Distance Check (Content)
             distance = current_simhash.distance(item['hash'])
-            if distance <= 3:
-                # Found a very similar item.
-                # Usually we discard the new one.
+            threshold = 3
+            if same_source and time_diff < 300: # 5 mins
+                threshold = 6 # Relaxed threshold for same source & time
+
+            if distance <= threshold:
                 is_dupe = True
-                # But check if new one is significantly longer/better?
-                # For now, stick to simple SimHash logic: first come first serve.
                 break
             
-            # 2. Containment Check
+            # 2. Content Containment Check
             cached_text = item.get('text', '')
-            if not cached_text or not current_text:
-                continue
+            if cached_text and current_text:
+                if len(current_text) < len(cached_text) and current_text in cached_text:
+                    is_dupe = True
+                    break
+                if len(cached_text) < len(current_text) and cached_text in current_text:
+                    # We don't set is_dupe = True here because we want to keep the new one
+                    if item.get('id'):
+                        ids_to_delete.add(item['id'])
+            
+            # 3. Title Check
+            cached_title = item.get('title', '')
+            if cached_title and current_title:
+                # 3a. Title Containment
+                if len(current_title) > 5 and len(cached_title) > 5:
+                    if current_title in cached_title:
+                        is_dupe = True
+                        break
+                    if cached_title in current_title:
+                         if item.get('id'):
+                            ids_to_delete.add(item['id'])
                 
-            # If new text is contained in old text (and old text is longer) -> New is duplicate
-            if len(current_text) < len(cached_text) and current_text in cached_text:
-                is_dupe = True
-                break
-                
-            # If old text is contained in new text (and new text is longer) -> Old is duplicate (delete old)
-            if len(cached_text) < len(current_text) and cached_text in current_text:
-                # Mark old for deletion, but keep checking other items
-                # We don't set is_dupe = True here because we want to keep the new one
-                if item.get('id'):
-                    ids_to_delete.append(item['id'])
+                # 3b. Title Similarity
+                if not is_dupe and len(current_title) > 8 and len(cached_title) > 8:
+                    ratio = SequenceMatcher(None, current_title, cached_title).ratio()
+                    sim_threshold = 0.85
+                    if same_source and time_diff < 300:
+                        sim_threshold = 0.6 # Relaxed for same source & time
+
+                    if ratio > sim_threshold:
+                         if len(current_title) < len(cached_title):
+                             is_dupe = True
+                             break
+                         else:
+                             if item.get('id'):
+                                ids_to_delete.add(item['id'])
         
-        return is_dupe, ids_to_delete
+        return is_dupe, list(ids_to_delete)
 
     def extract_entities(self, text: str) -> List[Dict[str, Any]]:
         keywords_found = self.keyword_processor.extract_keywords(text)
@@ -307,13 +437,27 @@ class NewsProcessor:
             return None
             
         clean_content = self.clean_text(raw_content, source=news_item.get('source'))
+        clean_title = self.clean_title(news_item.get('title', ''))
         news_item['clean_content'] = clean_content
         
+        # Determine time for deduplication
         current_time = datetime.now()
+        t_val = news_item.get('created_at') or news_item.get('time') or news_item.get('scrapedAt')
+        if t_val:
+            try:
+                if isinstance(t_val, str):
+                    # Handle common formats
+                    t_val = t_val.replace(' ', 'T')
+                    current_time = datetime.fromisoformat(t_val)
+                elif isinstance(t_val, datetime):
+                    current_time = t_val
+            except: pass
+            
+        current_source = news_item.get('source')
         simhash = self.calculate_simhash(clean_content)
         
         if len(clean_content) > 10: # Lowered threshold slightly
-            is_dupe, ids_to_delete = self.is_duplicate(simhash, clean_content, current_time)
+            is_dupe, ids_to_delete = self.is_duplicate(simhash, clean_content, clean_title, current_time, current_source)
             
             if ids_to_delete:
                 logger.info(f"Found {len(ids_to_delete)} inferior duplicates to delete.")
@@ -330,7 +474,9 @@ class NewsProcessor:
             'hash': simhash, 
             'time': current_time,
             'id': news_item.get('id'),
-            'text': clean_content
+            'text': clean_content,
+            'title': clean_title,
+            'source': current_source
         })
         news_item['simhash'] = simhash.value
         

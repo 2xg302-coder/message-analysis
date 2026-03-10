@@ -3,6 +3,10 @@ from pydantic import BaseModel
 from services.analyzer import get_analysis_status, set_analysis_status
 from services.entity_miner import get_entity_miner_result
 
+from core.logging import get_logger
+
+logger = get_logger("analysis_router")
+
 router = APIRouter(prefix="/api/analysis")
 
 class AnalysisControl(BaseModel):
@@ -23,11 +27,23 @@ async def get_entity_graph(
     force: bool = Query(False, description="Force refresh cache"),
     type: str = Query("cooccurrence", description="Graph type: 'cooccurrence' or 'causal'")
 ):
-    """
-    Get entity graph data for visualization.
-    """
-    graph_data, _ = await get_entity_miner_result(hours=hours, force_refresh=force, graph_type=type)
-    return {"success": True, "data": graph_data}
+    try:
+        graph_data, clusters = await get_entity_miner_result(hours=hours, force_refresh=force, graph_type=type)
+        return {
+            "success": True, 
+            "data": {
+                "nodes": graph_data.get("nodes", []),
+                "links": graph_data.get("links", []),
+                "clusters": clusters
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error generating entity graph: {e}")
+        return {
+            "success": False,
+            "data": {"nodes": [], "links": []},
+            "error": str(e)
+        }
 
 @router.get("/hot-clusters")
 async def get_hot_clusters(

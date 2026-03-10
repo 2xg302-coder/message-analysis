@@ -305,6 +305,24 @@ class NewsService:
             return item_a, item_b
         return item_b, item_a
 
+    def _clean_title(self, text: str) -> str:
+        """Specific cleaning for Titles"""
+        if not text:
+            return ""
+        # Remove HTML tags
+        text = re.sub(r'<[^>]+>', '', text)
+        # Remove source prefixes like "财联社3月6日电，" or "财联社3月6日讯，"
+        # Pattern: 2-6 chars (source) + date + 电/讯 + comma/space/colon
+        text = re.sub(r'^.{2,6}\d{1,2}月\d{1,2}日[电讯][，,:：\s]', '', text)
+        
+        # Remove brackets but keep content
+        text = re.sub(r'[【】\[\]]', ' ', text)
+        
+        # Remove extra spaces
+        text = re.sub(r'\s+', ' ', text)
+        
+        return text.strip()
+
     async def scan_cross_source_duplicates(
         self,
         lookback_hours: int = 24,
@@ -356,6 +374,18 @@ class NewsService:
             prepared = dict(row)
             prepared["_clean_text"] = text
             prepared["_compare_text"] = compare_text
+            prepared["_clean_title"] = self._clean_title(row.get("title", ""))
+            
+            # Parse datetime for comparison
+            try:
+                dt_str = row.get("created_at")
+                if dt_str:
+                    prepared["_dt"] = datetime.fromisoformat(dt_str)
+                else:
+                    prepared["_dt"] = datetime.min
+            except:
+                prepared["_dt"] = datetime.min
+                
             prepared["_simhash_obj"] = sh
             candidates.append(prepared)
 
@@ -367,11 +397,30 @@ class NewsService:
             left = candidates[i]
             for j in range(i + 1, len(candidates)):
                 right = candidates[j]
-                if left.get("source") == right.get("source"):
-                    continue
+                
+                # Allow cross-source AND same-source checks
+                same_source = left.get("source") == right.get("source")
+                
+                # Calculate time diff
+                time_diff = abs((left["_dt"] - right["_dt"]).total_seconds())
+                
+                # Adjust thresholds for same-source & short time interval
+                current_dist_threshold = distance_threshold
+                if same_source and time_diff < 300: # 5 mins
+                    current_dist_threshold = max(current_dist_threshold, 12) # Relaxed (larger distance allowed) - wait SimHash distance logic?
+                    # SimHash distance: 0 is identical. 
+                    # If we want to catch MORE duplicates (relaxed), we should INCREASE the threshold.
+                    # Default is 6. If same source & close time, we expect high similarity but maybe slight changes.
+                    # Wait, if same source, usually they are IDENTICAL or near identical.
+                    # But user case is "content almost same".
+                    # Let's use 6 as base. If same source & < 5min, maybe allow 8?
+                    # Actually, if same source, we might want stricter?
+                    # No, user complained about duplicates NOT being caught. So we need to catch MORE.
+                    # So we relax the condition (increase threshold).
+                    pass
 
                 distance = left["_simhash_obj"].distance(right["_simhash_obj"])
-                similar = distance <= distance_threshold
+                similar = distance <= current_dist_threshold
                 reason = "simhash"
 
                 if not similar:
@@ -391,6 +440,28 @@ class NewsService:
                         if ratio >= 0.93:
                             similar = True
                             reason = "ratio"
+                            
+                # Title Check
+                if not similar:
+                    lt_title = left["_clean_title"]
+                    rt_title = right["_clean_title"]
+                    if lt_title and rt_title:
+                        # Title Containment
+                        if len(lt_title) > 5 and len(rt_title) > 5:
+                            if lt_title in rt_title or rt_title in lt_title:
+                                similar = True
+                                reason = "title_containment"
+                        
+                        # Title Similarity
+                        if not similar and len(lt_title) > 8 and len(rt_title) > 8:
+                            title_ratio = difflib.SequenceMatcher(None, lt_title, rt_title).ratio()
+                            title_threshold = 0.85
+                            if same_source and time_diff < 300:
+                                title_threshold = 0.6 # Relaxed for same source & time
+                            
+                            if title_ratio > title_threshold:
+                                similar = True
+                                reason = "title_similarity"
 
                 if not similar:
                     continue

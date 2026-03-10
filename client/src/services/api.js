@@ -100,4 +100,10 @@ export const setIngestionSourceEnabled = (source, enabled) => api.put(`/ingestio
 export const scanDedupNews = (params) => api.get('/news/dedup/scan', { params });
 export const deleteDedupNews = (ids) => api.post('/news/dedup/delete', { ids });
 
+// Maintenance
+export const getMaintenanceStats = () => api.get('/maintenance/stats');
+export const cleanupNews = (params) => api.post('/maintenance/cleanup', params);
+export const deleteSourceNews = (source) => api.post('/maintenance/delete-source', { source });
+export const vacuumDatabase = () => api.post('/maintenance/vacuum');
+
 export default api;
