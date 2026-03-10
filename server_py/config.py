@@ -4,6 +4,23 @@ from dotenv import load_dotenv
 # Load .env file
 load_dotenv()
 
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except Exception:
+        return default
+
 class Settings:
     # LLM Settings (Main/Large Model - e.g. DeepSeek, OpenRouter High-end)
     # 支持多 Key 轮询：使用逗号分隔，例如 "key1,key2"
@@ -129,6 +146,17 @@ class Settings:
     # API 认证配置
     # 如果设置了此值，则必须在请求头中携带 X-API-Key: YOUR_SECRET
     API_SECRET = os.getenv("API_SECRET")
+
+    APP_STARTUP_BACKGROUND = _env_bool("APP_STARTUP_BACKGROUND", True)
+    APP_STARTUP_DELAY_SECONDS = _env_int("APP_STARTUP_DELAY_SECONDS", 0)
+
+    ANALYSIS_STARTUP_GRACE_SECONDS = _env_int("ANALYSIS_STARTUP_GRACE_SECONDS", 120)
+    ANALYSIS_REALTIME_INTERVAL_SECONDS = _env_int("ANALYSIS_REALTIME_INTERVAL_SECONDS", 5)
+    ANALYSIS_DAILY_BATCH_ENABLED = _env_bool("ANALYSIS_DAILY_BATCH_ENABLED", True)
+    ANALYSIS_DAILY_BATCH_HOUR = _env_int("ANALYSIS_DAILY_BATCH_HOUR", 3)
+    ANALYSIS_DAILY_BATCH_MINUTE = _env_int("ANALYSIS_DAILY_BATCH_MINUTE", 30)
+    ANALYSIS_DAILY_BATCH_LIMIT = _env_int("ANALYSIS_DAILY_BATCH_LIMIT", 200)
+    ANALYSIS_DAILY_BATCH_MODE = os.getenv("ANALYSIS_DAILY_BATCH_MODE", "fast")
 
     # Embedding Settings
     # 默认尝试使用本地模型 (FastEmbed/BGE)，若失败则回退到在线 API

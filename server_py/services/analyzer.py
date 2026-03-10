@@ -2,9 +2,10 @@ import asyncio
 import logging
 import os
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 
 from services.news_service import news_service
 from llm_service import analyze_news
@@ -21,6 +22,8 @@ current_tasks: Dict[str, Dict[str, Any]] = {}
 failed_tasks_count = 0
 processed_count = 0
 last_processed_time = datetime.now()
+analysis_ready_at = datetime.now()
+daily_batch_running = False
 
 # Concurrency control
 fast_sem: Optional[asyncio.Semaphore] = None
@@ -112,6 +115,8 @@ def get_analysis_status():
         "isRunning": is_running,
         "currentTasks": list(current_tasks.values()),
         "schedulerRunning": scheduler.running,
+        "dailyBatchRunning": daily_batch_running,
+        "analysisReadyAt": analysis_ready_at.isoformat() if analysis_ready_at else None,
         "failedCount": failed_tasks_count,
         "processedCount": processed_count,
         "lastProcessedTime": last_processed_time.isoformat() if last_processed_time else None,
@@ -145,6 +150,16 @@ async def get_semaphore(mode: str = "fast"):
         logger.info(f"Initializing Standard Semaphore with {total_concurrency} slots (Sum of {client_count} clients)")
         standard_sem = asyncio.Semaphore(total_concurrency)
     return standard_sem
+
+
+def _get_mode_concurrency(mode: str) -> int:
+    if mode == "fast":
+        if settings.FAST_LLM_CONFIGS:
+            return sum(config.get("concurrency", 4) for config in settings.FAST_LLM_CONFIGS)
+        return 4
+    if settings.LLM_CONFIGS:
+        return sum(config.get("concurrency", 8) for config in settings.LLM_CONFIGS)
+    return 8
 
 async def process_single_news(news: Dict[str, Any], mode: str = "fast"):
     global current_tasks, failed_tasks_count, processed_count, last_processed_time
@@ -201,7 +216,12 @@ async def process_single_news(news: Dict[str, Any], mode: str = "fast"):
                 del current_tasks[news_id]
 
 async def analysis_job():
+    global analysis_ready_at, daily_batch_running
     if not is_running:
+        return
+    if daily_batch_running:
+        return
+    if datetime.now() < analysis_ready_at:
         return
 
     try:
@@ -214,11 +234,7 @@ async def analysis_job():
         
         processing_mode = "fast"
         await get_semaphore(processing_mode)
-
-        if settings.FAST_LLM_CONFIGS:
-            max_concurrency = sum(config.get("concurrency", 4) for config in settings.FAST_LLM_CONFIGS)
-        else:
-            max_concurrency = 4
+        max_concurrency = _get_mode_concurrency(processing_mode)
 
         current_count = sum(1 for task in current_tasks.values() if task.get("mode") == processing_mode)
         free_slots = max_concurrency - current_count
@@ -247,21 +263,67 @@ async def analysis_job():
     except Exception as e:
         logger.error(f"Analysis job error: {e}")
 
+
+async def daily_batch_job():
+    global daily_batch_running
+    if not is_running:
+        return
+    if daily_batch_running:
+        return
+    daily_batch_running = True
+    try:
+        mode = settings.ANALYSIS_DAILY_BATCH_MODE if settings.ANALYSIS_DAILY_BATCH_MODE in {"fast", "standard"} else "fast"
+        limit = max(1, settings.ANALYSIS_DAILY_BATCH_LIMIT)
+        max_concurrency = max(1, _get_mode_concurrency(mode))
+        processed = 0
+        while processed < limit:
+            batch_size = min(max_concurrency, limit - processed)
+            news_list = await news_service.get_unanalyzed_news(limit=batch_size)
+            if not news_list:
+                break
+            await asyncio.gather(*[process_single_news(news, mode=mode) for news in news_list])
+            processed += len(news_list)
+            if len(news_list) < batch_size:
+                break
+        logger.info(f"Daily batch analysis completed. processed={processed}, limit={limit}, mode={mode}")
+    except Exception as e:
+        logger.error(f"Daily batch analysis error: {e}")
+    finally:
+        daily_batch_running = False
+
 async def start_scheduler():
+    global analysis_ready_at
     await load_sentiment_dicts()
+    analysis_ready_at = datetime.now() + timedelta(seconds=max(0, settings.ANALYSIS_STARTUP_GRACE_SECONDS))
     
-    # Add job: run every 5 seconds (High Frequency) to avoid backlog
     scheduler.add_job(
         analysis_job, 
-        IntervalTrigger(seconds=5), 
+        IntervalTrigger(seconds=max(1, settings.ANALYSIS_REALTIME_INTERVAL_SECONDS)), 
         id='analysis_job', 
         replace_existing=True,
         max_instances=1,
         coalesce=True
     )
+
+    if settings.ANALYSIS_DAILY_BATCH_ENABLED:
+        scheduler.add_job(
+            daily_batch_job,
+            CronTrigger(
+                hour=max(0, min(23, settings.ANALYSIS_DAILY_BATCH_HOUR)),
+                minute=max(0, min(59, settings.ANALYSIS_DAILY_BATCH_MINUTE))
+            ),
+            id='daily_batch_job',
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True
+        )
     
     scheduler.start()
-    logger.info("Analysis Scheduler started with 5 second interval.")
+    logger.info(
+        f"Analysis Scheduler started. interval={max(1, settings.ANALYSIS_REALTIME_INTERVAL_SECONDS)}s, "
+        f"startup_grace={max(0, settings.ANALYSIS_STARTUP_GRACE_SECONDS)}s, "
+        f"daily_batch={'on' if settings.ANALYSIS_DAILY_BATCH_ENABLED else 'off'}"
+    )
 
 def stop_scheduler():
     if scheduler.running:

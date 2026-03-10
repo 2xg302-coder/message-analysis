@@ -20,19 +20,36 @@ from services.analyzer import start_scheduler as start_analysis_scheduler, stop_
 from routers import news, analysis, calendar, storyline, monitor, reports, ingestion
 
 logger = get_logger("main")
+_bootstrap_task = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _bootstrap_task
     logger.info("Application starting up...")
     from core.database_orm import init_db
     await init_db()
 
-    await start_ingestion_scheduler()
-    await start_analysis_scheduler()
+    async def bootstrap_services():
+        try:
+            if settings.APP_STARTUP_DELAY_SECONDS > 0:
+                await asyncio.sleep(settings.APP_STARTUP_DELAY_SECONDS)
+            await start_ingestion_scheduler()
+            await start_analysis_scheduler()
+            logger.info("Background service bootstrap completed.")
+        except Exception as e:
+            logger.error(f"Background service bootstrap failed: {e}")
+
+    if settings.APP_STARTUP_BACKGROUND:
+        _bootstrap_task = asyncio.create_task(bootstrap_services())
+        logger.info("Service bootstrap scheduled in background.")
+    else:
+        await bootstrap_services()
     
     yield
     
     logger.info("Application shutting down...")
+    if _bootstrap_task and not _bootstrap_task.done():
+        _bootstrap_task.cancel()
     stop_ingestion_scheduler()
     stop_analysis_scheduler()
 

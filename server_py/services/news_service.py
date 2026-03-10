@@ -1,8 +1,10 @@
 import json
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set, Tuple
 import difflib
 import re
+import unicodedata
+from collections import Counter
 from simhash import Simhash
 from core.database import db
 from core.logging import get_logger
@@ -746,6 +748,105 @@ class NewsService:
                 result.append(item)
         return result
 
+    def _extract_entity_names(self, entities_data: Any) -> Set[str]:
+        names: Set[str] = set()
+        if isinstance(entities_data, dict):
+            for key in entities_data.keys():
+                if isinstance(key, str) and key.strip():
+                    names.add(key.strip())
+            return names
+        if isinstance(entities_data, list):
+            for item in entities_data:
+                candidate = None
+                if isinstance(item, dict):
+                    candidate = item.get("name")
+                elif isinstance(item, str):
+                    candidate = item
+                if isinstance(candidate, str) and candidate.strip():
+                    names.add(candidate.strip())
+        return names
+
+    def _normalize_entity_name(self, name: str) -> str:
+        if not isinstance(name, str):
+            return ""
+        text = unicodedata.normalize("NFKC", name).strip()
+        if not text:
+            return ""
+        alias_map = {
+            "usa": "美国",
+            "u.s.": "美国",
+            "u.s": "美国",
+            "united states": "美国",
+            "prc": "中国",
+            "russia": "俄罗斯",
+            "uk": "英国",
+            "u.k.": "英国",
+            "eu": "欧盟",
+            "u.n.": "联合国",
+            "un": "联合国"
+        }
+        lowered = text.lower()
+        if lowered in alias_map:
+            text = alias_map[lowered]
+        text = re.sub(r"\s+", "", text)
+        text = re.sub(r"[·•．・]", "", text)
+        text = re.sub(r"[，。、“”‘’；：！？,.!?:;\"'（）()【】\[\]<>《》—\-_/|]", "", text)
+        return text.lower()
+
+    def _pick_entity_cluster_representative(self, names: List[str], freq_counter: Counter) -> str:
+        scored = sorted(
+            names,
+            key=lambda n: (-freq_counter.get(n, 0), len(n), n)
+        )
+        return scored[0]
+
+    def _build_entity_clusters(self, all_entities: Set[str], freq_counter: Counter) -> Tuple[Dict[str, str], Dict[str, Set[str]]]:
+        if not all_entities:
+            return {}, {}
+        normalized_buckets: Dict[str, List[str]] = {}
+        for name in all_entities:
+            normalized = self._normalize_entity_name(name)
+            if not normalized:
+                continue
+            normalized_buckets.setdefault(normalized, []).append(name)
+
+        canonical_map: Dict[str, str] = {}
+        cluster_variants: Dict[str, Set[str]] = {}
+
+        normalized_keys = sorted(normalized_buckets.keys(), key=lambda x: len(x))
+        consumed_keys: Set[str] = set()
+        fuzzy_threshold = 0.88
+
+        for key in normalized_keys:
+            if key in consumed_keys:
+                continue
+            cluster_keys = [key]
+            consumed_keys.add(key)
+            for other_key in normalized_keys:
+                if other_key in consumed_keys:
+                    continue
+                if len(key) >= 2 and key in other_key:
+                    cluster_keys.append(other_key)
+                    consumed_keys.add(other_key)
+                    continue
+                if abs(len(key) - len(other_key)) > 4:
+                    continue
+                ratio = difflib.SequenceMatcher(None, key, other_key).ratio()
+                if ratio >= fuzzy_threshold:
+                    cluster_keys.append(other_key)
+                    consumed_keys.add(other_key)
+
+            cluster_names: List[str] = []
+            for cluster_key in cluster_keys:
+                cluster_names.extend(normalized_buckets.get(cluster_key, []))
+            representative = self._pick_entity_cluster_representative(cluster_names, freq_counter)
+            variants = set(cluster_names)
+            cluster_variants[representative] = variants
+            for variant in variants:
+                canonical_map[variant] = representative
+
+        return canonical_map, cluster_variants
+
     async def _calculate_similarity(self, series: Dict[str, Any], tag: str, target_entities: set, other_entities_map: Dict[str, set]) -> Optional[Dict[str, Any]]:
         """Helper to calculate similarity for a single series (async)"""
         try:
@@ -767,10 +868,11 @@ class NewsService:
                 score = len(intersection) / len(union)
 
             if score > 0:
+                shared_entities = sorted(list(intersection), key=lambda x: (-len(x), x))[:3]
                 return {
                     'tag': other_tag,
                     'score': score,
-                    'shared_entities': list(intersection)[:3],
+                    'shared_entities': shared_entities,
                     'count': series['count'],
                     'latest_date': series['latest_date']
                 }
@@ -799,24 +901,13 @@ class NewsService:
                 entities = set()
                 for item in news_list:
                     analysis = item.get('analysis', {})
-                    if not analysis: continue
-                    ents = analysis.get('entities', {})
-                    
-                    if isinstance(ents, dict):
-                        entities.update(ents.keys())
-                    elif isinstance(ents, list):
-                        for e in ents:
-                            if isinstance(e, dict):
-                                name = e.get('name')
-                            elif isinstance(e, str):
-                                name = e
-                            else:
-                                name = None
-                            if name and isinstance(name, str):
-                                entities.add(name)
+                    if not analysis:
+                        continue
+                    entities.update(self._extract_entity_names(analysis.get('entities', {})))
                 return entities
 
-            target_entities = get_entity_set(target_news)
+            target_raw_entities = get_entity_set(target_news)
+            target_entities = set(target_raw_entities)
             if not target_entities:
                 logger.info(f"No entities found for tag '{tag}'")
                 return []
@@ -849,7 +940,7 @@ class NewsService:
             rows = await self.db.execute_query(query, tuple(params))
             
             # 4. Group entities by tag in memory
-            other_entities_map = {} # tag -> set(entities)
+            other_entities_map = {}
             
             for row in rows:
                 analysis = self._parse_json_field(row['analysis'], {})
@@ -864,20 +955,32 @@ class NewsService:
                 if not matched_tags:
                     continue
                     
-                ents = analysis.get('entities', {})
-                row_entities = set()
-                if isinstance(ents, dict):
-                    row_entities.update(ents.keys())
-                elif isinstance(ents, list):
-                    for e in ents:
-                        name = e.get('name') if isinstance(e, dict) else e
-                        if name and isinstance(name, str):
-                            row_entities.add(name)
+                row_entities = self._extract_entity_names(analysis.get('entities', {}))
                             
                 for t in matched_tags:
                     if t not in other_entities_map:
                         other_entities_map[t] = set()
                     other_entities_map[t].update(row_entities)
+
+            all_entities = set(target_raw_entities)
+            for ents in other_entities_map.values():
+                all_entities.update(ents)
+
+            if all_entities:
+                entity_frequency = Counter()
+                for entity in target_raw_entities:
+                    entity_frequency[entity] += 1
+                for ents in other_entities_map.values():
+                    for entity in ents:
+                        entity_frequency[entity] += 1
+
+                canonical_map, _ = self._build_entity_clusters(all_entities, entity_frequency)
+                if canonical_map:
+                    target_entities = {canonical_map.get(entity, entity) for entity in target_raw_entities}
+                    normalized_other_map = {}
+                    for other_tag, raw_entities in other_entities_map.items():
+                        normalized_other_map[other_tag] = {canonical_map.get(entity, entity) for entity in raw_entities}
+                    other_entities_map = normalized_other_map
 
             # 5. Calculate similarities in memory (CPU bound, but fast for sets)
             tasks = []
