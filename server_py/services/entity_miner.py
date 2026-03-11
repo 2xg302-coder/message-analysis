@@ -32,6 +32,18 @@ class EntityMiner:
     def __init__(self):
         self.graph = nx.Graph()
 
+    def _extract_names_from_list(self, entities_list: list) -> List[str]:
+        names = []
+        for item in entities_list:
+            if isinstance(item, str):
+                names.append(item)
+            elif isinstance(item, dict):
+                if 'name' in item:
+                    names.append(item['name'])
+                else:
+                    names.extend(item.keys())
+        return names
+
     async def fetch_recent_entities(self, hours: int = 2) -> List[List[str]]:
         """
         Fetch news from the last N hours and extract entities.
@@ -64,11 +76,11 @@ class EntityMiner:
                             if isinstance(entities_dict, dict):
                                 entity_lists.append(list(entities_dict.keys()))
                             elif isinstance(entities_dict, list):
-                                entity_lists.append(entities_dict)
+                                entity_lists.append(self._extract_names_from_list(entities_dict))
                         elif isinstance(entities_json, dict):
                              entity_lists.append(list(entities_json.keys()))
                         elif isinstance(entities_json, list):
-                             entity_lists.append(entities_json)
+                             entity_lists.append(self._extract_names_from_list(entities_json))
                             
                     except json.JSONDecodeError:
                         try:

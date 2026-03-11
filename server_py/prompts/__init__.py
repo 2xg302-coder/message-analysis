@@ -23,7 +23,6 @@ ANALYSIS_USER_PROMPT_TEMPLATE = """
 {{
   "summary": "新闻的 30 字以内精炼摘要",
   "entities": {{
-    "股票代码(如有)": "实体名称",
     "AAPL": "Apple",
     "XAU": "黄金", // 大宗商品
     "FED": "美联储" // 机构
@@ -50,7 +49,7 @@ FAST_ANALYSIS_USER_PROMPT_TEMPLATE = """
 {{
   "summary": "简短摘要",
   "tags": ["关键标签"], // 如果命中关注词，请包含 "关注" 标签
-  "entities": {{"代码": "名称"}},
+  "entities": {{"AAPL": "Apple", "FED": "美联储"}},
   "triples": [{{"subject": "A", "predicate": "B", "object": "C"}}], // 三元组
   "event_tag": "事件标签", // 归类到持续性事件名称，无则null
   "event_type": "类型(宏观/公司/地缘/传闻/其他)",

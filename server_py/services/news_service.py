@@ -12,6 +12,12 @@ from core.logging import get_logger
 logger = get_logger("news_service")
 
 class NewsService:
+    BLACKLIST_ENTITIES = {
+        "代码", "名称", "实体名称", "股票代码", "股票代码(如有)", "如有",
+        "Entity", "Name", "Code", "Symbol", "entity_name", "stock_code",
+        "未知", "unknown", "null", "None"
+    }
+
     def __init__(self, database=None):
         self.db = database or db
 
@@ -584,71 +590,125 @@ class NewsService:
             analyzed = analyzed_res[0]['count'] if analyzed_res else 0
             
             # Trend Query - Last 24 hours or specified range
-            trend_params = list(params)
-            trend_where = where_clause
+            # We need to query collected (created_at) and processed (analyzed_at) separately
+            # to reflect true throughput.
             
+            cutoff_time = None
             if not start_date and not end_date:
-                # Default to last 24 hours if no range specified
                 now = datetime.now()
                 current_hour = now.replace(minute=0, second=0, microsecond=0)
-                cutoff = (current_hour - timedelta(hours=23)).isoformat()
-                
-                # Careful not to duplicate WHERE
-                if not trend_where:
-                     trend_where = " WHERE created_at >= ?"
-                     trend_params = [cutoff]
-                else:
-                     trend_where += " AND created_at >= ?"
-                     trend_params.append(cutoff)
+                cutoff_time = (current_hour - timedelta(hours=23)).isoformat()
+            elif start_date:
+                cutoff_time = start_date
+
+            # 1. Collected Trends (based on created_at)
+            collected_where = " WHERE created_at >= ?"
+            collected_params = [cutoff_time] if cutoff_time else []
             
-            trends_query = f'''
+            if start_date and end_date:
+                collected_where = " WHERE created_at >= ? AND created_at <= ?"
+                collected_params = [start_date, end_date + "T23:59:59.999999"]
+            elif not cutoff_time: # No date filter at all
+                collected_where = "" 
+                
+            if exclude_source:
+                prefix = " AND" if collected_where else " WHERE"
+                collected_where += f"{prefix} source != ?"
+                collected_params.append(exclude_source)
+
+            collected_query = f'''
                 SELECT 
-                    substr(created_at, 12, 2) || ':00' as hour, 
-                    count(*) as count, 
-                    sum(case when analysis is not null then 1 else 0 end) as analyzed_count,
-                    substr(created_at, 1, 13) as date_hour
+                    substr(created_at, 1, 13) as date_hour,
+                    count(*) as count
                 FROM news 
-                {trend_where}
+                {collected_where}
                 GROUP BY date_hour 
-                ORDER BY date_hour ASC 
             '''
             
-            # If no specific range, limit to 24 (though date filter should handle it mostly)
-            if not start_date and not end_date:
-                # We need enough rows to cover 24 hours, but GROUP BY reduces rows.
-                # Removing LIMIT on source query to ensure aggregation is correct.
-                pass
-                
-            trends = await self.db.execute_query(trends_query, tuple(trend_params))
+            collected_rows = await self.db.execute_query(collected_query, tuple(collected_params))
+
+            # 2. Processed Trends (based on analyzed_at)
+            # Note: analyzed_at might be NULL for pending news
+            processed_where = " WHERE analyzed_at >= ? AND analysis IS NOT NULL"
+            processed_params = [cutoff_time] if cutoff_time else []
             
-            # Post-process to ensure full 24h timeline if default range
+            if start_date and end_date:
+                processed_where = " WHERE analyzed_at >= ? AND analyzed_at <= ? AND analysis IS NOT NULL"
+                processed_params = [start_date, end_date + "T23:59:59.999999"]
+            elif not cutoff_time:
+                 processed_where = " WHERE analysis IS NOT NULL"
+                 processed_params = []
+
+            if exclude_source:
+                processed_where += " AND source != ?"
+                processed_params.append(exclude_source)
+
+            processed_query = f'''
+                SELECT 
+                    substr(analyzed_at, 1, 13) as date_hour,
+                    count(*) as count
+                FROM news 
+                {processed_where}
+                GROUP BY date_hour 
+            '''
+            
+            processed_rows = await self.db.execute_query(processed_query, tuple(processed_params))
+
+            # 3. Merge Data
+            data_map = {}
+            
+            for row in collected_rows:
+                dh = row['date_hour']
+                if not dh: continue
+                if dh not in data_map:
+                    data_map[dh] = {'count': 0, 'analyzed_count': 0}
+                data_map[dh]['count'] = row['count']
+                
+            for row in processed_rows:
+                dh = row['date_hour']
+                if not dh: continue
+                if dh not in data_map:
+                    data_map[dh] = {'count': 0, 'analyzed_count': 0}
+                data_map[dh]['analyzed_count'] = row['count']
+            
+            trends = []
+            
+            # If default 24h range, ensure continuity
             if not start_date and not end_date:
                 now = datetime.now()
                 current_hour = now.replace(minute=0, second=0, microsecond=0)
                 
-                # Create map from DB results
-                # row['date_hour'] format from SQLite substr is "YYYY-MM-DDTHH"
-                data_map = {row['date_hour']: {'count': row['count'], 'analyzed_count': row['analyzed_count']} for row in trends}
-                
-                full_trends = []
-                # Generate last 24 hours (including current hour)
-                # 0 to 23 hours ago
                 for i in range(23, -1, -1):
                     t = current_hour - timedelta(hours=i)
                     key = t.strftime("%Y-%m-%dT%H")
-                    
                     label = t.strftime("%H:00")
                     
                     entry = data_map.get(key, {'count': 0, 'analyzed_count': 0})
                     
-                    full_trends.append({
+                    trends.append({
                         "hour": label,
                         "count": entry['count'],
                         "analyzed_count": entry['analyzed_count'],
                         "date_hour": key
                     })
-                trends = full_trends
-            
+            else:
+                # Custom range: sort by date_hour
+                sorted_keys = sorted(data_map.keys())
+                for key in sorted_keys:
+                    # Parse hour from key (YYYY-MM-DDTHH)
+                    try:
+                        hour_label = key.split('T')[1] + ":00"
+                    except:
+                        hour_label = key # Fallback
+                        
+                    entry = data_map[key]
+                    trends.append({
+                        "hour": hour_label,
+                        "count": entry['count'],
+                        "analyzed_count": entry['analyzed_count'],
+                        "date_hour": key
+                    })
+
             return {
                 'total': total,
                 'analyzed': analyzed,
@@ -672,19 +732,9 @@ class NewsService:
         
         for row in rows:
             ents = self._parse_json_field(row['entities'], {})
-            if isinstance(ents, dict):
-                for name in ents.keys():
-                    entity_counts[name] = entity_counts.get(name, 0) + 1
-            elif isinstance(ents, list):
-                for item in ents:
-                    name = None
-                    if isinstance(item, dict):
-                        name = item.get('name')
-                    elif isinstance(item, str):
-                        name = item
-                    
-                    if name:
-                        entity_counts[name] = entity_counts.get(name, 0) + 1
+            names = self._extract_entity_names(ents)
+            for name in names:
+                entity_counts[name] = entity_counts.get(name, 0) + 1
                 
         sorted_entities = sorted(entity_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
         return [{"name": name, "count": count} for name, count in sorted_entities]
@@ -823,7 +873,7 @@ class NewsService:
         names: Set[str] = set()
         if isinstance(entities_data, dict):
             for key in entities_data.keys():
-                if isinstance(key, str) and key.strip():
+                if isinstance(key, str) and key.strip() and key.strip() not in self.BLACKLIST_ENTITIES:
                     names.add(key.strip())
             return names
         if isinstance(entities_data, list):
@@ -833,12 +883,14 @@ class NewsService:
                     candidate = item.get("name")
                 elif isinstance(item, str):
                     candidate = item
-                if isinstance(candidate, str) and candidate.strip():
+                if isinstance(candidate, str) and candidate.strip() and candidate.strip() not in self.BLACKLIST_ENTITIES:
                     names.add(candidate.strip())
         return names
 
     def _normalize_entity_name(self, name: str) -> str:
         if not isinstance(name, str):
+            return ""
+        if name in self.BLACKLIST_ENTITIES:
             return ""
         text = unicodedata.normalize("NFKC", name).strip()
         if not text:
@@ -1125,6 +1177,29 @@ class NewsService:
             return True
         except Exception as e:
             logger.error(f"Error updating watchlist: {e}")
+            return False
+
+    async def get_blocklist(self) -> List[str]:
+        rows = await self.db.execute_query('SELECT keyword FROM blocklist ORDER BY created_at ASC')
+        return [row['keyword'] for row in rows]
+
+    async def add_blocklist_item(self, keyword: str) -> bool:
+        if not keyword:
+            return False
+        try:
+            current_time = datetime.now().isoformat()
+            await self.db.execute_update('INSERT OR IGNORE INTO blocklist (keyword, created_at) VALUES (?, ?)', (keyword, current_time))
+            return True
+        except Exception as e:
+            logger.error(f"Error adding blocklist item {keyword}: {e}")
+            return False
+
+    async def remove_blocklist_item(self, keyword: str) -> bool:
+        try:
+            await self.db.execute_update('DELETE FROM blocklist WHERE keyword = ?', (keyword,))
+            return True
+        except Exception as e:
+            logger.error(f"Error removing blocklist item {keyword}: {e}")
             return False
 
 news_service = NewsService()

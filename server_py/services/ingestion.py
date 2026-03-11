@@ -19,6 +19,7 @@ SOURCE_JOB_CONFIGS = {
     "ITHome": {"job_id": "ithome_ingestion", "trigger": lambda: IntervalTrigger(minutes=10)},
     "CCTV": {"job_id": "cctv_ingestion", "trigger": lambda: IntervalTrigger(minutes=60)},
     "PeopleDaily": {"job_id": "peopledaily_ingestion", "trigger": lambda: IntervalTrigger(minutes=30)},
+    "Yonhap": {"job_id": "yonhap_ingestion", "trigger": lambda: IntervalTrigger(minutes=30)},
 }
 source_collectors: Dict[str, object] = {}
 news_processor = None
@@ -95,7 +96,11 @@ async def run_calendar_collection(collector, processor):
 
 async def _ensure_source_config_defaults():
     current_time = datetime.now().isoformat()
-    params = [(source, 1, current_time) for source in SOURCE_JOB_CONFIGS.keys()]
+    params = []
+    for source in SOURCE_JOB_CONFIGS.keys():
+        enabled = 0 if source == "Yonhap" else 1
+        params.append((source, enabled, current_time))
+    
     await db.execute_many(
         "INSERT OR IGNORE INTO ingestion_source_config (source, enabled, updated_at) VALUES (?, ?, ?)",
         params
@@ -169,6 +174,7 @@ async def start_ingestion_scheduler():
         from collectors.ithome_collector import ITHomeCollector
         from collectors.cctv_collector import CCTVCollector
         from collectors.people_daily_collector import PeopleDailyCollector
+        from collectors.yonhap_collector import YonhapCollector
         from services.processor import NewsProcessor
         
         source_collectors["Sina"] = SinaCollector()
@@ -176,6 +182,7 @@ async def start_ingestion_scheduler():
         source_collectors["ITHome"] = ITHomeCollector()
         source_collectors["CCTV"] = CCTVCollector()
         source_collectors["PeopleDaily"] = PeopleDailyCollector()
+        source_collectors["Yonhap"] = YonhapCollector()
         calendar_collector_instance = CalendarCollector(data_dir="data")
         news_processor = NewsProcessor()
         # Initialize processor async state (cache)
@@ -228,6 +235,9 @@ async def start_ingestion_scheduler():
 
             if current_enabled_map.get("PeopleDaily", True):
                 await run_ingestion(source_collectors["PeopleDaily"], "PeopleDaily", news_processor)
+            
+            if current_enabled_map.get("Yonhap", False):
+                await run_ingestion(source_collectors["Yonhap"], "Yonhap", news_processor)
             
             # Calendar - Already has check inside run_calendar_collection
             await run_calendar_collection(calendar_collector_instance, news_processor)

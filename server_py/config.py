@@ -170,4 +170,26 @@ class Settings:
     # Vector DB Path
     VECTOR_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "chroma_db"))
 
+    # QQ Bot Notification Settings
+    # Mode: 'go-cqhttp' (default) or 'official' (QQ Official Bot)
+    QQ_BOT_MODE = os.getenv("QQ_BOT_MODE", "go-cqhttp")
+    
+    # Common Settings
+    NOTIFICATION_MIN_SCORE = _env_int("NOTIFICATION_MIN_SCORE", 7)
+
+    # 1. go-cqhttp Settings
+    QQ_BOT_API_URL = os.getenv("QQ_BOT_API_URL") # e.g. http://localhost:5700
+    QQ_BOT_ACCESS_TOKEN = os.getenv("QQ_BOT_ACCESS_TOKEN")
+    QQ_TARGET_GROUP_ID = os.getenv("QQ_TARGET_GROUP_ID") 
+    QQ_TARGET_USER_ID = os.getenv("QQ_TARGET_USER_ID") 
+
+    # 2. QQ Official Bot Settings
+    # Get these from https://q.qq.com -> Developer Settings -> Robot Token
+    QQ_BOT_APP_ID = os.getenv("QQ_BOT_APP_ID")
+    QQ_BOT_TOKEN = os.getenv("QQ_BOT_TOKEN")
+    # Channel ID (子频道 ID) - Essential for official bot notifications
+    QQ_CHANNEL_ID = os.getenv("QQ_CHANNEL_ID")
+    # Sandbox Mode (True/False)
+    QQ_BOT_SANDBOX = _env_bool("QQ_BOT_SANDBOX", False)
+
 settings = Settings()

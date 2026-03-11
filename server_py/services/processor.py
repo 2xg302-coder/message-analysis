@@ -19,7 +19,9 @@ class NewsProcessor:
         self.keyword_processor = KeywordProcessor()
         self.simhash_cache: List[Dict[str, Any]] = [] # {simhash, time, id, text}
         self.watchlist_keywords = []
+        self.blocklist_keywords = []
         self.last_watchlist_update = datetime.min
+        self.last_blocklist_update = datetime.min
         self.expected_events: Dict[str, List[Dict[str, Any]]] = {}
         self.load_expected_events()
         self.rules = {
@@ -108,6 +110,13 @@ class NewsProcessor:
                 logger.info(f"Loaded {len(self.watchlist_keywords)} watchlist keywords.")
             except Exception as e:
                 logger.error(f"Error loading watchlist: {e}")
+
+            # Load Blocklist
+            try:
+                self.blocklist_keywords = await news_service.get_blocklist()
+                logger.info(f"Loaded {len(self.blocklist_keywords)} blocklist keywords.")
+            except Exception as e:
+                logger.error(f"Error loading blocklist: {e}")
 
             recent_news = await news_service.get_news(limit=1000)
             count = 0
@@ -273,6 +282,59 @@ class NewsProcessor:
             
         return cleaned.strip()
 
+    def filter_yonhap_news(self, news_item: Dict[str, Any]) -> bool:
+        """
+        Filter Yonhap news to keep only:
+        - Politics (All)
+        - Major Economy (Filtered by keywords)
+        - North Korea related (All)
+        """
+        title = news_item.get('title', '')
+        content = news_item.get('content', '') or ''
+        category = news_item.get('raw_tags', '') # Set in collector
+        
+        text = (title + " " + content).lower()
+        
+        # 1. North Korea Related (Highest Priority - Keep from any category)
+        nk_keywords = [
+            "朝鲜", "北韩", "金正恩", "金与正", "平壤", "劳动党", "人民军", 
+            "核试验", "导弹", "发射", "挑衅", "非军事区", "板门店", "开城", 
+            "统一部", "脱北", "朝方", "韩朝", "朝韩", "军事分界线"
+        ]
+        if any(k in text for k in nk_keywords):
+            return True
+            
+        # 2. Politics
+        # If category is explicitly politics, keep it.
+        if category == 'politics':
+            return True
+            
+        # Also check keywords for politics in other categories
+        politics_keywords = [
+            "总统", "尹锡悦", "国会", "执政党", "在野党", "国民力量", "共同民主党", 
+            "选举", "青瓦台", "龙山", "外交部", "国防部", "韩美", "韩中", "韩日", 
+            "峰会", "会谈", "大使", "长官", "总理"
+        ]
+        if any(k in text for k in politics_keywords):
+            return True
+            
+        # 3. Major Economy
+        # Keywords for major economic events
+        economy_keywords = [
+            "gdp", "增长率", "央行", "利率", "基准利率", "通胀", "物价", "cpi", "ppi", 
+            "出口", "进口", "贸易收支", "半导体", "芯片", "三星电子", "sk海力士", "现代汽车", 
+            "电池", "汇率", "韩元", "kospi", "kosdaq", "预算", "财政", "失业率", "就业",
+            "自由贸易协定", "fta"
+        ]
+        
+        # If category is economy, we still filter by keywords to ensure "Major"
+        # Or should we be more lenient for 'economy' category?
+        # User said "只关注重大经济", so filtering is safer.
+        if any(k in text for k in economy_keywords):
+            return True
+            
+        return False
+
     def clean_title(self, text: str) -> str:
         """Specific cleaning for Titles"""
         if not text:
@@ -416,21 +478,29 @@ class NewsProcessor:
             sentiment = sentiment / len(matched_rules)
             
         return {
-            "impact_score": min(score, 10), 
+            "impact_score": min(score, 5), 
             "sentiment": max(min(sentiment, 1.0), -1.0), 
             "matched_rules": matched_rules,
             "tags": list(tags)
         }
 
     async def process(self, news_item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        # Refresh Watchlist periodically (e.g., every 60s)
-        if (datetime.now() - self.last_watchlist_update).total_seconds() > 60:
+        # Refresh Watchlist/Blocklist periodically (e.g., every 60s)
+        now = datetime.now()
+        if (now - self.last_watchlist_update).total_seconds() > 60:
             try:
                 self.watchlist_keywords = await news_service.get_watchlist()
-                self.last_watchlist_update = datetime.now()
+                self.last_watchlist_update = now
                 # logger.debug(f"Refreshed watchlist: {len(self.watchlist_keywords)} keywords")
             except Exception as e:
                 logger.warning(f"Failed to refresh watchlist: {e}")
+
+        if (now - self.last_blocklist_update).total_seconds() > 60:
+            try:
+                self.blocklist_keywords = await news_service.get_blocklist()
+                self.last_blocklist_update = now
+            except Exception as e:
+                logger.warning(f"Failed to refresh blocklist: {e}")
 
         raw_content = news_item.get('content', '') or news_item.get('title', '')
         if not raw_content:
@@ -439,6 +509,19 @@ class NewsProcessor:
         clean_content = self.clean_text(raw_content, source=news_item.get('source'))
         clean_title = self.clean_title(news_item.get('title', ''))
         news_item['clean_content'] = clean_content
+
+        # Blocklist Filtering
+        if self.blocklist_keywords:
+            content_to_check = (clean_title + " " + clean_content).lower()
+            for blocked_kw in self.blocklist_keywords:
+                if blocked_kw and blocked_kw.lower() in content_to_check:
+                    # logger.info(f"Blocked news item due to keyword '{blocked_kw}': {clean_title}")
+                    return None
+
+        # Yonhap Filtering Logic
+        if news_item.get('source') == 'Yonhap':
+            if not self.filter_yonhap_news(news_item):
+                return None
         
         # Determine time for deduplication
         current_time = datetime.now()
@@ -494,7 +577,7 @@ class NewsProcessor:
                 if '关注' not in news_item['tags']:
                     news_item['tags'].append('关注')
                 # Boost impact score
-                news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 2, 10)
+                news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 2, 5)
                 break
         
         item_time = None
@@ -506,7 +589,7 @@ class NewsProcessor:
         
         expected_matches = self.match_expected_events(clean_content, item_time)
         if expected_matches:
-            news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 3, 10)
+            news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 3, 5)
             
             for event in expected_matches:
                 tag = f"预期:{event['country']}{event['event']}"
@@ -528,7 +611,7 @@ class NewsProcessor:
                     
                     # Boost score if matched storyline
                     # Base boost for any match
-                    news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 1, 10)
+                    news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 1, 5)
                     
                     for m in matches:
                         tag = f"主线:{m['title']}"
@@ -536,7 +619,7 @@ class NewsProcessor:
                         
                         # Extra boost for high confidence match
                         if m['score'] > 0.6:
-                             news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 1, 10)
+                             news_item['rating']['impact_score'] = min(news_item['rating']['impact_score'] + 1, 5)
 
                     # Add to tags
                     if 'tags' not in news_item:

@@ -49,6 +49,12 @@ class DatabaseManager:
                         created_at TEXT
                     )
                 ''')
+                await conn.execute('''
+                    CREATE TABLE IF NOT EXISTS blocklist (
+                        keyword TEXT PRIMARY KEY,
+                        created_at TEXT
+                    )
+                ''')
                 # Calendar Events Table
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS calendar_events (

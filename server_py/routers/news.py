@@ -26,6 +26,9 @@ router = APIRouter(prefix="/api")
 class WatchlistUpdate(BaseModel):
     keywords: List[str]
 
+class BlocklistAddRequest(BaseModel):
+    keyword: str
+
 class DedupDeleteRequest(BaseModel):
     ids: List[str]
 
@@ -169,6 +172,25 @@ async def update_watchlist_endpoint(watchlist: WatchlistUpdate, service: NewsSer
     success = await service.update_watchlist(watchlist.keywords)
     if not success:
          raise HTTPException(status_code=500, detail="Failed to update watchlist")
+    return {"success": True}
+
+@router.get("/blocklist")
+async def read_blocklist(service: NewsService = Depends(get_news_service)):
+    keywords = await service.get_blocklist()
+    return {"success": True, "data": keywords}
+
+@router.post("/blocklist")
+async def add_blocklist_item(request: BlocklistAddRequest, service: NewsService = Depends(get_news_service)):
+    success = await service.add_blocklist_item(request.keyword)
+    if not success:
+         raise HTTPException(status_code=500, detail="Failed to add blocklist item")
+    return {"success": True}
+
+@router.delete("/blocklist/{keyword}")
+async def remove_blocklist_item(keyword: str, service: NewsService = Depends(get_news_service)):
+    success = await service.remove_blocklist_item(keyword)
+    if not success:
+         raise HTTPException(status_code=500, detail="Failed to remove blocklist item")
     return {"success": True}
 
 @router.get("/news/dedup/scan")

@@ -8,6 +8,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 
 from services.news_service import news_service
+from services.notification_service import notification_service
 from llm_service import analyze_news
 from config import settings
 
@@ -198,11 +199,32 @@ async def process_single_news(news: Dict[str, Any], mode: str = "fast"):
                 analysis = fallback_sentiment_analysis(content)
                 analysis['note'] = 'Fallback used due to LLM error'
                 # failed_tasks_count += 1 # Optional: count fallback as failure or success? Let's count as partial success for now.
+            
+            # Ensure impact_score is within 1-5 range
+            if 'impact_score' in analysis:
+                try:
+                    score = float(analysis['impact_score'])
+                    # Clamp between 1 and 5
+                    analysis['impact_score'] = max(1, min(5, int(round(score))))
+                except (ValueError, TypeError):
+                    analysis['impact_score'] = 1
                 
             # Save result
             # Note: news_service.save_analysis will be async later
             await news_service.save_analysis(news['id'], analysis)
             logger.info(f"✅ Analyzed {news['id']}: Score={analysis.get('sentiment_score', 0)}")
+
+            # Check and send notification
+            impact_score = analysis.get('impact_score', 0)
+            if impact_score >= settings.NOTIFICATION_MIN_SCORE:
+                # Use create_task to avoid blocking the analysis flow
+                asyncio.create_task(notification_service.send_qq_notification(
+                    title=news.get('title') or "无标题",
+                    summary=analysis.get('summary') or "无摘要",
+                    score=impact_score,
+                    link=news.get('link') or news.get('url')
+                ))
+
             processed_count += 1
             last_processed_time = datetime.now()
             
