@@ -9,8 +9,11 @@ from apscheduler.triggers.cron import CronTrigger
 
 from services.news_service import news_service
 from services.notification_service import notification_service
+from services.daily_report_service import DailyReportService
+from services.weekly_report_service import WeeklyReportService
 from llm_service import analyze_news
 from config import settings
+from apscheduler.triggers.cron import CronTrigger
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -313,6 +316,37 @@ async def daily_batch_job():
     finally:
         daily_batch_running = False
 
+async def daily_report_job():
+    if not is_running:
+        return
+    
+    try:
+        # Generate report for yesterday
+        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        logger.info(f"Generating daily report for {yesterday}...")
+        service = DailyReportService()
+        # This will save to DB automatically
+        await service.generate_report(yesterday)
+        logger.info(f"Daily report for {yesterday} generated successfully.")
+    except Exception as e:
+        logger.error(f"Daily report generation failed: {e}")
+
+async def weekly_report_job():
+    if not is_running:
+        return
+    
+    try:
+        # Generate report for last week
+        # If run on Monday 8 AM, last week's Monday was 7 days ago.
+        today = datetime.now()
+        last_monday = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+        logger.info(f"Generating weekly report for week starting {last_monday}...")
+        service = WeeklyReportService()
+        await service.generate_report(last_monday)
+        logger.info(f"Weekly report for {last_monday} generated successfully.")
+    except Exception as e:
+        logger.error(f"Weekly report generation failed: {e}")
+
 async def start_scheduler():
     global analysis_ready_at
     await load_sentiment_dicts()
@@ -339,6 +373,26 @@ async def start_scheduler():
             max_instances=1,
             coalesce=True
         )
+
+    # Daily Report Job (8 AM)
+    scheduler.add_job(
+        daily_report_job,
+        CronTrigger(hour=8, minute=0),
+        id='daily_report_job',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True
+    )
+
+    # Weekly Report Job (Monday 8:15 AM)
+    scheduler.add_job(
+        weekly_report_job,
+        CronTrigger(day_of_week='mon', hour=8, minute=15),
+        id='weekly_report_job',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True
+    )
     
     scheduler.start()
     logger.info(

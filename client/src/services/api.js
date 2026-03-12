@@ -92,7 +92,12 @@ export const startBatchGeneration = (days = 7) => api.post('/storylines/batch-ge
 export const getTaskStatus = (taskId) => api.get(`/storylines/tasks/${taskId}`);
 
 // Daily Report
-export const getDailyReport = (date) => api.get('/reports/daily', { params: { date } });
+export const getDailyReport = (date, refresh = false) => api.get('/reports/daily', { params: { date, refresh } });
+export const getDailyReportHistory = (limit = 30) => api.get('/reports/history', { params: { limit } });
+
+// Weekly Report
+export const getWeeklyReport = (weekStart, refresh = false) => api.get('/reports/weekly', { params: { week_start: weekStart, refresh } });
+export const getWeeklyReportHistory = (limit = 30) => api.get('/reports/weekly/history', { params: { limit } });
 
 export const getMonitorStats = () => api.get('/monitor/stats');
 export const getIngestionSources = () => api.get('/ingestion/sources');

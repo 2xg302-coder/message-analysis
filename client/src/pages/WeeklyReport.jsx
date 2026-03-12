@@ -15,8 +15,7 @@ import {
   message,
   Button,
   Select,
-  Space,
-  Divider
+  Space
 } from 'antd';
 import { ReloadOutlined, HistoryOutlined } from '@ant-design/icons';
 import { 
@@ -25,33 +24,47 @@ import {
   Cell, 
   Tooltip, 
   Legend, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid
 } from 'recharts';
 import dayjs from 'dayjs';
-import { getDailyReport, getDailyReportHistory } from '../services/api';
+import weekday from 'dayjs/plugin/weekday';
+import localeData from 'dayjs/plugin/localeData';
+import 'dayjs/locale/zh-cn';
+import { getWeeklyReport, getWeeklyReportHistory } from '../services/api';
+
+dayjs.extend(weekday);
+dayjs.extend(localeData);
+dayjs.locale('zh-cn');
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 
-const DailyReport = () => {
+const WeeklyReport = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
-  const [date, setDate] = useState(dayjs().subtract(1, 'day'));
-  const [historyDates, setHistoryDates] = useState([]);
+  // Default to the Monday of the current week
+  const [date, setDate] = useState(dayjs().weekday(0));
+  const [historyWeeks, setHistoryWeeks] = useState([]);
 
   const fetchData = async (selectedDate, refresh = false) => {
     setLoading(true);
     try {
-      const dateStr = selectedDate.format('YYYY-MM-DD');
-      const response = await getDailyReport(dateStr, refresh);
+      // Ensure we send the Monday of the week
+      const monday = selectedDate.weekday(0).format('YYYY-MM-DD');
+      const response = await getWeeklyReport(monday, refresh);
       if (response.data && response.data.success) {
         setData(response.data.data);
       } else {
-        message.error('获取日报数据失败: ' + (response.data?.message || '未知错误'));
+        message.error('获取周报数据失败: ' + (response.data?.message || '未知错误'));
       }
     } catch (error) {
-      console.error('Failed to fetch daily report:', error);
-      message.error('获取日报数据失败');
+      console.error('Failed to fetch weekly report:', error);
+      message.error('获取周报数据失败');
     } finally {
       setLoading(false);
     }
@@ -59,9 +72,9 @@ const DailyReport = () => {
 
   const fetchHistory = async () => {
     try {
-      const response = await getDailyReportHistory();
+      const response = await getWeeklyReportHistory();
       if (response.data && response.data.success) {
-        setHistoryDates(response.data.dates);
+        setHistoryWeeks(response.data.weeks);
       }
     } catch (error) {
       console.error('Failed to fetch report history:', error);
@@ -78,7 +91,7 @@ const DailyReport = () => {
 
   const handleDateChange = (newDate) => {
     if (newDate) {
-      setDate(newDate);
+      setDate(newDate.weekday(0));
     }
   };
 
@@ -108,7 +121,7 @@ const DailyReport = () => {
   const renderContent = () => {
     if (!data) return <Empty description="暂无数据" />;
 
-    const { collection_stats, hotspots, series_updates, high_value_info, hotspot_changes } = data;
+    const { collection_stats, daily_trends, hotspots, series_updates, high_value_info } = data;
 
     // Prepare chart data
     const sourceData = collection_stats?.sources 
@@ -122,19 +135,23 @@ const DailyReport = () => {
     return (
       <div style={{ padding: '24px' }}>
         <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <Title level={2} style={{ margin: 0 }}>每日报告</Title>
+          <div>
+            <Title level={2} style={{ margin: 0 }}>周报</Title>
+            <Text type="secondary">{data.week_start} 至 {data.week_end}</Text>
+          </div>
           <Space>
             <Select 
-              placeholder="历史日报" 
-              style={{ width: 150 }} 
+              placeholder="历史周报" 
+              style={{ width: 200 }} 
               onChange={handleHistorySelect}
-              value={historyDates.includes(date.format('YYYY-MM-DD')) ? date.format('YYYY-MM-DD') : undefined}
+              value={historyWeeks.some(w => w.start === date.format('YYYY-MM-DD')) ? date.format('YYYY-MM-DD') : undefined}
             >
-              {historyDates.map(d => (
-                <Option key={d} value={d}>{d}</Option>
+              {historyWeeks.map(w => (
+                <Option key={w.start} value={w.start}>{w.start} 至 {w.end}</Option>
               ))}
             </Select>
             <DatePicker 
+              picker="week"
               value={date} 
               onChange={handleDateChange} 
               allowClear={false}
@@ -153,37 +170,13 @@ const DailyReport = () => {
         {/* High Value Info Section */}
         {high_value_info && (
           <Card 
-            title={<Space><Tag color="gold">重点关注</Tag>过去24小时高价值信息简报</Space>} 
-            style={{ marginBottom: '24px', background: '#fffbe6', borderColor: '#ffe58f' }}
-            headStyle={{ background: '#fff1b8' }}
+            title={<Space><Tag color="purple">深度总结</Tag>本周高价值信息综述</Space>} 
+            style={{ marginBottom: '24px', background: '#f9f0ff', borderColor: '#d3adf7' }}
+            headStyle={{ background: '#efdbff' }}
           >
             <Paragraph style={{ fontSize: '16px', whiteSpace: 'pre-line', margin: 0 }}>
               {typeof high_value_info === 'string' ? high_value_info : JSON.stringify(high_value_info)}
             </Paragraph>
-          </Card>
-        )}
-
-        {/* Hotspot Changes Section */}
-        {hotspot_changes && (hotspot_changes.new_tags?.length > 0 || hotspot_changes.surging_tags?.length > 0) && (
-          <Card title="热点变化趋势 (较昨日)" style={{ marginBottom: '24px' }}>
-            <Row gutter={24}>
-              <Col span={12}>
-                <Title level={5}>🔥 新增热点</Title>
-                {hotspot_changes.new_tags?.length > 0 ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {hotspot_changes.new_tags.map(tag => <Tag color="green" key={tag}>{tag}</Tag>)}
-                  </div>
-                ) : <Text type="secondary">无显著新增</Text>}
-              </Col>
-              <Col span={12}>
-                <Title level={5}>📈 飙升热点</Title>
-                {hotspot_changes.surging_tags?.length > 0 ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {hotspot_changes.surging_tags.map(tag => <Tag color="red" key={tag}>{tag}</Tag>)}
-                  </div>
-                ) : <Text type="secondary">无显著飙升</Text>}
-              </Col>
-            </Row>
           </Card>
         )}
 
@@ -192,7 +185,7 @@ const DailyReport = () => {
           <Col xs={24} sm={8}>
             <Card hoverable>
               <Statistic 
-                title="采集总量" 
+                title="本周采集总量" 
                 value={collection_stats?.total_news || 0} 
                 valueStyle={{ color: '#1890ff' }}
               />
@@ -210,9 +203,10 @@ const DailyReport = () => {
           <Col xs={24} sm={8}>
             <Card hoverable>
               <Statistic 
-                title="待处理" 
-                value={collection_stats?.pending_count || 0} 
-                valueStyle={{ color: '#cf1322' }}
+                title="分析率" 
+                value={collection_stats?.total_news ? Math.round((collection_stats.analyzed_count / collection_stats.total_news) * 100) : 0} 
+                suffix="%"
+                valueStyle={{ color: '#722ed1' }}
               />
             </Card>
           </Col>
@@ -220,7 +214,22 @@ const DailyReport = () => {
 
         {/* Row 2: Charts */}
         <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-          <Col xs={24} md={12}>
+           <Col xs={24} lg={12}>
+            <Card title="每日采集趋势" hoverable>
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={daily_trends || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(val) => dayjs(val).format('MM-DD')} />
+                    <YAxis />
+                    <Tooltip labelFormatter={(val) => dayjs(val).format('YYYY-MM-DD')} />
+                    <Bar dataKey="count" fill="#1890ff" name="采集量" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} lg={6}>
             <Card title="来源分布" hoverable>
               <div style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -245,7 +254,7 @@ const DailyReport = () => {
               </div>
             </Card>
           </Col>
-          <Col xs={24} md={12}>
+          <Col xs={24} lg={6}>
             <Card title="情感分布" hoverable>
               <div style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -275,7 +284,7 @@ const DailyReport = () => {
         {/* Row 3: Hotspots */}
         <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
           <Col xs={24} md={14}>
-            <Card title="今日热点新闻" hoverable>
+            <Card title="本周热点新闻 TOP 10" hoverable>
               <List
                 itemLayout="horizontal"
                 dataSource={hotspots?.top_news || []}
@@ -289,7 +298,13 @@ const DailyReport = () => {
                           <Tag color="gold">Impact: {item.impact_score}</Tag>
                         </div>
                       }
-                      description={item.summary}
+                      description={
+                        <div>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>{dayjs(item.created_at).format('YYYY-MM-DD HH:mm')}</Text>
+                          <br/>
+                          {item.summary}
+                        </div>
+                      }
                     />
                   </List.Item>
                 )}
@@ -297,13 +312,13 @@ const DailyReport = () => {
             </Card>
           </Col>
           <Col xs={24} md={10}>
-            <Card title="热门标签" hoverable>
+            <Card title="本周热门标签" hoverable>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {hotspots?.hot_tags?.map((tag) => (
                   <Tag 
                     key={tag.name} 
                     color="geekblue" 
-                    style={{ fontSize: Math.min(12 + tag.count / 10, 24) + 'px', padding: '4px 8px' }}
+                    style={{ fontSize: Math.min(12 + tag.count / 20, 24) + 'px', padding: '4px 8px' }}
                   >
                     {tag.name} ({tag.count})
                   </Tag>
@@ -314,11 +329,12 @@ const DailyReport = () => {
         </Row>
 
         {/* Row 4: Series Updates */}
-        <Card title="事件追踪更新" hoverable>
+        <Card title="本周重要事件进展" hoverable>
           <Timeline 
             mode="left"
             items={series_updates?.map((update, index) => ({
               color: update.importance > 7 ? 'red' : 'blue',
+              label: update.date,
               children: (
                 <>
                   <Text strong>{update.series_title}</Text>
@@ -344,4 +360,4 @@ const DailyReport = () => {
   );
 };
 
-export default DailyReport;
+export default WeeklyReport;

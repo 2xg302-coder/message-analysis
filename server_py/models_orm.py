@@ -91,3 +91,18 @@ class Storyline(SQLModel, table=True):
     status: str = Field(default="active")
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+class DailyReport(SQLModel, table=True):
+    __tablename__ = "daily_reports"
+    date: str = Field(primary_key=True) # YYYY-MM-DD
+    content: str = Field(default="{}") # JSON content
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+class WeeklyReport(SQLModel, table=True):
+    __tablename__ = "weekly_reports"
+    week_start: str = Field(primary_key=True) # YYYY-MM-DD (Monday)
+    week_end: str = Field(index=True) # YYYY-MM-DD (Sunday)
+    content: str = Field(default="{}") # JSON content
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())

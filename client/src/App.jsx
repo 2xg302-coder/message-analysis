@@ -10,6 +10,7 @@ import DataExplorer from './pages/DataExplorer';
 import CalendarView from './pages/CalendarView';
 import StorylineView from './pages/StorylineView';
 import DailyReport from './pages/DailyReport';
+import WeeklyReport from './pages/WeeklyReport';
 import DedupScan from './pages/DedupScan';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -21,6 +22,7 @@ const App = () => {
           <Route index element={<NewsFeed />} />
           <Route path="ithome" element={<ITHomeView />} />
           <Route path="reports" element={<DailyReport />} />
+          <Route path="reports/weekly" element={<WeeklyReport />} />
           <Route path="storylines" element={<StorylineView />} />
           <Route path="explorer" element={<DataExplorer />} />
           <Route path="dedup" element={<DedupScan />} />
